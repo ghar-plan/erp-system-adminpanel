@@ -1,0 +1,130 @@
+import React from "react";
+import { useForm } from "react-hook-form";
+import { ArrowDownCircle, Coins, Loader2, AlertCircle } from "lucide-react";
+
+interface CashInFormInputs {
+  projectId: string;
+  installment: string;
+  amount: string;
+}
+
+interface CashInFormProps {
+  projects: any[];
+  onSubmit: (data: CashInFormInputs) => Promise<void>;
+  submitting: boolean;
+}
+
+export default function CashInForm({
+  projects,
+  onSubmit,
+  submitting,
+}: CashInFormProps) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CashInFormInputs>({
+    defaultValues: {
+      projectId: "",
+      installment: "1st Installment (Booking)",
+      amount: "",
+    },
+  });
+
+  const handleFormSubmit = async (data: CashInFormInputs) => {
+    await onSubmit(data);
+    reset({
+      projectId: "",
+      installment: "1st Installment (Booking)",
+      amount: "",
+    });
+  };
+
+  return (
+    <div className="lg:col-span-1 border-l-[5px] border-blue-500 rounded-xl bg-card shadow-xs border border-border-main p-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+          <ArrowDownCircle size={22} className="stroke-[2.5]" />
+        </div>
+        <h2 className="text-xl font-bold text-foreground font-sans">Cash In</h2>
+      </div>
+
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
+        <div>
+          <label className="mb-2 block ui-form-label">SELECT PROJECT</label>
+          <select
+            className={`common-input !rounded-lg ${errors.projectId ? "border-red-500" : ""}`}
+            {...register("projectId", { required: "Project is required" })}
+          >
+            <option value="">Select a Project</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.siteName}
+              </option>
+            ))}
+          </select>
+          {errors.projectId && (
+            <p className="mt-1 text-xs text-red-500 font-semibold flex items-center gap-1">
+              <AlertCircle size={12} /> {errors.projectId.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="mb-2 block ui-form-label">SELECT INSTALLMENT</label>
+          <select
+            className="common-input !rounded-lg"
+            {...register("installment")}
+          >
+            <option value="1st Installment (Booking)">
+              1st Installment (Booking)
+            </option>
+            <option value="2nd Installment (Excavation)">
+              2nd Installment (Excavation)
+            </option>
+            <option value="3rd Installment (Structure)">
+              3rd Installment (Structure)
+            </option>
+            <option value="Booking Advance">Booking Advance</option>
+            <option value="Final Handover">Final Handover</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block ui-form-label">AMOUNT (PKR)</label>
+          <input
+            type="number"
+            step="0.01"
+            placeholder="Enter Amount"
+            className={`common-input !rounded-lg ${errors.amount ? "border-red-500" : ""}`}
+            {...register("amount", {
+              required: "Amount is required",
+              min: { value: 0.01, message: "Amount must be greater than 0" },
+            })}
+          />
+          {errors.amount && (
+            <p className="mt-1 text-xs text-red-500 font-semibold flex items-center gap-1">
+              <AlertCircle size={12} /> {errors.amount.message}
+            </p>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="flex h-10 px-6 w-full items-center justify-center gap-2 rounded-md bg-black hover:bg-neutral-800 text-white font-bold text-sm tracking-wide transition-all cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {submitting ? (
+            <Loader2 className="animate-spin" size={16} />
+          ) : (
+            <>
+              <Coins size={16} />
+              RECORD PAYMENT
+            </>
+          )}
+        </button>
+      </form>
+    </div>
+  );
+}

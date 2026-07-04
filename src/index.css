@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+@theme {
+  --breakpoint-xs: 450px;
+
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-tertiary: var(--tertiary);
+  --color-neutral: var(--neutral);
+
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border-main: var(--border-color);
+  --color-bg-input: var(--input-bg);
+  --color-border-input: var(--input-border);
+  --color-bg-navbar: var(--navbar-bg);
+  --color-bg-sidebar: var(--sidebar-bg);
+
+  --animate-fade-in: fade-in 0.4s ease-out forwards;
+  --animate-slide-up: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+
+:root {
+  --primary: #1B4D89;
+  --secondary: #64748B;
+  --tertiary: #0EA5E9;
+  --neutral: #F8FAFC;
+
+  /* Theme colors - Light */
+  --background: #F8FAFC;
+  --card: #FFFFFF;
+  --foreground: #0F172A;
+  --muted-foreground: #64748B;
+  --border-color: #E2E8F0;
+  --input-bg: #FFFFFF;
+  --input-border: #CBD5E1;
+  --navbar-bg: #FFFFFF;
+  --sidebar-bg: #1B4D89;
+
+  --outfit-family: "outfit", sans-serif;
+  --navbar-height: 80px;
+
+  /* Z-Index System */
+  --z-base: 0;
+  --z-navbar: 40;
+  --z-modal: 50;
+  --z-drawer: 60;
+  --z-loader: 9999;
+}
+
+.dark {
+  --primary: #3B82F6;
+  --secondary: #94A3B8;
+  --tertiary: #38BDF8;
+  --neutral: #0B0F19;
+
+  /* Theme colors - Dark */
+  --background: #0B0F19;
+  --card: #151D30;
+  --foreground: #F8FAFC;
+  --muted-foreground: #94A3B8;
+  --border-color: #1E293B;
+  --input-bg: #1E293B;
+  --input-border: #334155;
+  --navbar-bg: #151D30;
+  --sidebar-bg: #0A0D18;
+}
+
+@font-face {
+  font-family: "outfit";
+  src: url("/fonts/Outfit/Outfit-VariableFont_wght.ttf")
+    format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--outfit-family);
+  @apply bg-background text-foreground transition-colors duration-200;
+}
+
+@layer components {
+  /* Global Layout Classes */
+  .app-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .app-background {
+    @apply bg-background text-foreground transition-colors duration-200;
+  }
+
+  /* Global Card Style */
+  .app-card {
+    @apply bg-card rounded-xl shadow-sm border border-border-main p-6 transition-all duration-200;
+  }
+
+  /* Global Input Style */
+  .common-input {
+    @apply w-full px-4 py-2.5 text-sm bg-bg-input border border-border-input hover:border-primary rounded-md outline-none transition-all duration-200;
+    @apply focus:border-primary;
+    @apply placeholder:text-muted-foreground/60 text-foreground;
+    @apply disabled:bg-slate-100/50 disabled:text-muted-foreground disabled:cursor-not-allowed;
+  }
+
+    .ui-form-label {
+    @apply text-xs font-bold uppercase tracking-wider text-foreground;
+  }
+
+  /* Typography Helpers */
+  .app-title {
+    @apply text-2xl font-bold text-foreground leading-tight;
+  }
+
+  .app-subtitle {
+    @apply text-sm text-muted-foreground mt-1;
+  }
+
+
+  /* Transitions */
+  .transition-base {
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  /* Global Action Buttons */
+  .btn-action-view {
+    @apply p-2 rounded-lg text-primary bg-primary/5 hover:bg-primary/10 transition-colors inline-flex items-center justify-center;
+  }
+
+  .btn-action-edit {
+    @apply p-2 rounded-lg text-amber-600 bg-amber-500/10 hover:bg-amber-500/20 dark:text-amber-400 transition-colors inline-flex items-center justify-center;
+  }
+
+  .btn-action-delete {
+    @apply p-2 rounded-lg text-red-600 bg-red-500/10 hover:bg-red-500/20 dark:text-red-400 transition-colors cursor-pointer inline-flex items-center justify-center;
+  }
+
+  /* Table Body Cell */
+  .table-td {
+    @apply px-6 py-4 text-sm whitespace-nowrap text-muted-foreground;
+  }
+}
