@@ -10,4 +10,5 @@ export const Cashflows_APIS = {
   getAllIn: (params: any = {}) => getRequest("/v1/cashflows/in", params),
   getAllOut: (params: any = {}) => getRequest("/v1/cashflows/out", params),
   getProjectListSummary: () => getRequest("/v1/cashflows/project-list"),
+  exportCsv: (params: any = {}) => getRequest("/v1/cashflows/export", params),
 };

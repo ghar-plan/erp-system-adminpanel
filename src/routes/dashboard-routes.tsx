@@ -12,6 +12,7 @@ import VendorView from "@/containers/main/vendors/view";
 import Cashflow from "@/containers/main/cashflow";
 import ActivitiesListing from "@/containers/main/activities/listing";
 import ActivityCreate from "@/containers/main/activities/create";
+import ActivityEdit from "@/containers/main/activities/edit";
 import ProspectsListing from "@/containers/main/prospects/listing";
 import ProspectCreate from "@/containers/main/prospects/create";
 import ProspectView from "@/containers/main/prospects/view";
@@ -29,6 +30,7 @@ const DashboardRoutes = () => {
         <Route path={siteRoutes.projectsEdit} element={<ProjectsEdit />} />
         <Route path={siteRoutes.activity} element={<ActivitiesListing />} />
         <Route path={siteRoutes.activityCreate} element={<ActivityCreate />} />
+        <Route path={siteRoutes.activityEdit} element={<ActivityEdit />} />
         <Route path={siteRoutes.vendors} element={<VendorListing />} />
         <Route path={siteRoutes.vendorsCreate} element={<VendorCreate />} />
         <Route path={siteRoutes.vendorsView} element={<VendorView />} />

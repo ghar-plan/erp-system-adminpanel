@@ -1,15 +1,19 @@
 import { Prospects_APIS } from "@/libs/apis/prospects.api";
 import { useNavigate } from "react-router-dom";
-import { successToaster } from "@/utils/helpers/common/alert-service";
+import {
+  successToaster,
+  confirmationPopup,
+} from "@/utils/helpers/common/alert-service";
 
 const useProspects = () => {
   const navigate = useNavigate();
 
   const getProspects = async (
     setData: Function,
+    params: any = {},
     setTotalElements?: Function,
   ) => {
-    const response = await Prospects_APIS.getAll();
+    const response = await Prospects_APIS.getAll(params);
     const { status = false, data = [] } = response || {};
     if (status && data) {
       setData(data);
@@ -62,13 +66,18 @@ const useProspects = () => {
     }
   };
 
-  const deleteProspect = async (id: string, callback?: () => void) => {
-    const response = await Prospects_APIS.delete(id);
-    const { status = false, message = "" } = response || {};
-    if (status) {
-      successToaster(message);
-      callback?.();
-      return response;
+  const deleteProspect = async (id: string, name: string, callback?: () => void) => {
+    const result = await confirmationPopup(
+      `Delete ${name}`,
+      "Are you sure you want to delete this prospect? This action cannot be undone.",
+    );
+    if (result.isConfirmed) {
+      const response = await Prospects_APIS.delete(id);
+      const { status = false, message = "" } = response || {};
+      if (status) {
+        successToaster(message);
+        callback?.();
+      }
     }
   };
 

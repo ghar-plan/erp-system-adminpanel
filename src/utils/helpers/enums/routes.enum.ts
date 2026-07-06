@@ -8,6 +8,7 @@ export enum siteRoutes {
   projectsEdit = "/projects/edit/:id",
   activity = "/activity",
   activityCreate = "/activity/create",
+  activityEdit = "/activity/edit/:id",
   vendors = "/vendors",
   vendorsCreate = "/vendors/create",
   vendorsView = "/vendors/view/:id",

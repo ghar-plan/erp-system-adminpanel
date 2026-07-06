@@ -7,11 +7,14 @@ import {
   FileSpreadsheet,
   Loader2,
   List,
+  X,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import useActivities from "../useHooks";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
-import { useDebounce } from "@/hooks/useDebounce";
+import Button from "@/components/ui/Button";
 
 interface ActivityFilters {
   search: string;
@@ -21,10 +24,14 @@ interface ActivityFilters {
 
 export default function ActivitiesListing() {
   const navigate = useNavigate();
-  const { getActivities, uploadActivitiesCsv } = useActivities();
+  const { getActivities, uploadActivitiesCsv, deleteActivity } = useActivities();
   const [activities, setActivities] = useState<any[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [csvUploading, setCsvUploading] = useState(false);
+
+  // Modal / Import State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Filters State
   const [filters, setFilters] = useState<ActivityFilters>({
@@ -32,8 +39,6 @@ export default function ActivitiesListing() {
     page: 1,
     limit: 10,
   });
-
-  const debounceSearch = useDebounce(filters.search, 1000);
 
   const fetchActivities = (currentFilters: ActivityFilters) => {
     const queryParams: any = {
@@ -45,18 +50,32 @@ export default function ActivitiesListing() {
     getActivities(setActivities, queryParams, setTotalElements);
   };
 
-  // Triggers search on debounce search change
+  // Triggers search on mount
   useEffect(() => {
     fetchActivities({ ...filters, page: 1 });
-  }, [debounceSearch]);
+  }, []);
 
   const handleChangeFilter = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFilters((prev) => ({
       ...prev,
       [name]: value,
-      page: 1,
     }));
+  };
+
+  const handleApplyFilters = () => {
+    setFilters((prev) => ({ ...prev, page: 1 }));
+    fetchActivities({ ...filters, page: 1 });
+  };
+
+  const handleResetFilters = () => {
+    const cleared = {
+      search: "",
+      page: 1,
+      limit: 10,
+    };
+    setFilters(cleared);
+    fetchActivities(cleared);
   };
 
   const onPageChange = (pageInfo: { selected: number; limit: number }) => {
@@ -73,14 +92,19 @@ export default function ActivitiesListing() {
     });
   };
 
-  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleUpload = async () => {
+    if (!selectedFile) return;
 
     setCsvUploading(true);
-    await uploadActivitiesCsv(file);
+    await uploadActivitiesCsv(selectedFile);
     fetchActivities({ ...filters, page: 1 });
     setCsvUploading(false);
+    setIsImportModalOpen(false);
+    setSelectedFile(null);
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    await deleteActivity(id, name, () => fetchActivities(filters));
   };
 
   const formatDate = (dateString: string | Date) => {
@@ -96,7 +120,7 @@ export default function ActivitiesListing() {
     }
   };
 
-  const columns = ["Sr No.", "Activity ID", "Activity Name", "Date of Entry"];
+  const columns = ["Sr No.", "Activity ID", "Activity Name", "Date of Entry", "Actions"];
 
   return (
     <div className="space-y-6">
@@ -112,21 +136,13 @@ export default function ActivitiesListing() {
 
         <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
           {/* CSV Import */}
-          <label className="flex h-10 px-4 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs disabled:opacity-50">
-            {csvUploading ? (
-              <Loader2 className="animate-spin text-primary" size={16} />
-            ) : (
-              <Upload size={16} />
-            )}
-            {csvUploading ? "Uploading..." : "Import CSV"}
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleCsvUpload}
-              className="hidden"
-              disabled={csvUploading}
-            />
-          </label>
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex h-10 px-4 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs"
+          >
+            <Upload size={16} />
+            Import CSV
+          </button>
 
           {/* Add Activity Button */}
           <Link
@@ -139,11 +155,10 @@ export default function ActivitiesListing() {
         </div>
       </div>
 
-      <hr className="border-border-main" />
-
-      {/* Filter and Search Bar */}
-      <div className="flex justify-end w-full animate-fade-in">
-        <div className="relative sm:max-w-md w-full">
+      {/* Filters Toolbar Card */}
+      <div className="bg-card border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        {/* Left: Search */}
+        <div className="relative w-full md:max-w-md">
           <Search
             className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
             size={16}
@@ -151,11 +166,29 @@ export default function ActivitiesListing() {
           <input
             type="search"
             name="search"
-            placeholder="Search activities..."
+            placeholder="Search by activity name..."
             value={filters.search}
             onChange={handleChangeFilter}
             className="common-input pl-10 pr-4 !rounded-lg text-sm h-10 w-full"
           />
+        </div>
+
+        {/* Right: Buttons */}
+        <div className="flex gap-2 w-full sm:w-auto ml-auto sm:ml-0">
+          <Button
+            variant="primary"
+            onClick={handleApplyFilters}
+            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+          >
+            Apply
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleResetFilters}
+            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+          >
+            Reset
+          </Button>
         </div>
       </div>
 
@@ -194,6 +227,24 @@ export default function ActivitiesListing() {
                         {act.name}
                       </td>
                       <td className="table-td">{formatDate(act.created_at)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex gap-2">
+                          <Link
+                            to={`/activity/edit/${act.id}`}
+                            className="btn-action-edit"
+                            title="Edit Activity"
+                          >
+                            <Pencil size={16} />
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(act.id, act.name)}
+                            className="btn-action-delete"
+                            title="Delete"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -213,6 +264,118 @@ export default function ActivitiesListing() {
           />
         )}
       </div>
+
+      {/* Import CSV Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => {
+              setIsImportModalOpen(false);
+              setSelectedFile(null);
+            }}
+          />
+
+          {/* Modal Content */}
+          <div className="bg-card border border-border-main w-full max-w-md rounded-2xl shadow-xl overflow-hidden z-10 animate-scale-up relative">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-border-main flex items-center justify-between">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Upload size={20} className="text-primary" />
+                Import Activities
+              </h3>
+              <button
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setSelectedFile(null);
+                }}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted-foreground/5 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-6">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Upload an Excel (.xlsx) file containing activities. Ensure your file format matches the required structure.
+              </p>
+
+              {/* Sample File Download */}
+              <div className="p-4 rounded-xl bg-muted-foreground/5 border border-border-main flex items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-xs font-bold text-foreground">Need a template?</h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Use our predefined format for a smooth import.</p>
+                </div>
+                <a
+                  href="/bulk-data.xlsx"
+                  download="bulk-data.xlsx"
+                  className="text-xs font-bold text-primary hover:underline whitespace-nowrap cursor-pointer"
+                >
+                  Download Sample Excel
+                </a>
+              </div>
+
+              {/* File Drag and Drop / Input */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Select Excel File
+                </label>
+                <div className="relative border-2 border-dashed border-border-main hover:border-primary/50 transition-colors rounded-xl p-6 flex flex-col items-center justify-center gap-2 bg-bg-input/20">
+                  <input
+                    type="file"
+                    accept=".xlsx"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        setSelectedFile(e.target.files[0]);
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <FileSpreadsheet size={32} className="text-muted-foreground/60 stroke-[1.5]" />
+                  <span className="text-sm text-foreground font-semibold text-center">
+                    {selectedFile ? selectedFile.name : "Click or drag file to upload"}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {selectedFile ? `${(selectedFile.size / 1024).toFixed(2)} KB` : "Supports only XLSX files"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-muted-foreground/5 border-t border-border-main flex gap-3 justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setSelectedFile(null);
+                }}
+                disabled={csvUploading}
+                className="h-10 text-xs px-6 font-semibold"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleUpload}
+                disabled={!selectedFile || csvUploading}
+                className="h-10 text-xs px-6 font-semibold flex items-center justify-center gap-2"
+              >
+                {csvUploading ? (
+                  <>
+                    <Loader2 className="animate-spin" size={16} />
+                    Importing...
+                  </>
+                ) : (
+                  "Add Bulk Data"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

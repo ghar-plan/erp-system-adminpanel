@@ -8,7 +8,7 @@ import { IoArrowBackOutline } from "react-icons/io5";
 interface VendorFormInputs {
   vendorName: string;
   jobDescription: string;
-  vendorType: "Raw Material" | "Sub Contractor" | "Both";
+  vendorType: "vendorMaterial" | "vendorLabour" | "Both";
   address: string;
   phone: string;
   city: string;
@@ -120,8 +120,8 @@ export default function VendorCreate() {
                 })}
               >
                 <option value="Both">Both</option>
-                <option value="Raw Material">Raw Material</option>
-                <option value="Sub Contractor">Sub Contractor</option>
+                <option value="vendorMaterial">Raw Material</option>
+                <option value="vendorLabour">Sub Contractor</option>
               </select>
               {errors.vendorType && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">

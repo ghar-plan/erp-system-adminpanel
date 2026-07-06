@@ -13,6 +13,7 @@ export default function Cashflow() {
     getCashflowOutList,
     recordCashIn,
     recordCashOut,
+    exportCashflowCsv,
   } = useCashflow();
 
   // Dropdown states
@@ -28,7 +29,10 @@ export default function Cashflow() {
 
   // Filters state
   const [filterProject, setFilterProject] = useState("");
-  const [filterDate, setFilterDate] = useState("");
+  const [filterType, setFilterType] = useState("");
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
 
   // Helper date formatters
   const formatDate = (dateString: string | Date) => {
@@ -56,20 +60,73 @@ export default function Cashflow() {
     }
   };
 
-  // Fetch all initial data
-  const fetchData = async () => {
+  // Fetch metadata dropdown options
+  const fetchMetadata = async () => {
     await Promise.all([
       getProjects(setProjects),
       getVendors(setVendors),
       getActivities(setActivities),
-      getCashflowInList(setCashInList),
-      getCashflowOutList(setCashOutList),
     ]);
   };
 
+  // Fetch transactions from backend with active filters
+  const fetchTransactions = async (currentFilters: {
+    projectId?: string;
+    type?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => {
+    const { projectId, type, search, startDate, endDate } = currentFilters;
+
+    const queryParams: any = {};
+    if (projectId) queryParams.projectId = projectId;
+    if (search) queryParams.search = search;
+    if (startDate) queryParams.startDate = startDate;
+    if (endDate) queryParams.endDate = endDate;
+
+    const fetchIn = !type || type === "CASH IN";
+    const fetchOut = !type || type === "CASH OUT";
+
+    const promises: Promise<any>[] = [];
+    if (fetchIn) {
+      promises.push(getCashflowInList(setCashInList, queryParams));
+    } else {
+      setCashInList([]);
+    }
+
+    if (fetchOut) {
+      promises.push(getCashflowOutList(setCashOutList, queryParams));
+    } else {
+      setCashOutList([]);
+    }
+
+    await Promise.all(promises);
+  };
+
   useEffect(() => {
-    fetchData();
+    fetchMetadata();
   }, []);
+
+  useEffect(() => {
+    fetchTransactions({
+      projectId: filterProject,
+      type: filterType,
+      search: filterSearch,
+      startDate: filterStartDate,
+      endDate: filterEndDate,
+    });
+  }, [filterProject, filterType, filterSearch, filterStartDate, filterEndDate]);
+
+  const refreshTransactions = () => {
+    fetchTransactions({
+      projectId: filterProject,
+      type: filterType,
+      search: filterSearch,
+      startDate: filterStartDate,
+      endDate: filterEndDate,
+    });
+  };
 
   // Form submits callbacks
   const handleRecordPayment = async (data: any) => {
@@ -80,7 +137,7 @@ export default function Cashflow() {
       amount: Number(data.amount),
     };
     await recordCashIn(payload, () => {
-      fetchData();
+      refreshTransactions();
     });
     setSubmittingIn(false);
   };
@@ -98,7 +155,7 @@ export default function Cashflow() {
       amount: Number(data.amount),
     };
     await recordCashOut(payload, () => {
-      fetchData();
+      refreshTransactions();
     });
     setSubmittingOut(false);
   };
@@ -127,48 +184,21 @@ export default function Cashflow() {
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  // Filters logic
-  const filteredTransactions = transactions.filter((t) => {
-    const matchesProject = !filterProject || t.projectId === filterProject;
-    const matchesDate = !filterDate || formatDateToYMD(t.date) === filterDate;
-    return matchesProject && matchesDate;
-  });
-
-  // Export to CSV
-  const handleCSVExport = () => {
-    const headers = [
-      "Date",
-      "Project",
-      "Type",
-      "Description",
-      "Vendor / Client",
-      "Amount (PKR)",
-    ];
-    const rows = filteredTransactions.map((t) => [
-      formatDate(t.date),
-      t.project,
-      t.type,
-      t.description,
-      t.vendorClient,
-      t.amount,
-    ]);
-
-    const csvContent =
-      "data:text/csv;charset=utf-8,\uFEFF" +
-      [
-        headers.join(","),
-        ...rows.map((e) =>
-          e.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(","),
-        ),
-      ].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    const dateStr = formatDateToYMD(new Date()).replace(/-/g, "_");
-    link.setAttribute("download", `cashflow_report_${dateStr}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Export to CSV from backend
+  const handleCSVExport = async () => {
+    const csvData = await exportCashflowCsv();
+    if (csvData && !csvData.error) {
+      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;\uFEFF" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      const dateStr = formatDateToYMD(new Date()).replace(/-/g, "_");
+      link.setAttribute("download", `cashflow_report_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   };
 
   return (
@@ -208,12 +238,18 @@ export default function Cashflow() {
       {/* RECENT TRANSACTIONS TABLE */}
       <div className="pt-4 border-t border-border-main/60 animate-fade-in">
         <TransactionsTable
-          transactions={filteredTransactions}
+          transactions={transactions}
           projects={projects}
           filterProject={filterProject}
           setFilterProject={setFilterProject}
-          filterDate={filterDate}
-          setFilterDate={setFilterDate}
+          filterType={filterType}
+          setFilterType={setFilterType}
+          filterSearch={filterSearch}
+          setFilterSearch={setFilterSearch}
+          filterStartDate={filterStartDate}
+          setFilterStartDate={setFilterStartDate}
+          filterEndDate={filterEndDate}
+          setFilterEndDate={setFilterEndDate}
           exportToCSV={handleCSVExport}
           formatDate={formatDate}
         />

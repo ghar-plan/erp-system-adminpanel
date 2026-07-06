@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   successToaster,
   errorToaster,
+  confirmationPopup,
 } from "@/utils/helpers/common/alert-service";
 
 const useActivities = () => {
@@ -65,12 +66,45 @@ const useActivities = () => {
     }
   };
 
+  const updateActivity = async (id: string, body: { name: string }) => {
+    const response = await Activities_APIS.update(id, body);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message || "Activity updated successfully");
+      navigate("/activity");
+      return response;
+    }
+  };
+
+  const deleteActivity = async (
+    id: string,
+    name: string,
+    callback?: Function,
+  ) => {
+    const result = await confirmationPopup(
+      `Delete ${name}`,
+      "Are you sure you want to delete this activity? This action cannot be undone.",
+    );
+    if (result.isConfirmed) {
+      const response = await Activities_APIS.delete(id);
+      const { status = false, message = "" } = response || {};
+      if (status) {
+        successToaster(message);
+        callback?.();
+      } else {
+        successToaster(message);
+      }
+    }
+  };
+
   return {
     getActivities,
     getActivityById,
     createActivity,
     createActivitiesBulk,
     uploadActivitiesCsv,
+    updateActivity,
+    deleteActivity,
   };
 };
 

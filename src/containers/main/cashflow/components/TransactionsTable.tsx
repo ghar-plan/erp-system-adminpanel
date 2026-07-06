@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import { FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet, Search } from "lucide-react";
 
 interface Transaction {
   id: string;
@@ -18,8 +18,14 @@ interface TransactionsTableProps {
   projects: any[];
   filterProject: string;
   setFilterProject: (val: string) => void;
-  filterDate: string;
-  setFilterDate: (val: string) => void;
+  filterType: string;
+  setFilterType: (val: string) => void;
+  filterSearch: string;
+  setFilterSearch: (val: string) => void;
+  filterStartDate: string;
+  setFilterStartDate: (val: string) => void;
+  filterEndDate: string;
+  setFilterEndDate: (val: string) => void;
   exportToCSV: () => void;
   formatDate: (d: any) => string;
 }
@@ -29,14 +35,23 @@ export default function TransactionsTable({
   projects,
   filterProject,
   setFilterProject,
-  filterDate,
-  setFilterDate,
+  filterType,
+  setFilterType,
+  filterSearch,
+  setFilterSearch,
+  filterStartDate,
+  setFilterStartDate,
+  filterEndDate,
+  setFilterEndDate,
   exportToCSV,
   formatDate,
 }: TransactionsTableProps) {
   // Local draft states to allow Apply/Reset behavior
   const [draftProject, setDraftProject] = useState(filterProject);
-  const [draftDate, setDraftDate] = useState(filterDate);
+  const [draftType, setDraftType] = useState(filterType);
+  const [draftSearch, setDraftSearch] = useState(filterSearch);
+  const [draftStartDate, setDraftStartDate] = useState(filterStartDate);
+  const [draftEndDate, setDraftEndDate] = useState(filterEndDate);
 
   // Sync draft states if parent filters change externally
   useEffect(() => {
@@ -44,19 +59,40 @@ export default function TransactionsTable({
   }, [filterProject]);
 
   useEffect(() => {
-    setDraftDate(filterDate);
-  }, [filterDate]);
+    setDraftType(filterType);
+  }, [filterType]);
+
+  useEffect(() => {
+    setDraftSearch(filterSearch);
+  }, [filterSearch]);
+
+  useEffect(() => {
+    setDraftStartDate(filterStartDate);
+  }, [filterStartDate]);
+
+  useEffect(() => {
+    setDraftEndDate(filterEndDate);
+  }, [filterEndDate]);
 
   const handleApply = () => {
     setFilterProject(draftProject);
-    setFilterDate(draftDate);
+    setFilterType(draftType);
+    setFilterSearch(draftSearch);
+    setFilterStartDate(draftStartDate);
+    setFilterEndDate(draftEndDate);
   };
 
   const handleReset = () => {
     setDraftProject("");
-    setDraftDate("");
+    setDraftType("");
+    setDraftSearch("");
+    setDraftStartDate("");
+    setDraftEndDate("");
     setFilterProject("");
-    setFilterDate("");
+    setFilterType("");
+    setFilterSearch("");
+    setFilterStartDate("");
+    setFilterEndDate("");
   };
 
   return (
@@ -77,14 +113,29 @@ export default function TransactionsTable({
       </div>
 
       {/* Filters Toolbar Card */}
-      <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex justify-end">
-        {/* Right: Filters & Views */}
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+      <div className="bg-card border border-border-main p-4 rounded-xl animate-fade-in shadow-xs space-y-4">
+        {/* Row 1: Search, Project, Type */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Search Input */}
+          <div className="relative w-full">
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
+              size={16}
+            />
+            <input
+              type="search"
+              placeholder="Search by description, vendor/client, amount..."
+              value={draftSearch}
+              onChange={(e) => setDraftSearch(e.target.value)}
+              className="common-input pl-9 pr-4 h-10 w-full"
+            />
+          </div>
+
           {/* Project Filter */}
           <select
             value={draftProject}
             onChange={(e) => setDraftProject(e.target.value)}
-            className="common-input h-10 w-full sm:w-48 bg-card"
+            className="common-input h-10 w-full bg-card"
           >
             <option value="">All Projects</option>
             {projects.map((p) => (
@@ -94,15 +145,45 @@ export default function TransactionsTable({
             ))}
           </select>
 
-          {/* Date Filter */}
-          <input
-            type="date"
-            value={draftDate}
-            onChange={(e) => setDraftDate(e.target.value)}
-            className="common-input h-10 w-full sm:w-48 bg-card"
-          />
+          {/* Type Filter */}
+          <select
+            value={draftType}
+            onChange={(e) => setDraftType(e.target.value)}
+            className="common-input h-10 w-full bg-card"
+          >
+            <option value="">All Types</option>
+            <option value="CASH IN">Cash In</option>
+            <option value="CASH OUT">Cash Out</option>
+          </select>
+        </div>
 
-          <div className="flex gap-2 w-full sm:w-auto ml-auto sm:ml-0">
+        {/* Row 2: Dates and Buttons */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-border-main/20">
+          <div className="grid grid-cols-2 gap-3 w-full md:max-w-md">
+            {/* Start Date */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase">Start Date</label>
+              <input
+                type="date"
+                value={draftStartDate}
+                onChange={(e) => setDraftStartDate(e.target.value)}
+                className="common-input h-9 w-full bg-card text-xs"
+              />
+            </div>
+
+            {/* End Date */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase">End Date</label>
+              <input
+                type="date"
+                value={draftEndDate}
+                onChange={(e) => setDraftEndDate(e.target.value)}
+                className="common-input h-9 w-full bg-card text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 w-full sm:w-auto ml-auto sm:ml-0 mt-auto">
             <Button
               variant="primary"
               onClick={handleApply}

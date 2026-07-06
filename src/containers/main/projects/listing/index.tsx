@@ -6,13 +6,12 @@ import { Project } from "@/utils/helpers/models/projects/project.dto";
 import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
-import { useDebounce } from "@/hooks/useDebounce";
 import Button from "@/components/ui/Button";
 
 interface ProjectFilters {
   search: string;
-  region: string;
-  subregion: string;
+  startDate: string;
+  endDate: string;
   page: number;
   limit: number;
 }
@@ -26,13 +25,11 @@ export default function ProjectListing() {
   // Filters State
   const [filters, setFilters] = useState<ProjectFilters>({
     search: "",
-    region: "",
-    subregion: "",
+    startDate: "",
+    endDate: "",
     page: 1,
     limit: 10,
   });
-
-  const debounceSearch = useDebounce(filters.search, 1000);
 
   const fetchProjects = (currentFilters: ProjectFilters) => {
     const queryParams: any = {
@@ -40,17 +37,16 @@ export default function ProjectListing() {
       offset: (currentFilters.page - 1) * currentFilters.limit,
     };
     if (currentFilters.search) queryParams.search = currentFilters.search;
-    if (currentFilters.region) queryParams.region = currentFilters.region;
-    if (currentFilters.subregion)
-      queryParams.subregion = currentFilters.subregion;
+    if (currentFilters.startDate) queryParams.startDate = currentFilters.startDate;
+    if (currentFilters.endDate) queryParams.endDate = currentFilters.endDate;
 
     getProjects(setProjects, queryParams, setTotalElements);
   };
 
-  // Triggers search when debounce completes
+  // Triggers search on initial mount only
   useEffect(() => {
     fetchProjects({ ...filters, page: 1 });
-  }, [debounceSearch]);
+  }, []);
 
   const handleChangeFilter = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -70,8 +66,8 @@ export default function ProjectListing() {
   const handleResetFilters = () => {
     const cleared = {
       search: "",
-      region: "",
-      subregion: "",
+      startDate: "",
+      endDate: "",
       page: 1,
       limit: 10,
     };
@@ -129,8 +125,10 @@ export default function ProjectListing() {
           Register New Site
         </Link>
       </div>
-      <div className="flex justify-end w-full">
-        <div className="relative sm:max-w-md w-full">
+      {/* Filters Toolbar Card */}
+      <div className="bg-card border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        {/* Left: Search */}
+        <div className="relative w-full md:max-w-md">
           <Search
             className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
             size={16}
@@ -144,31 +142,30 @@ export default function ProjectListing() {
             className="common-input pl-10 pr-4 !rounded-lg text-sm h-10 w-full"
           />
         </div>
-      </div>
 
-      {/* Filters Toolbar Card */}
-      <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl  animate-fade-in shadow-xs">
-        {/* Left: Search */}
-
-        {/* Right: Filters & Views */}
+        {/* Right: Date Filters & Buttons */}
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
-          <input
-            type="text"
-            name="region"
-            value={filters.region}
-            onChange={handleChangeFilter}
-            placeholder="Region"
-            className="common-input h-10 w-full sm:w-36 md:w-40"
-          />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">From:</span>
+            <input
+              type="date"
+              name="startDate"
+              value={filters.startDate}
+              onChange={handleChangeFilter}
+              className="common-input h-10 w-full sm:w-40 text-sm"
+            />
+          </div>
 
-          <input
-            type="text"
-            name="subregion"
-            value={filters.subregion}
-            onChange={handleChangeFilter}
-            placeholder="Subregion"
-            className="common-input  text-sm h-10 w-full sm:w-36 md:w-40"
-          />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">To:</span>
+            <input
+              type="date"
+              name="endDate"
+              value={filters.endDate}
+              onChange={handleChangeFilter}
+              className="common-input h-10 w-full sm:w-40 text-sm"
+            />
+          </div>
 
           <div className="flex gap-2 w-full sm:w-auto ml-auto sm:ml-0">
             <Button

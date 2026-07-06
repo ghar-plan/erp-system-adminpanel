@@ -110,7 +110,11 @@ export default function VendorView() {
                   Vendor Type
                 </span>
                 <span className="text-sm font-semibold text-foreground mt-0.5 block">
-                  {vendor?.vendorType || "--"}
+                  {vendor?.vendorType === "vendorMaterial"
+                    ? "Raw Material"
+                    : vendor?.vendorType === "vendorLabour"
+                      ? "Sub Contractor"
+                      : vendor?.vendorType || "--"}
                 </span>
               </div>
             </div>

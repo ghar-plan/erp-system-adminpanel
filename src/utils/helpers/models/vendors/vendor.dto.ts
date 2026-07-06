@@ -2,7 +2,7 @@ export interface Vendor {
   id: string;
   vendorName: string;
   jobDescription: string;
-  vendorType: "Raw Material" | "Sub Contractor" | "Both";
+  vendorType: "vendorMaterial" | "vendorLabour" | "Both" | "Raw Material" | "Sub Contractor";
   address?: string;
   phone?: string;
   city?: string;

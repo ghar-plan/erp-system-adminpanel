@@ -19,13 +19,12 @@ interface Prospect {
 export default function ProspectsListing() {
   const { getProspects, deleteProspect } = useProspects();
   const [prospects, setProspects] = useState<Prospect[]>([]);
-  const [totalElements, setTotalElements] = useState(0);
 
-  // Active filters applied to list
+  // Applied (active) filter state — triggers API call
   const [activeSearch, setActiveSearch] = useState("");
   const [activeStatus, setActiveStatus] = useState("");
 
-  // Draft filters inside the card
+  // Draft states inside the filters card
   const [draftSearch, setDraftSearch] = useState("");
   const [draftStatus, setDraftStatus] = useState("");
 
@@ -33,18 +32,23 @@ export default function ProspectsListing() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
-  const fetchProspectsList = () => {
-    getProspects(setProspects);
+  const fetchProspectsList = (search = activeSearch, status = activeStatus) => {
+    const params: any = {};
+    if (search) params.search = search;
+    if (status) params.status = status;
+    getProspects(setProspects, params);
   };
 
+  // Initial load
   useEffect(() => {
-    fetchProspectsList();
+    fetchProspectsList("", "");
   }, []);
 
   const handleApplyFilters = () => {
     setActiveSearch(draftSearch);
     setActiveStatus(draftStatus);
     setPage(1);
+    fetchProspectsList(draftSearch, draftStatus);
   };
 
   const handleResetFilters = () => {
@@ -53,17 +57,13 @@ export default function ProspectsListing() {
     setActiveSearch("");
     setActiveStatus("");
     setPage(1);
+    fetchProspectsList("", "");
   };
 
   const handleDelete = async (id: string, name: string) => {
-    const isConfirmed = window.confirm(
-      `Are you sure you want to delete prospect "${name}"?`,
-    );
-    if (isConfirmed) {
-      await deleteProspect(id, () => {
-        fetchProspectsList();
-      });
-    }
+    await deleteProspect(id, name, () => {
+      fetchProspectsList();
+    });
   };
 
   const onPageChange = (pageInfo: { selected: number; limit: number }) => {
@@ -112,22 +112,12 @@ export default function ProspectsListing() {
     );
   };
 
-  // Filter & Paginate prospects locally for fast search feel
-  const filteredProspects = prospects.filter((p) => {
-    const matchesStatus = !activeStatus || p.status === activeStatus;
-    const matchesSearch =
-      !activeSearch ||
-      p.name.toLowerCase().includes(activeSearch.toLowerCase()) ||
-      p.phone.toLowerCase().includes(activeSearch.toLowerCase()) ||
-      (p.email && p.email.toLowerCase().includes(activeSearch.toLowerCase()));
-    return matchesStatus && matchesSearch;
-  });
-
-  const paginatedProspects = filteredProspects.slice(
+  // Client-side pagination only (data is already filtered by backend)
+  const paginatedProspects = prospects.slice(
     (page - 1) * limit,
     page * limit,
   );
-  const count = filteredProspects.length;
+  const count = prospects.length;
 
   const columns = [
     "Sr No.",
@@ -142,7 +132,7 @@ export default function ProspectsListing() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in  ">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl text-foreground font-bold">
@@ -162,25 +152,25 @@ export default function ProspectsListing() {
 
       <hr className="border-border-main" />
 
-      <div className="flex justify-end w-full">
-        <div className="relative sm:max-w-md w-full">
-          <Search
-            className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
-            size={16}
-          />
-          <input
-            type="search"
-            placeholder="Search by name, phone or email..."
-            value={draftSearch}
-            onChange={(e) => setDraftSearch(e.target.value)}
-            className="common-input pl-10 pr-4 !rounded-lg text-sm h-10 w-full"
-          />
-        </div>
-      </div>
-
       {/* Filters Toolbar Card */}
-      <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl animate-fade-in shadow-xs">
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+      <div className="bg-card border border-border-main p-4 rounded-xl animate-fade-in shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <Search
+              className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
+              size={16}
+            />
+            <input
+              type="search"
+              placeholder="Search by name, phone, email, date..."
+              value={draftSearch}
+              onChange={(e) => setDraftSearch(e.target.value)}
+              className="common-input pl-10 pr-4 h-10 w-full"
+            />
+          </div>
+
+          {/* Status Dropdown */}
           <select
             value={draftStatus}
             onChange={(e) => setDraftStatus(e.target.value)}
@@ -194,20 +184,21 @@ export default function ProspectsListing() {
             <option value="Converted">Converted</option>
           </select>
 
-          <div className="flex gap-2 w-full sm:w-auto ml-auto sm:ml-0">
-            <Button
-              variant="secondary"
-              onClick={handleResetFilters}
-              className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
-            >
-              Reset
-            </Button>
+          {/* Action Buttons */}
+          <div className="flex gap-2 w-full sm:w-auto">
             <Button
               variant="primary"
               onClick={handleApplyFilters}
               className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
             >
               Apply
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleResetFilters}
+              className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+            >
+              Reset
             </Button>
           </div>
         </div>

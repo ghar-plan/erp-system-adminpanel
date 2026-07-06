@@ -158,7 +158,7 @@ export default function ProjectsView() {
         </div>
 
         {/* Right Column: Financial Overview */}
-        <div className="lg:col-span-1 space-y-6">
+        {/* <div className="lg:col-span-1 space-y-6">
           <div className="bg-card border border-border-main rounded-xl p-6 shadow-xs">
             <h2 className="text-lg font-bold text-foreground">
               Financial Status
@@ -209,7 +209,7 @@ export default function ProjectsView() {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

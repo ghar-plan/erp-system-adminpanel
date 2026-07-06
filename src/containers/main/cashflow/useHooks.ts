@@ -38,8 +38,8 @@ const useCashflow = () => {
     }
   };
 
-  const getCashflowInList = async (setData: Function) => {
-    const response = await Cashflows_APIS.getAllIn();
+  const getCashflowInList = async (setData: Function, queryParams: any = {}) => {
+    const response = await Cashflows_APIS.getAllIn(queryParams);
     const { status = false, data = [] } = response || {};
     if (status && data) {
       setData(data);
@@ -48,8 +48,8 @@ const useCashflow = () => {
     }
   };
 
-  const getCashflowOutList = async (setData: Function) => {
-    const response = await Cashflows_APIS.getAllOut();
+  const getCashflowOutList = async (setData: Function, queryParams: any = {}) => {
+    const response = await Cashflows_APIS.getAllOut(queryParams);
     const { status = false, data = [] } = response || {};
     if (status && data) {
       setData(data);
@@ -78,6 +78,10 @@ const useCashflow = () => {
     }
   };
 
+  const exportCashflowCsv = async (params: any = {}) => {
+    return await Cashflows_APIS.exportCsv(params);
+  };
+
   return {
     getProjects,
     getVendors,
@@ -86,6 +90,7 @@ const useCashflow = () => {
     getCashflowOutList,
     recordCashIn,
     recordCashOut,
+    exportCashflowCsv,
   };
 };
 
