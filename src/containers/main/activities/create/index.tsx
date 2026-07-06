@@ -23,7 +23,10 @@ export default function ActivityCreate() {
 
   const onSubmitForm = async (data: ActivityFormInputs) => {
     // Process input names: split by commas if multiple, clean whitespaces
-    const rawNames = data.names.split(",").map((name) => name.trim()).filter((name) => name.length > 0);
+    const rawNames = data.names
+      .split(",")
+      .map((name) => name.trim())
+      .filter((name) => name.length > 0);
 
     if (rawNames.length === 0) return;
 
@@ -39,7 +42,7 @@ export default function ActivityCreate() {
   };
 
   return (
-    <div className="bg-background transition-colors duration-200">
+    <div>
       {/* Header */}
       <div className="flex justify-between items-center gap-4 flex-wrap">
         <div className="flex items-center gap-3">
@@ -51,7 +54,7 @@ export default function ActivityCreate() {
           >
             <IoArrowBackOutline size={20} className="stroke-[2.5]" />
           </button>
-          <h1 className="text-2xl text-foreground font-bold font-sans">
+          <h1 className="text-2xl text-foreground font-bold  ">
             Register New Activity
           </h1>
         </div>
@@ -81,7 +84,9 @@ export default function ActivityCreate() {
               </p>
             )}
             <p className="mt-2 text-xs text-muted-foreground">
-              Tip: You can add a single activity name, or enter multiple activities separated by commas (e.g. "Excavation, Electrician Work") to register them in bulk.
+              Tip: You can add a single activity name, or enter multiple
+              activities separated by commas (e.g. "Excavation, Electrician
+              Work") to register them in bulk.
             </p>
           </div>
         </div>

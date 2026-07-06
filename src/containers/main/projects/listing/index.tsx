@@ -108,9 +108,9 @@ export default function ProjectListing() {
   ];
 
   return (
-    <div className="bg-background transition-colors duration-200 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in font-sans">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in  ">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl text-foreground font-bold">
@@ -172,18 +172,18 @@ export default function ProjectListing() {
 
           <div className="flex gap-2 w-full sm:w-auto ml-auto sm:ml-0">
             <Button
-              variant="secondary"
-              onClick={handleResetFilters}
-              className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
-            >
-              Reset
-            </Button>
-            <Button
               variant="primary"
               onClick={handleApplyFilters}
               className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
             >
               Apply
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleResetFilters}
+              className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+            >
+              Reset
             </Button>
           </div>
         </div>
@@ -220,10 +220,10 @@ export default function ProjectListing() {
                         {(filters.page - 1) * filters.limit + index + 1}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {project.media?.url ? (
+                        {project?.media?.url ? (
                           <img
                             src={getFilePathWithBackendUrl(project.media.url)}
-                            alt={project.siteName}
+                            alt={project?.siteName || "Project"}
                             className="w-12 h-12 rounded-xl object-cover border border-border-main shadow-xs"
                           />
                         ) : (
@@ -233,12 +233,12 @@ export default function ProjectListing() {
                         )}
                       </td>
                       <td className="table-td font-semibold text-foreground">
-                        {project.siteName}
+                        {project?.siteName || "--"}
                       </td>
-                      <td className="table-td">{project.region}</td>
-                      <td className="table-td">{project.subregion || "-"}</td>
+                      <td className="table-td">{project?.region || "--"}</td>
+                      <td className="table-td">{project?.subregion || "--"}</td>
                       <td className="table-td">
-                        {project.created_at
+                        {project?.created_at
                           ? new Date(project.created_at).toLocaleDateString(
                               "en-US",
                               {
@@ -247,7 +247,7 @@ export default function ProjectListing() {
                                 day: "numeric",
                               },
                             )
-                          : "-"}
+                          : "--"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex gap-2">

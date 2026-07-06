@@ -11,7 +11,7 @@ const useActivities = () => {
   const getActivities = async (
     setData: Function,
     queryParams: any = {},
-    setTotalElements?: Function
+    setTotalElements?: Function,
   ) => {
     const response = await Activities_APIS.getAll(queryParams);
     const { status = false, data = [] } = response || {};
@@ -36,7 +36,7 @@ const useActivities = () => {
     const response = await Activities_APIS.create(body);
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "Activity created successfully!");
+      successToaster(message);
       navigate("/activity");
       return response;
     }
@@ -46,7 +46,7 @@ const useActivities = () => {
     const response = await Activities_APIS.createBulk({ names });
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "Bulk activities registered successfully!");
+      successToaster(message);
       navigate("/activity");
       return response;
     }
@@ -59,7 +59,7 @@ const useActivities = () => {
     const response = await Activities_APIS.uploadCsv(formData);
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "CSV file uploaded and processed successfully!");
+      successToaster(message);
       navigate("/activity");
       return response;
     }

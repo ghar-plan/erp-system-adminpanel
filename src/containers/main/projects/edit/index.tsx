@@ -86,7 +86,7 @@ export default function ProjectsEdit() {
   };
 
   return (
-    <div className="bg-background transition-colors duration-200">
+    <div>
       {/* Header */}
       <div className="flex justify-between items-center gap-4 flex-wrap">
         <div className="flex items-center gap-3">
@@ -98,7 +98,7 @@ export default function ProjectsEdit() {
           >
             <IoArrowBackOutline size={20} className="stroke-[2.5]" />
           </button>
-          <h1 className="text-2xl text-foreground font-bold font-sans">
+          <h1 className="text-2xl text-foreground font-bold  ">
             Modify Site Information
           </h1>
         </div>
@@ -110,7 +110,10 @@ export default function ProjectsEdit() {
         onSubmit={handleSubmit(onSubmitForm)}
         className="mt-8 w-full animate-slide-up space-y-6"
       >
-        <input type="hidden" {...register("mediaId", { required: "Cover image is required" })} />
+        <input
+          type="hidden"
+          {...register("mediaId", { required: "Cover image is required" })}
+        />
         <hr className="border-border-main" />
 
         {/* Form Fields Grid */}

@@ -172,12 +172,12 @@ export default function Cashflow() {
   };
 
   return (
-    <div className="bg-background transition-colors duration-200 space-y-6 font-sans">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl text-foreground font-bold font-sans">
+            <h1 className="text-2xl sm:text-3xl text-foreground font-bold  ">
               Cashflow Management
             </h1>
           </div>

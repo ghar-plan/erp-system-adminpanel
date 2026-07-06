@@ -10,19 +10,24 @@ import { Project } from "@/utils/helpers/models/projects/project.dto";
 const useProjects = () => {
   const navigate = useNavigate();
 
-  const createProject = async (data: { siteName: string; region: string; subregion: string; mediaId: string | null }) => {
+  const createProject = async (data: {
+    siteName: string;
+    region: string;
+    subregion: string;
+    mediaId: string | null;
+  }) => {
     // Sanitize payload: remove null/empty mediaId to avoid UUID validation check error on NestJS backend
     const payload = {
       siteName: data.siteName,
       region: data.region,
       subregion: data.subregion,
-      ...(data.mediaId ? { mediaId: data.mediaId } : {})
+      ...(data.mediaId ? { mediaId: data.mediaId } : {}),
     };
 
     const response = await Projects_APIS.create(payload);
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "Site registered successfully!");
+      successToaster(message);
       navigate("/projects");
       return response;
     }
@@ -31,7 +36,7 @@ const useProjects = () => {
   const getProjects = async (
     setData: Function,
     queryParams: any = {},
-    setTotalElements?: Function
+    setTotalElements?: Function,
   ) => {
     const response = await Projects_APIS.getAll(queryParams);
     const { status = false, data = [] } = response || {};
@@ -44,16 +49,20 @@ const useProjects = () => {
     }
   };
 
-  const deleteProject = async (id: string, name: string, callback?: Function) => {
+  const deleteProject = async (
+    id: string,
+    name: string,
+    callback?: Function,
+  ) => {
     const result = await confirmationPopup(
       `Delete ${name}`,
-      "Are you sure you want to delete this site entry? This action cannot be undone."
+      "Are you sure you want to delete this site entry? This action cannot be undone.",
     );
     if (result.isConfirmed) {
       const response = await Projects_APIS.delete(id);
       const { status = false, message = "" } = response || {};
       if (status) {
-        successToaster(message || "Site deleted successfully!");
+        successToaster(message);
         callback?.();
         return response;
       } else {
@@ -86,7 +95,7 @@ const useProjects = () => {
     const response = await Projects_APIS.update(id, queryParams);
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "Project updated successfully!");
+      successToaster(message);
       navigate("/projects");
       return response;
     }

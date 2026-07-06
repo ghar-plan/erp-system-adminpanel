@@ -99,11 +99,11 @@ export default function VendorListing() {
   const getVendorTypeBadgeClass = (type: string) => {
     switch (type) {
       case "Raw Material":
-        return "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/50 dark:border-emerald-900/30";
+        return "bg-success-bg text-success-text border border-panel-border";
       case "Sub Contractor":
-        return "bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-400 border border-purple-100/50 dark:border-purple-900/30";
+        return "bg-accent-bg text-accent-text border border-panel-border";
       default:
-        return "bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border border-blue-100/50 dark:border-blue-900/30";
+        return "bg-info-bg text-info-text border border-panel-border";
     }
   };
 
@@ -118,9 +118,9 @@ export default function VendorListing() {
   ];
 
   return (
-    <div className="bg-background transition-colors duration-200 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in font-sans">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in  ">
         <div>
           <h1 className="text-2xl sm:text-3xl text-foreground font-bold">
             Vendor Profiles
@@ -231,18 +231,20 @@ export default function VendorListing() {
                         {(filters.page - 1) * filters.limit + index + 1}
                       </td>
                       <td className="table-td font-semibold text-foreground">
-                        {vendor.vendorName}
+                        {vendor?.vendorName || "--"}
                       </td>
-                      <td className="table-td">{vendor.jobDescription}</td>
+                      <td className="table-td">
+                        {vendor?.jobDescription || "--"}
+                      </td>
                       <td className="table-td">
                         <span
-                          className={`px-2.5 py-1 text-xs font-bold tracking-wide rounded-md ${getVendorTypeBadgeClass(vendor.vendorType)}`}
+                          className={`px-2.5 py-1 text-xs font-bold tracking-wide rounded-md ${getVendorTypeBadgeClass(vendor?.vendorType || "")}`}
                         >
-                          {vendor.vendorType}
+                          {vendor?.vendorType || "--"}
                         </span>
                       </td>
-                      <td className="table-td">{vendor.phone || "-"}</td>
-                      <td className="table-td">{vendor.city || "-"}</td>
+                      <td className="table-td">{vendor?.phone || "--"}</td>
+                      <td className="table-td">{vendor?.city || "--"}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex gap-2">
                           <Link

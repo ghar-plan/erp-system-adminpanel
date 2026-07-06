@@ -63,7 +63,7 @@ export default function TransactionsTable({
     <div className="space-y-4">
       {/* Table Title */}
       <div className="flex justify-between gap-4 flex-wrap">
-        <h2 className="text-xl font-bold text-foreground font-sans">
+        <h2 className="text-xl font-bold text-foreground  ">
           Recent Transactions
         </h2>
 
@@ -155,27 +155,31 @@ export default function TransactionsTable({
                     key={tx.id}
                     className="hover:bg-muted-foreground/5 transition-colors"
                   >
-                    <td className="table-td">{formatDate(tx.date)}</td>
+                    <td className="table-td">
+                      {tx?.date ? formatDate(tx.date) : "--"}
+                    </td>
                     <td className="table-td font-semibold text-foreground animate-fade-in">
-                      {tx.project}
+                      {tx?.project || "--"}
                     </td>
                     <td className="table-td">
                       <span
-                        className={`inline-flex items-center gap-1 font-bold text-[10px] tracking-wider px-2 py-0.5 rounded ${
+                        className={`inline-flex items-center gap-1 font-bold text-[10px] tracking-wider px-2 py-0.5 rounded border ${
                           tx.type === "CASH IN"
-                            ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
-                            : "bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400"
+                            ? "bg-success-bg text-success-text border-success-text/10"
+                            : "bg-warning-bg text-warning-text border-warning-text/10"
                         }`}
                       >
                         {tx.type === "CASH IN" ? "↓" : "↑"} {tx.type}
                       </span>
                     </td>
                     <td className="table-td text-muted-foreground max-w-[200px] truncate">
-                      {tx.description}
+                      {tx?.description || "--"}
                     </td>
-                    <td className="table-td">{tx.vendorClient}</td>
+                    <td className="table-td">{tx?.vendorClient || "--"}</td>
                     <td className="table-td font-bold text-foreground text-right">
-                      PKR {tx.amount.toLocaleString()}
+                      {tx?.amount !== undefined
+                        ? `PKR ${tx.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+                        : "--"}
                     </td>
                   </tr>
                 ))
@@ -183,7 +187,7 @@ export default function TransactionsTable({
                 <tr>
                   <td
                     colSpan={6}
-                    className="px-6 py-10 text-center text-sm text-muted-foreground font-sans"
+                    className="px-6 py-10 text-center text-sm text-muted-foreground  "
                   >
                     No transactions recorded yet.
                   </td>

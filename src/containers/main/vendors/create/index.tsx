@@ -25,7 +25,7 @@ export default function VendorCreate() {
   } = useForm<VendorFormInputs>({
     defaultValues: {
       vendorType: "Both",
-    }
+    },
   });
 
   const onSubmitForm = async (data: VendorFormInputs) => {
@@ -45,7 +45,7 @@ export default function VendorCreate() {
   };
 
   return (
-    <div className="bg-background transition-colors duration-200">
+    <div>
       {/* Header */}
       <div className="flex justify-between items-center gap-4 flex-wrap">
         <div className="flex items-center gap-3">
@@ -57,7 +57,7 @@ export default function VendorCreate() {
           >
             <IoArrowBackOutline size={20} className="stroke-[2.5]" />
           </button>
-          <h1 className="text-2xl text-foreground font-bold font-sans">
+          <h1 className="text-2xl text-foreground font-bold  ">
             Register New Vendor
           </h1>
         </div>
@@ -79,23 +79,33 @@ export default function VendorCreate() {
                 type="text"
                 placeholder="e.g., Aslam"
                 className={`common-input ${errors.vendorName ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("vendorName", { required: "Vendor Name is required" })}
+                {...register("vendorName", {
+                  required: "Vendor Name is required",
+                })}
               />
               {errors.vendorName && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">{errors.vendorName.message}</p>
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.vendorName.message}
+                </p>
               )}
             </div>
 
             <div>
-              <label className="mb-2 block ui-form-label">Job Description</label>
+              <label className="mb-2 block ui-form-label">
+                Job Description
+              </label>
               <input
                 type="text"
                 placeholder="e.g., Electrician"
                 className={`common-input ${errors.jobDescription ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("jobDescription", { required: "Job Description is required" })}
+                {...register("jobDescription", {
+                  required: "Job Description is required",
+                })}
               />
               {errors.jobDescription && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">{errors.jobDescription.message}</p>
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.jobDescription.message}
+                </p>
               )}
             </div>
           </div>
@@ -105,14 +115,18 @@ export default function VendorCreate() {
               <label className="mb-2 block ui-form-label">Vendor Type</label>
               <select
                 className={`common-input ${errors.vendorType ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("vendorType", { required: "Vendor Type is required" })}
+                {...register("vendorType", {
+                  required: "Vendor Type is required",
+                })}
               >
                 <option value="Both">Both</option>
                 <option value="Raw Material">Raw Material</option>
                 <option value="Sub Contractor">Sub Contractor</option>
               </select>
               {errors.vendorType && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">{errors.vendorType.message}</p>
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.vendorType.message}
+                </p>
               )}
             </div>
 

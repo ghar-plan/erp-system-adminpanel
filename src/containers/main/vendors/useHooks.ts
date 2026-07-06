@@ -13,7 +13,7 @@ const useVendors = () => {
     const response = await Vendors_APIS.create(body);
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "Vendor created successfully!");
+      successToaster(message);
       navigate("/vendors");
       return response;
     }
@@ -47,7 +47,7 @@ const useVendors = () => {
     const response = await Vendors_APIS.update(id, body);
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "Vendor updated successfully!");
+      successToaster(message);
       navigate("/vendors");
       return response;
     }
@@ -60,17 +60,33 @@ const useVendors = () => {
   ) => {
     const result = await confirmationPopup(
       `Delete ${name}`,
-      "Are you sure you want to delete this vendor? This action cannot be undone."
+      "Are you sure you want to delete this vendor? This action cannot be undone.",
     );
     if (result.isConfirmed) {
       const response = await Vendors_APIS.delete(id);
       const { status = false, message = "" } = response || {};
       if (status) {
-        successToaster(message || "Vendor deleted successfully!");
+        successToaster(message);
         callback?.();
       } else {
-        errorToaster(message || "Failed to delete vendor");
+        successToaster(message);
       }
+    }
+  };
+
+  const getVendorsPaymentSummary = async (
+    setData: Function,
+    queryParams: any = {},
+    setTotalElements?: Function,
+  ) => {
+    const response = await Vendors_APIS.getPaymentSummary(queryParams);
+    const { status = false, data = [] } = response || {};
+    if (status && data) {
+      setData(data);
+      setTotalElements?.(response?.total || data.length);
+    } else {
+      setData([]);
+      setTotalElements?.(0);
     }
   };
 
@@ -80,6 +96,7 @@ const useVendors = () => {
     getVendorById,
     updateVendor,
     deleteVendor,
+    getVendorsPaymentSummary,
   };
 };
 

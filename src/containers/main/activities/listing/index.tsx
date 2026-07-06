@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Search, Upload, FileSpreadsheet, Loader2, List } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Upload,
+  FileSpreadsheet,
+  Loader2,
+  List,
+} from "lucide-react";
 import useActivities from "../useHooks";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
@@ -92,9 +99,9 @@ export default function ActivitiesListing() {
   const columns = ["Sr No.", "Activity ID", "Activity Name", "Date of Entry"];
 
   return (
-    <div className="bg-background transition-colors duration-200 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in font-sans">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in  ">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl text-foreground font-bold">
@@ -182,15 +189,11 @@ export default function ActivitiesListing() {
                       <td className="table-td">
                         {(filters.page - 1) * filters.limit + index + 1}
                       </td>
-                      <td className="table-td font-mono">
-                        {act.id}
-                      </td>
+                      <td className="table-td font-mono">{act.id}</td>
                       <td className="table-td font-semibold text-foreground">
                         {act.name}
                       </td>
-                      <td className="table-td">
-                        {formatDate(act.created_at)}
-                      </td>
+                      <td className="table-td">{formatDate(act.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>

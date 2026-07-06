@@ -18,6 +18,19 @@
   --color-bg-navbar: var(--navbar-bg);
   --color-bg-sidebar: var(--sidebar-bg);
 
+  --color-success-bg: var(--success-bg);
+  --color-success-text: var(--success-text);
+  --color-info-bg: var(--info-bg);
+  --color-info-text: var(--info-text);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-text: var(--warning-text);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-text: var(--danger-text);
+  --color-accent-bg: var(--accent-bg);
+  --color-accent-text: var(--accent-text);
+  --color-panel-bg: var(--panel-bg);
+  --color-panel-border: var(--panel-border);
+
   --animate-fade-in: fade-in 0.4s ease-out forwards;
   --animate-slide-up: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 
@@ -60,6 +73,20 @@
   --navbar-bg: #FFFFFF;
   --sidebar-bg: #1B4D89;
 
+  /* Semantic Status colors - Light */
+  --success-bg: #ECFDF5;
+  --success-text: #059669;
+  --info-bg: #EFF6FF;
+  --info-text: #2563EB;
+  --warning-bg: #FFFBEB;
+  --warning-text: #D97706;
+  --danger-bg: #FEF2F2;
+  --danger-text: #DC2626;
+  --accent-bg: #EEF2FF;
+  --accent-text: #4F46E5;
+  --panel-bg: #F8FAFC;
+  --panel-border: #E2E8F0;
+
   --outfit-family: "outfit", sans-serif;
   --navbar-height: 80px;
 
@@ -87,6 +114,20 @@
   --input-border: #334155;
   --navbar-bg: #151D30;
   --sidebar-bg: #0A0D18;
+
+  /* Semantic Status colors - Dark */
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --success-text: #34D399;
+  --info-bg: rgba(59, 130, 246, 0.1);
+  --info-text: #60A5FA;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --warning-text: #FBBF24;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --danger-text: #F87171;
+  --accent-bg: rgba(99, 102, 241, 0.1);
+  --accent-text: #818CF8;
+  --panel-bg: rgba(30, 41, 59, 0.3);
+  --panel-border: #334155;
 }
 
 @font-face {

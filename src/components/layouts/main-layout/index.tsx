@@ -3,6 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import { useAppSelector } from "@/store/hooks";
 import Navbar from "@/components/navigation/Navbar";
 import Sidebar from "@/components/navigation/Sidebar";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import {
   LayoutDashboard,
   Compass,
@@ -33,44 +34,44 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
   const menuItems: MenuItem[] = [
     {
       text: "Dashboard",
-      path: "/dashboard",
+      path: siteRoutes.dashboard,
       icon: <LayoutDashboard size={20} />,
     },
     {
       text: "Projects",
-      path: "/projects",
+      path: siteRoutes.projects,
       icon: <Compass size={20} />,
     },
     {
       text: "Vendors",
-      path: "/vendors",
+      path: siteRoutes.vendors,
       icon: <UserCog size={20} />,
     },
     {
       text: "Activities",
-      path: "/activity",
+      path: siteRoutes.activity,
       icon: <List size={20} />,
     },
     {
       text: "Cashflow",
-      path: "/cashflow",
+      path: siteRoutes.cashflow,
       icon: <Banknote size={20} />,
     },
     {
       text: "Prospects",
-      path: "/prospects",
+      path: siteRoutes.prospects,
       icon: <UserSearch size={20} />,
     },
     {
       text: "Reports",
-      path: "/reports",
+      path: siteRoutes.reports,
       icon: <BarChart3 size={20} />,
     },
   ];
 
   const isActive = (path: string) => {
-    if (path === "/dashboard") {
-      return location.pathname === "/" || location.pathname === "/dashboard";
+    if (path === siteRoutes.dashboard) {
+      return location.pathname === siteRoutes.home || location.pathname === siteRoutes.dashboard;
     }
     return location.pathname === path || location.pathname.startsWith(path + "/");
   };

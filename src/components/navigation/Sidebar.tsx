@@ -71,7 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
             <div className="flex justify-between items-center relative h-20 border-b border-white/10">
               <img
                 src={logo}
-                className="overflow-hidden transition-all w-32 mx-auto filter brightness-0 invert"
+                className="overflow-hidden transition-all w-40 h-12 mx-auto filter brightness-0 invert"
                 alt="Logo"
               />
               <button

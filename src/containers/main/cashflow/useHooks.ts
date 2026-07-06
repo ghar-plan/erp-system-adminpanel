@@ -62,7 +62,7 @@ const useCashflow = () => {
     const response = await Cashflows_APIS.createIn(body);
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "Payment recorded successfully!");
+      successToaster(message);
       callback?.();
       return response;
     }
@@ -72,7 +72,7 @@ const useCashflow = () => {
     const response = await Cashflows_APIS.createOut(body);
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "Expense recorded successfully!");
+      successToaster(message);
       callback?.();
       return response;
     }

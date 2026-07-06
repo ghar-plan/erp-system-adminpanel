@@ -12,45 +12,33 @@ import VendorView from "@/containers/main/vendors/view";
 import Cashflow from "@/containers/main/cashflow";
 import ActivitiesListing from "@/containers/main/activities/listing";
 import ActivityCreate from "@/containers/main/activities/create";
+import ProspectsListing from "@/containers/main/prospects/listing";
+import ProspectCreate from "@/containers/main/prospects/create";
+import ProspectView from "@/containers/main/prospects/view";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
+// import Reports from "@/containers/main/reports";
 
 const DashboardRoutes = () => {
   return (
     <MainLayout>
       <Routes>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/projects" element={<ProjectsListing />} />
-        <Route path="/projects/create" element={<ProjectsCreate />} />
-        <Route path="/projects/view/:id" element={<ProjectsView />} />
-        <Route path="/projects/edit/:id" element={<ProjectsEdit />} />
-        <Route path="/activity" element={<ActivitiesListing />} />
-        <Route path="/activity/create" element={<ActivityCreate />} />
-        <Route path="/vendors" element={<VendorListing />} />
-        <Route path="/vendors/create" element={<VendorCreate />} />
-        <Route path="/vendors/view/:id" element={<VendorView />} />
-        <Route path="/vendors/edit/:id" element={<VendorEdit />} />
-        <Route path="/cashflow" element={<Cashflow />} />
-        <Route
-          path="/prospects"
-          element={
-            <div className="app-card">
-              <h1 className="app-title mb-2">Prospects</h1>
-              <p className="app-subtitle">
-                Manage and track business prospects here.
-              </p>
-            </div>
-          }
-        />
-        <Route
-          path="/reports"
-          element={
-            <div className="app-card">
-              <h1 className="app-title mb-2">Reports</h1>
-              <p className="app-subtitle">
-                Generate and view analytical reports here.
-              </p>
-            </div>
-          }
-        />
+        <Route path={siteRoutes.dashboard} element={<Dashboard />} />
+        <Route path={siteRoutes.projects} element={<ProjectsListing />} />
+        <Route path={siteRoutes.projectsCreate} element={<ProjectsCreate />} />
+        <Route path={siteRoutes.projectsView} element={<ProjectsView />} />
+        <Route path={siteRoutes.projectsEdit} element={<ProjectsEdit />} />
+        <Route path={siteRoutes.activity} element={<ActivitiesListing />} />
+        <Route path={siteRoutes.activityCreate} element={<ActivityCreate />} />
+        <Route path={siteRoutes.vendors} element={<VendorListing />} />
+        <Route path={siteRoutes.vendorsCreate} element={<VendorCreate />} />
+        <Route path={siteRoutes.vendorsView} element={<VendorView />} />
+        <Route path={siteRoutes.vendorsEdit} element={<VendorEdit />} />
+        <Route path={siteRoutes.cashflow} element={<Cashflow />} />
+        <Route path={siteRoutes.prospects} element={<ProspectsListing />} />
+        <Route path={siteRoutes.prospectsCreate} element={<ProspectCreate />} />
+        <Route path={siteRoutes.prospectsView} element={<ProspectView />} />
+        <Route path={siteRoutes.prospectsEdit} element={<ProspectCreate />} />
+        <Route path={siteRoutes.reports} element={<h1>Reports</h1>} />
       </Routes>
     </MainLayout>
   );

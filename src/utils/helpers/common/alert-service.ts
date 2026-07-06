@@ -3,18 +3,25 @@ import "sweetalert2/dist/sweetalert2.min.css";
 
 import { errorMessages } from "../enums/messages.enum"
 
+const getAlertBg = () => {
+    return document.documentElement.classList.contains("dark") ? "#1E293B" : "#FFFFFF";
+};
+
 export const successToaster = (text: string, position: SweetAlertPosition = 'top-right') => {
     Swal.fire({
         text,
         icon: 'success',
-        background: 'white',
-        color: 'var(--black-constant)',
+        background: getAlertBg(),
+        color: 'var(--foreground)',
         confirmButtonColor: 'var(--primary)',
         showConfirmButton: false,
         toast: true,
         timerProgressBar: true,
         position,
         timer: 3000,
+        customClass: {
+            popup: 'border border-border-main shadow-lg'
+        }
     })
 }
 
@@ -22,14 +29,17 @@ export const warningToaster = (text: string, position: SweetAlertPosition = 'top
     Swal.fire({
         text,
         icon: 'warning',
-        background: 'white',
-        color: 'var(--black-constant)',
+        background: getAlertBg(),
+        color: 'var(--foreground)',
         confirmButtonColor: 'var(--primary)',
         showConfirmButton: false,
         toast: true,
         timerProgressBar: true,
         position,
         timer: 3000,
+        customClass: {
+            popup: 'border border-border-main shadow-lg'
+        }
     })
 }
 
@@ -37,14 +47,17 @@ export const errorToaster = (text: string, position: SweetAlertPosition = 'top-r
     Swal.fire({
         text: text ?? errorMessages.somethingWentWrong,
         icon: 'error',
-        background: 'white',
-        color: 'var(--black-constant)',
+        background: getAlertBg(),
+        color: 'var(--foreground)',
         confirmButtonColor: 'var(--primary)',
         showConfirmButton: false,
         toast: true,
         timerProgressBar: true,
         position,
         timer: 3000,
+        customClass: {
+            popup: 'border border-border-main shadow-lg'
+        }
     })
 }
 
@@ -52,65 +65,85 @@ export const errorToasterAutoClose = (title: string, position: SweetAlertPositio
     Swal.fire({
         title,
         icon: 'error',
-        background: 'white',
-        color: 'var(--black-text)',
+        background: getAlertBg(),
+        color: 'var(--foreground)',
         confirmButtonColor: 'var(--primary)',
         showConfirmButton: false,
         toast: true,
         timerProgressBar: true,
         timer: 5000,
-        position
+        position,
+        customClass: {
+            popup: 'border border-border-main shadow-lg'
+        }
     })
 }
 
 export const confirmationPopup = async (title: string = 'warningMessages.confirmationDefaultMsg', text?: string) => {
     return Swal.fire({
         title,
+        text,
         icon: 'question',
-        background: 'white',
-        color: 'var(--black-text)',
+        background: getAlertBg(),
+        color: 'var(--foreground)',
         showCancelButton: true,
-        confirmButtonColor: 'rgb(44 70 87)',
-        cancelButtonColor: '#CED4DA',
+        confirmButtonColor: 'var(--primary)',
+        cancelButtonColor: 'var(--secondary)',
         confirmButtonText: 'Yes',
         cancelButtonText: 'No',
+        customClass: {
+            popup: 'border border-border-main shadow-lg'
+        }
     });
 }
+
 export const priorDownloadConfirmationPopup = async (title: string = 'Are you sure you want to download?', text?: string) => {
     return Swal.fire({
         title,
+        text,
         icon: 'question',
-        background: 'var(--alert-popup-bg)',
-        color: 'var(--black-text)',
+        background: getAlertBg(),
+        color: 'var(--foreground)',
         showCancelButton: true,
         confirmButtonColor: 'var(--primary)',
-        cancelButtonColor: 'var(--reset-button-bg)',
+        cancelButtonColor: 'var(--secondary)',
         confirmButtonText: 'Yes',
         cancelButtonText: 'No',
+        customClass: {
+            popup: 'border border-border-main shadow-lg'
+        }
     });
 }
+
 export const customConfirmationPopup = async (title: string, confirmButtonText: string, cancelButtonText: string) => {
     return Swal.fire({
         title,
         icon: 'question',
-        background: 'var(--alert-popup-bg)',
-        color: 'var(--black-text)',
+        background: getAlertBg(),
+        color: 'var(--foreground)',
         showCancelButton: true,
         confirmButtonColor: 'var(--primary)',
-        cancelButtonColor: 'var(--reset-button-bg)',
+        cancelButtonColor: 'var(--secondary)',
         confirmButtonText,
         cancelButtonText,
-        allowOutsideClick: false
+        allowOutsideClick: false,
+        customClass: {
+            popup: 'border border-border-main shadow-lg'
+        }
     });
 }
 
 export const infoPopup = async (title: string = 'infoMessages.featureNotAvailable', text?: string) => {
     return Swal.fire({
         title,
+        text,
         icon: 'info',
-        background: 'var(--alert-popup-bg)',
-        color: 'var(--black-text)',
+        background: getAlertBg(),
+        color: 'var(--foreground)',
         confirmButtonColor: 'var(--primary)',
         confirmButtonText: 'Ok',
+        customClass: {
+            popup: 'border border-border-main shadow-lg'
+        }
     });
 }
