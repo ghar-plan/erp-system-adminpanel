@@ -35,4 +35,4 @@ jobs:
       - name: Deploy build to server (Stage)
         run: |
           rsync -avz -e "ssh -o StrictHostKeyChecking=no -i private_key.pem" \
-            build/ ${{ secrets.USER }}@${{ secrets.HOST }}:${{ secrets.STG_DIR }}/
+            dist/ ${{ secrets.USER }}@${{ secrets.HOST }}:${{ secrets.STG_DIR }}/
