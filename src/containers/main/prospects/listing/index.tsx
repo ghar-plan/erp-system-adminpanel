@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Eye,
+  Pencil,
+  Trash2,
+  Users,
+  Activity,
+} from "lucide-react";
 import useProspects from "../useHooks";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
@@ -13,6 +21,8 @@ interface Prospect {
   email: string;
   notes: string;
   status: "New" | "Contacted" | "Qualified" | "Lost" | "Converted";
+  project?: string;
+  leadSource?: string;
   created_at: string;
 }
 
@@ -113,10 +123,7 @@ export default function ProspectsListing() {
   };
 
   // Client-side pagination only (data is already filtered by backend)
-  const paginatedProspects = prospects.slice(
-    (page - 1) * limit,
-    page * limit,
-  );
+  const paginatedProspects = prospects.slice((page - 1) * limit, page * limit);
   const count = prospects.length;
 
   const columns = [
@@ -124,6 +131,8 @@ export default function ProspectsListing() {
     "Name",
     "Phone",
     "Email",
+    "Project",
+    "Lead Source",
     "Status",
     "Date of Entry",
     "Actions",
@@ -150,7 +159,22 @@ export default function ProspectsListing() {
         </Link>
       </div>
 
-      <hr className="border-border-main" />
+      {/* Stats Cards Grid */}
+      <div className="grid gap-5 grid-cols-2 md:grid-cols-5 animate-fade-in">
+        <div className="bg-card border border-border-main p-4 rounded-xl shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+            <Users size={20} />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-muted-foreground block uppercase tracking-wider">
+              Total Leads
+            </span>
+            <span className="text-xl font-bold text-foreground mt-0.5 block">
+              {count}
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* Filters Toolbar Card */}
       <div className="bg-card border border-border-main p-4 rounded-xl animate-fade-in shadow-xs">
@@ -235,13 +259,23 @@ export default function ProspectsListing() {
                       <td className="table-td font-semibold text-foreground">
                         {prospect?.name || "--"}
                       </td>
-                      <td className="table-td font-medium">{prospect?.phone || "--"}</td>
+                      <td className="table-td font-medium">
+                        {prospect?.phone || "--"}
+                      </td>
                       <td className="table-td">{prospect?.email || "--"}</td>
+                      <td className="table-td font-medium">
+                        {prospect?.project || "--"}
+                      </td>
+                      <td className="table-td font-medium">
+                        {prospect?.leadSource || "--"}
+                      </td>
                       <td className="table-td">
                         {getStatusBadge(prospect?.status || "")}
                       </td>
                       <td className="table-td">
-                        {prospect?.created_at ? formatDate(prospect.created_at) : "--"}
+                        {prospect?.created_at
+                          ? formatDate(prospect.created_at)
+                          : "--"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex gap-2">

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import { HiMiniBars3 } from "react-icons/hi2";
 import { useAppSelector } from "@/store/hooks";
 import { FaAngleDown } from "react-icons/fa6";
@@ -144,10 +146,14 @@ const Navbar: React.FC = () => {
 
               {/* Menu Items */}
               <div className="space-y-1">
-                <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-panel-bg transition-colors cursor-pointer font-medium">
+                <Link
+                  to={siteRoutes.profile}
+                  onClick={() => setProfileDropdownOpened(false)}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-panel-bg transition-colors cursor-pointer font-medium"
+                >
                   <User size={16} className="text-muted-foreground" />
                   <span>My Profile</span>
-                </div>
+                </Link>
 
                 {currentRole && (
                   <div className="flex items-center justify-between px-3 py-2 rounded-lg text-xs bg-panel-bg border border-panel-border text-muted-foreground my-2">

@@ -3,14 +3,14 @@ import useCashflow from "./useHooks";
 import CashInForm from "./components/CashInForm";
 import CashOutForm from "./components/CashOutForm";
 import TransactionsTable from "./components/TransactionsTable";
+import Pagination from "@/components/particles/table/pagination";
 
 export default function Cashflow() {
   const {
     getProjects,
     getVendors,
     getActivities,
-    getCashflowInList,
-    getCashflowOutList,
+    getCashflowCombinedList,
     recordCashIn,
     recordCashOut,
     exportCashflowCsv,
@@ -22,10 +22,14 @@ export default function Cashflow() {
   const [activities, setActivities] = useState<any[]>([]);
 
   // List states
-  const [cashInList, setCashInList] = useState<any[]>([]);
-  const [cashOutList, setCashOutList] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [submittingIn, setSubmittingIn] = useState(false);
   const [submittingOut, setSubmittingOut] = useState(false);
+
+  // Pagination states
+  const [totalElements, setTotalElements] = useState(0);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   // Filters state
   const [filterProject, setFilterProject] = useState("");
@@ -76,37 +80,32 @@ export default function Cashflow() {
     search?: string;
     startDate?: string;
     endDate?: string;
+    page: number;
+    limit: number;
   }) => {
-    const { projectId, type, search, startDate, endDate } = currentFilters;
+    const { projectId, type, search, startDate, endDate, page, limit } = currentFilters;
 
-    const queryParams: any = {};
+    const queryParams: any = {
+      offset: (page - 1) * limit,
+      limit,
+    };
     if (projectId) queryParams.projectId = projectId;
+    if (type) queryParams.type = type;
     if (search) queryParams.search = search;
     if (startDate) queryParams.startDate = startDate;
     if (endDate) queryParams.endDate = endDate;
 
-    const fetchIn = !type || type === "CASH IN";
-    const fetchOut = !type || type === "CASH OUT";
-
-    const promises: Promise<any>[] = [];
-    if (fetchIn) {
-      promises.push(getCashflowInList(setCashInList, queryParams));
-    } else {
-      setCashInList([]);
-    }
-
-    if (fetchOut) {
-      promises.push(getCashflowOutList(setCashOutList, queryParams));
-    } else {
-      setCashOutList([]);
-    }
-
-    await Promise.all(promises);
+    await getCashflowCombinedList(setTransactions, queryParams, setTotalElements);
   };
 
   useEffect(() => {
     fetchMetadata();
   }, []);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filterProject, filterType, filterSearch, filterStartDate, filterEndDate]);
 
   useEffect(() => {
     fetchTransactions({
@@ -115,8 +114,10 @@ export default function Cashflow() {
       search: filterSearch,
       startDate: filterStartDate,
       endDate: filterEndDate,
+      page,
+      limit,
     });
-  }, [filterProject, filterType, filterSearch, filterStartDate, filterEndDate]);
+  }, [filterProject, filterType, filterSearch, filterStartDate, filterEndDate, page, limit]);
 
   const refreshTransactions = () => {
     fetchTransactions({
@@ -125,7 +126,14 @@ export default function Cashflow() {
       search: filterSearch,
       startDate: filterStartDate,
       endDate: filterEndDate,
+      page,
+      limit,
     });
+  };
+
+  const onPageChange = (pageInfo: { selected: number; limit: number }) => {
+    setPage(pageInfo.selected + 1);
+    setLimit(pageInfo.limit);
   };
 
   // Form submits callbacks
@@ -160,29 +168,7 @@ export default function Cashflow() {
     setSubmittingOut(false);
   };
 
-  // Merge and sort transaction list
-  const transactions = [
-    ...cashInList.map((item) => ({
-      id: item.id,
-      date: item.created_at,
-      project: item.project?.siteName || "N/A",
-      projectId: item.projectId,
-      type: "CASH IN" as const,
-      description: item.installment,
-      vendorClient: "Client Payment",
-      amount: Number(item.amount),
-    })),
-    ...cashOutList.map((item) => ({
-      id: item.id,
-      date: item.created_at,
-      project: item.project?.siteName || "N/A",
-      projectId: item.projectId,
-      type: "CASH OUT" as const,
-      description: item.items,
-      vendorClient: item.vendor?.vendorName || "N/A",
-      amount: Number(item.amount),
-    })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
 
   // Export to CSV from backend
   const handleCSVExport = async () => {
@@ -236,7 +222,7 @@ export default function Cashflow() {
       </div>
 
       {/* RECENT TRANSACTIONS TABLE */}
-      <div className="pt-4 border-t border-border-main/60 animate-fade-in">
+      <div className="pt-4 border-t border-border-main/60 animate-fade-in space-y-4">
         <TransactionsTable
           transactions={transactions}
           projects={projects}
@@ -253,6 +239,15 @@ export default function Cashflow() {
           exportToCSV={handleCSVExport}
           formatDate={formatDate}
         />
+
+        {totalElements > 0 && (
+          <Pagination
+            count={totalElements}
+            page={page}
+            limit={limit}
+            onPageChange={onPageChange}
+          />
+        )}
       </div>
     </div>
   );

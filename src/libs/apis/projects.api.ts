@@ -8,6 +8,7 @@ import {
 export const Projects_APIS = {
   create: (body: any) => postRequest("/v1/projects", body),
   getAll: (params: any = {}) => getRequest("/v1/projects", params),
+  getAllWithoutPagination: () => getRequest("/v1/projects/all"),
   getAllFinancialStatus: (params: any = {}) =>
     getRequest("/v1/projects/financial-status/all", params),
   getById: (id: string) => getRequest(`/v1/projects/${id}`),

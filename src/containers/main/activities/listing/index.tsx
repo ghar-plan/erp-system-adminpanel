@@ -24,7 +24,7 @@ interface ActivityFilters {
 
 export default function ActivitiesListing() {
   const navigate = useNavigate();
-  const { getActivities, uploadActivitiesCsv, deleteActivity } = useActivities();
+  const { getActivities, uploadActivitiesCsv, deleteActivity, downloadSampleExcel } = useActivities();
   const [activities, setActivities] = useState<any[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [csvUploading, setCsvUploading] = useState(false);
@@ -120,7 +120,7 @@ export default function ActivitiesListing() {
     }
   };
 
-  const columns = ["Sr No.", "Activity ID", "Activity Name", "Date of Entry", "Actions"];
+  const columns = ["Sr No.", "Activity ID", "Activity Name", "Category", "Date of Entry", "Actions"];
 
   return (
     <div className="space-y-6">
@@ -226,6 +226,9 @@ export default function ActivitiesListing() {
                       <td className="table-td font-semibold text-foreground">
                         {act.name}
                       </td>
+                      <td className="table-td font-semibold text-foreground">
+                        {act.category || "—"}
+                      </td>
                       <td className="table-td">{formatDate(act.created_at)}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex gap-2">
@@ -308,13 +311,13 @@ export default function ActivitiesListing() {
                   <h4 className="text-xs font-bold text-foreground">Need a template?</h4>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Use our predefined format for a smooth import.</p>
                 </div>
-                <a
-                  href="/bulk-data.xlsx"
-                  download="bulk-data.xlsx"
+                <button
+                  type="button"
+                  onClick={downloadSampleExcel}
                   className="text-xs font-bold text-primary hover:underline whitespace-nowrap cursor-pointer"
                 >
                   Download Sample Excel
-                </a>
+                </button>
               </div>
 
               {/* File Drag and Drop / Input */}

@@ -19,4 +19,5 @@ export enum siteRoutes {
   prospectsView = "/prospects/view/:id",
   prospectsEdit = "/prospects/edit/:id",
   reports = "/reports",
+  profile = "/profile",
 }

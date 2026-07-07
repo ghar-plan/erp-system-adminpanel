@@ -12,6 +12,8 @@ interface ProspectFormInputs {
   email: string;
   notes: string;
   status: "New" | "Contacted" | "Qualified" | "Lost" | "Converted";
+  project: string;
+  leadSource: string;
 }
 
 export default function ProspectCreate() {
@@ -34,6 +36,8 @@ export default function ProspectCreate() {
       email: "",
       notes: "",
       status: "" as any,
+      project: "",
+      leadSource: "",
     },
   });
 
@@ -48,6 +52,8 @@ export default function ProspectCreate() {
           email: data?.email || "",
           notes: data?.notes || "",
           status: data?.status || "",
+          project: data?.project || "",
+          leadSource: data?.leadSource || "",
         });
       });
     }
@@ -59,6 +65,8 @@ export default function ProspectCreate() {
       ...data,
       email: data.email ? data.email.trim() : undefined,
       notes: data.notes ? data.notes.trim() : undefined,
+      project: data.project ? data.project.trim() : undefined,
+      leadSource: data.leadSource || undefined,
     };
 
     if (isEditMode && id) {
@@ -147,6 +155,37 @@ export default function ProspectCreate() {
                 {errors.email.message}
               </p>
             )}
+          </div>
+
+          {/* Project */}
+          <div>
+            <label className="mb-2 block ui-form-label">Project</label>
+            <input
+              type="text"
+              placeholder="e.g. 5 Marla Johar Town"
+              className="common-input"
+              {...register("project")}
+            />
+          </div>
+
+          {/* Lead Source */}
+          <div>
+            <label className="mb-2 block ui-form-label">Lead Source</label>
+            <select
+              className="common-input bg-card"
+              {...register("leadSource")}
+            >
+              <option value="">Select Lead Source</option>
+              <option value="Facebook">Facebook</option>
+              <option value="Instagram">Instagram</option>
+              <option value="LinkedIn">LinkedIn</option>
+              <option value="Google / Search">Google / Search</option>
+              <option value="Referral">Referral</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Call">Call</option>
+              <option value="Website">Website</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
 
           {/* Status */}

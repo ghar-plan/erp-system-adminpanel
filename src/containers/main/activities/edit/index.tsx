@@ -8,6 +8,7 @@ import { IoArrowBackOutline } from "react-icons/io5";
 
 interface ActivityFormInputs {
   name: string;
+  category: string;
 }
 
 export default function ActivityEdit() {
@@ -29,13 +30,17 @@ export default function ActivityEdit() {
       getActivityById(id, (data: any) => {
         setInitialData(data);
         setValue("name", data.name);
+        setValue("category", data.category || "");
       });
     }
   }, [id]);
 
   const onSubmitForm = async (data: ActivityFormInputs) => {
     if (!id) return;
-    await updateActivity(id, { name: data.name });
+    await updateActivity(id, {
+      name: data.name.trim(),
+      category: data.category || undefined,
+    });
   };
 
   const goToBack = () => {
@@ -79,19 +84,48 @@ export default function ActivityEdit() {
 
         {/* Input Fields */}
         <div className="space-y-5">
-          <div>
-            <label className="mb-2 block ui-form-label">Activity Name</label>
-            <input
-              type="text"
-              placeholder="e.g. Masonry Work"
-              className={`common-input py-3 ${errors.name ? "border-red-500 focus:border-red-500" : ""}`}
-              {...register("name", { required: "Activity Name is required" })}
-            />
-            {errors.name && (
-              <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                {errors.name.message}
-              </p>
-            )}
+          <div className="grid gap-5 grid-cols-1 md:grid-cols-2">
+            <div>
+              <label className="mb-2 block ui-form-label">Activity Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Masonry Work"
+                className={`common-input py-3 ${errors.name ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("name", { required: "Activity Name is required" })}
+              />
+              {errors.name && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.name.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-2 block ui-form-label">Category</label>
+              <select
+                className={`common-input py-3 ${errors.category ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("category", { required: "Category is required" })}
+              >
+                <option value="">Select Category</option>
+                <option value="Plasters coating">Plasters coating</option>
+                <option value="Paint job">Paint job</option>
+                <option value="Ceiling">Ceiling</option>
+                <option value="Grey Structure">Grey Structure</option>
+                <option value="Excavation">Excavation</option>
+                <option value="Foundation Work">Foundation Work</option>
+                <option value="Brickwork">Brickwork</option>
+                <option value="Plumbing">Plumbing</option>
+                <option value="Electrical Installation">Electrical Installation</option>
+                <option value="Flooring & Tiling">Flooring & Tiling</option>
+                <option value="Woodwork & Carpentry">Woodwork & Carpentry</option>
+                <option value="Metal Work">Metal Work</option>
+              </select>
+              {errors.category && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.category.message}
+                </p>
+              )}
+            </div>
           </div>
         </div>
 

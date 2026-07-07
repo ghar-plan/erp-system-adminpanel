@@ -7,6 +7,7 @@ import {
   MapPin,
   Phone,
   Briefcase,
+  FileText,
 } from "lucide-react";
 import { IoArrowBackOutline } from "react-icons/io5";
 import useVendors from "../useHooks";
@@ -143,6 +144,20 @@ export default function VendorView() {
                 </span>
                 <span className="text-sm font-semibold text-foreground mt-0.5 block">
                   {vendor?.city || "--"}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-lg bg-info-bg text-info-text">
+                <FileText size={20} />
+              </div>
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                  Registration No (NTN/FTN)
+                </span>
+                <span className="text-sm font-semibold text-foreground mt-0.5 block">
+                  {vendor?.registrationNo || "--"}
                 </span>
               </div>
             </div>

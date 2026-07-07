@@ -7,34 +7,31 @@ import useActivities from "../useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
 
 interface ActivityFormInputs {
-  names: string;
+  name: string;
+  category: string;
 }
 
 export default function ActivityCreate() {
   const navigate = useNavigate();
-  const { createActivity, createActivitiesBulk } = useActivities();
+  const { createActivity } = useActivities();
   const { isLoading } = useStore();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<ActivityFormInputs>();
+  } = useForm<ActivityFormInputs>({
+    defaultValues: {
+      category: "",
+    },
+  });
 
   const onSubmitForm = async (data: ActivityFormInputs) => {
-    // Process input names: split by commas if multiple, clean whitespaces
-    const rawNames = data.names
-      .split(",")
-      .map((name) => name.trim())
-      .filter((name) => name.length > 0);
-
-    if (rawNames.length === 0) return;
-
-    if (rawNames.length === 1) {
-      await createActivity({ name: rawNames[0] });
-    } else {
-      await createActivitiesBulk(rawNames);
-    }
+    if (!data.name.trim()) return;
+    await createActivity({
+      name: data.name.trim(),
+      category: data.category || undefined,
+    });
   };
 
   const goToBack = () => {
@@ -54,7 +51,7 @@ export default function ActivityCreate() {
           >
             <IoArrowBackOutline size={20} className="stroke-[2.5]" />
           </button>
-          <h1 className="text-2xl text-foreground font-bold  ">
+          <h1 className="text-2xl text-foreground font-bold">
             Register New Activity
           </h1>
         </div>
@@ -70,24 +67,48 @@ export default function ActivityCreate() {
 
         {/* Input Fields */}
         <div className="space-y-5">
-          <div>
-            <label className="mb-2 block ui-form-label">Activity Name(s)</label>
-            <textarea
-              placeholder="e.g. Masonry Work, Painting, Plumbing (separate multiple activities with commas)"
-              rows={4}
-              className={`common-input py-3 resize-none ${errors.names ? "border-red-500 focus:border-red-500" : ""}`}
-              {...register("names", { required: "Activity Name is required" })}
-            />
-            {errors.names && (
-              <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                {errors.names.message}
-              </p>
-            )}
-            <p className="mt-2 text-xs text-muted-foreground">
-              Tip: You can add a single activity name, or enter multiple
-              activities separated by commas (e.g. "Excavation, Electrician
-              Work") to register them in bulk.
-            </p>
+          <div className="grid gap-5 grid-cols-1 md:grid-cols-2">
+            <div>
+              <label className="mb-2 block ui-form-label">Activity Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Painting"
+                className={`common-input ${errors.name ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("name", { required: "Activity Name is required" })}
+              />
+              {errors.name && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.name.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-2 block ui-form-label">Category</label>
+              <select
+                className={`common-input ${errors.category ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("category", { required: "Category is required" })}
+              >
+                <option value="">Select Category</option>
+                <option value="Plasters coating">Plasters coating</option>
+                <option value="Paint job">Paint job</option>
+                <option value="Ceiling">Ceiling</option>
+                <option value="Grey Structure">Grey Structure</option>
+                <option value="Excavation">Excavation</option>
+                <option value="Foundation Work">Foundation Work</option>
+                <option value="Brickwork">Brickwork</option>
+                <option value="Plumbing">Plumbing</option>
+                <option value="Electrical Installation">Electrical Installation</option>
+                <option value="Flooring & Tiling">Flooring & Tiling</option>
+                <option value="Woodwork & Carpentry">Woodwork & Carpentry</option>
+                <option value="Metal Work">Metal Work</option>
+              </select>
+              {errors.category && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.category.message}
+                </p>
+              )}
+            </div>
           </div>
         </div>
 

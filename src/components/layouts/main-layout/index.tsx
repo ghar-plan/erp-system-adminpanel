@@ -3,6 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import { useAppSelector } from "@/store/hooks";
 import Navbar from "@/components/navigation/Navbar";
 import Sidebar from "@/components/navigation/Sidebar";
+import Footer from "@/components/navigation/Footer";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import {
   LayoutDashboard,
@@ -11,7 +12,7 @@ import {
   List,
   Banknote,
   UserSearch,
-  BarChart3
+  BarChart3,
 } from "lucide-react";
 
 interface LayoutProps {
@@ -71,9 +72,14 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
 
   const isActive = (path: string) => {
     if (path === siteRoutes.dashboard) {
-      return location.pathname === siteRoutes.home || location.pathname === siteRoutes.dashboard;
+      return (
+        location.pathname === siteRoutes.home ||
+        location.pathname === siteRoutes.dashboard
+      );
     }
-    return location.pathname === path || location.pathname.startsWith(path + "/");
+    return (
+      location.pathname === path || location.pathname.startsWith(path + "/")
+    );
   };
 
   return (
@@ -113,6 +119,7 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
         <main className="flex-1 overflow-y-auto bg-background p-4 sm:p-6 transition-colors duration-200">
           <div className="">{children}</div>
         </main>
+        <Footer />
       </div>
     </div>
   );

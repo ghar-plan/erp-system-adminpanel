@@ -10,5 +10,5 @@ export const Auth_APIS = {
   verifyOtp: (body: VerifyOtpDTO) => postRequest("/v1/auth/verify-otp", body),
   resendOtp: (body: ResendOtpDTO) => postRequest("/v1/auth/resend-otp", body),
   resetPassword: (body: ResetPasswordDTO) => postRequest("/v1/auth/reset-password", body),
-  updatePassword: (body: UpdatePasswordDTO) => postRequest("/v1/auth/update-password", body),
+  updatePassword: (body: any) => postRequest("/v1/auth/update-password", body),
 };

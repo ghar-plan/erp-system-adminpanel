@@ -22,6 +22,8 @@ interface Prospect {
   email: string;
   notes: string;
   status: "New" | "Contacted" | "Qualified" | "Lost" | "Converted";
+  project?: string;
+  leadSource?: string;
   created_at: string;
   updated_at: string;
 }
@@ -208,6 +210,36 @@ export default function ProspectView() {
                     {prospect?.updated_at
                       ? formatDate(prospect.updated_at)
                       : "--"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Project */}
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-lg bg-info-bg text-info-text">
+                  <User size={18} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                    Project
+                  </label>
+                  <p className="text-sm font-semibold text-foreground mt-0.5">
+                    {prospect?.project || "--"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Lead Source */}
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-lg bg-success-bg text-success-text">
+                  <Activity size={18} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                    Lead Source
+                  </label>
+                  <p className="text-sm font-semibold text-foreground mt-0.5">
+                    {prospect?.leadSource || "--"}
                   </p>
                 </div>
               </div>

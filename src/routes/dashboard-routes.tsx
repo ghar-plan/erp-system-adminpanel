@@ -17,7 +17,8 @@ import ProspectsListing from "@/containers/main/prospects/listing";
 import ProspectCreate from "@/containers/main/prospects/create";
 import ProspectView from "@/containers/main/prospects/view";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
-// import Reports from "@/containers/main/reports";
+import Reports from "@/containers/main/reports";
+import MyProfile from "@/containers/main/profile";
 
 const DashboardRoutes = () => {
   return (
@@ -40,7 +41,8 @@ const DashboardRoutes = () => {
         <Route path={siteRoutes.prospectsCreate} element={<ProspectCreate />} />
         <Route path={siteRoutes.prospectsView} element={<ProspectView />} />
         <Route path={siteRoutes.prospectsEdit} element={<ProspectCreate />} />
-        <Route path={siteRoutes.reports} element={<h1>Reports</h1>} />
+        <Route path={siteRoutes.reports} element={<Reports />} />
+        <Route path={siteRoutes.profile} element={<MyProfile />} />
       </Routes>
     </MainLayout>
   );
