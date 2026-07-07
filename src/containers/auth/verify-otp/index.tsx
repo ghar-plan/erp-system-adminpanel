@@ -9,9 +9,9 @@ const VerifyOtp = () => {
   const location = useLocation();
   const { isLoading } = useStore();
   const { verifyOtp, resendOtp } = useAuth();
-  
+
   const email = location.state?.email || "user@example.com";
-  
+
   const [otp, setOtp] = useState<string[]>(new Array(4).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -20,7 +20,10 @@ const VerifyOtp = () => {
     inputRefs.current[0]?.focus();
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number,
+  ) => {
     const value = e.target.value;
     if (isNaN(Number(value))) return;
 
@@ -34,7 +37,10 @@ const VerifyOtp = () => {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    index: number,
+  ) => {
     if (e.key === "Backspace") {
       if (otp[index] === "" && index > 0) {
         inputRefs.current[index - 1]?.focus();
@@ -47,9 +53,15 @@ const VerifyOtp = () => {
     const fullOtp = otp.join("");
     if (fullOtp.length < 4) return;
 
-    const success = await verifyOtp({ email, otp: fullOtp });
-    if (success) {
-      navigate("/auth/reset-password", { state: { email, otp: fullOtp } });
+    const result = await verifyOtp({
+      email,
+      otp: Number(fullOtp),
+      verificationType: "password-reset",
+    });
+    if (result && result.tempToken) {
+      navigate("/auth/reset-password", {
+        state: { email, tempToken: result.tempToken },
+      });
     }
   };
 
@@ -79,7 +91,7 @@ const VerifyOtp = () => {
         <h2 className="text-3xl font-bold text-foreground">Verify OTP</h2>
         <p className="text-muted-foreground mt-2">
           We sent a verification code to <br />
-          <span className="font-semibold text-foreground">{email}</span>
+          <span className="font-semibold text-muted-foreground">{email}</span>
         </p>
       </div>
 
@@ -120,7 +132,7 @@ const VerifyOtp = () => {
           <button
             type="button"
             onClick={handleResend}
-            className="text-primary hover:underline font-semibold"
+            className="text-primary hover:underline font-semibold cursor-pointer"
           >
             Resend Code
           </button>

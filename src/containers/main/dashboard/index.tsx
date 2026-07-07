@@ -14,7 +14,6 @@ import {
   ArrowUpCircle,
 } from "lucide-react";
 import useDashboard from "./useHooks";
-import Loader from "@/components/particles/loader";
 
 export default function Dashboard() {
   const { stats, getStats } = useDashboard();
@@ -42,11 +41,8 @@ export default function Dashboard() {
     }
   };
 
-  if (!stats) {
-    return <Loader />;
-  }
-
-  const netIsPositive = stats.netProfit >= 0;
+  const netProfit = stats?.netProfit ?? 0;
+  const netIsPositive = netProfit >= 0;
 
   return (
     <div className="space-y-8 pb-8">
@@ -77,7 +73,7 @@ export default function Dashboard() {
               Total Revenue (IN)
             </span>
             <h2 className="text-2xl font-semibold text-foreground mt-1.5 tracking-tight">
-              {formatCurrency(stats.totalRevenue)}
+              {formatCurrency(stats?.totalRevenue ?? 0)}
             </h2>
           </div>
           <div className="h-1.5 w-full bg-muted-foreground/10 rounded-full mt-6 overflow-hidden">
@@ -97,7 +93,7 @@ export default function Dashboard() {
               Total Costs (OUT)
             </span>
             <h2 className="text-2xl font-semibold text-foreground mt-1.5 tracking-tight">
-              {formatCurrency(stats.totalCosts)}
+              {formatCurrency(stats?.totalCosts ?? 0)}
             </h2>
           </div>
           <div className="h-1.5 w-full bg-muted-foreground/10 rounded-full mt-6 overflow-hidden">
@@ -143,7 +139,7 @@ export default function Dashboard() {
             <h2
               className={`text-2xl font-semibold mt-1.5 tracking-tight ${netIsPositive ? "text-foreground" : "text-red-600"}`}
             >
-              {formatCurrency(stats.netProfit)}
+              {formatCurrency(netProfit)}
             </h2>
           </div>
           <span className="text-[11px] text-muted-foreground italic mt-6 block">
@@ -157,7 +153,7 @@ export default function Dashboard() {
         {[
           {
             label: "Total Projects",
-            value: stats.totalProjects,
+            value: stats?.totalProjects,
             icon: Building2,
             color: "text-primary",
             bg: "bg-primary/10",
@@ -165,7 +161,7 @@ export default function Dashboard() {
           },
           {
             label: "Total Vendors",
-            value: stats.totalVendors,
+            value: stats?.totalVendors,
             icon: Users,
             color: "text-amber-600",
             bg: "bg-amber-500/10",
@@ -173,7 +169,7 @@ export default function Dashboard() {
           },
           {
             label: "Total Prospects",
-            value: stats.totalProspects,
+            value: stats?.totalProspects,
             icon: Target,
             color: "text-purple-600",
             bg: "bg-purple-500/10",
@@ -181,7 +177,7 @@ export default function Dashboard() {
           },
           {
             label: "Total Activities",
-            value: stats.totalActivities,
+            value: stats?.totalActivities,
             icon: Activity,
             color: "text-teal-600",
             bg: "bg-teal-500/10",
@@ -229,7 +225,7 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {stats.recentTransactions && stats.recentTransactions.length > 0 ? (
+        {stats?.recentTransactions && stats.recentTransactions.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-border-main">
               <thead className="bg-muted-foreground/5">
@@ -252,7 +248,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-main bg-card text-foreground">
-                {stats.recentTransactions.map((tx: any) => (
+                {(stats?.recentTransactions || []).map((tx: any) => (
                   <tr
                     key={tx.id}
                     className="hover:bg-muted-foreground/5 transition-colors"
@@ -317,9 +313,9 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {stats.recentProspects && stats.recentProspects.length > 0 ? (
+        {stats?.recentProspects && stats.recentProspects.length > 0 ? (
           <div className="divide-y divide-border-main">
-            {stats.recentProspects.map((prospect: any) => {
+            {(stats?.recentProspects || []).map((prospect: any) => {
               const statusColors: Record<string, string> = {
                 New: "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400",
                 Contacted:

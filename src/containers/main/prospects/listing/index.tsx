@@ -160,7 +160,7 @@ export default function ProspectsListing() {
       </div>
 
       {/* Stats Cards Grid */}
-      <div className="grid gap-5 grid-cols-2 md:grid-cols-5 animate-fade-in">
+      <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 md:grid-cols-6 animate-fade-in">
         <div className="bg-card border border-border-main p-4 rounded-xl shadow-xs flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
             <Users size={20} />
@@ -177,10 +177,16 @@ export default function ProspectsListing() {
       </div>
 
       {/* Filters Toolbar Card */}
-      <div className="bg-card border border-border-main p-4 rounded-xl animate-fade-in shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          {/* Search Input */}
-          <div className="relative flex-1">
+      <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-wrap items-end justify-start md:justify-end gap-3 w-full">
+        {/* Search */}
+        <div className="flex flex-col items-start gap-1 w-full sm:max-w-sm flex-1 md:max-w-md min-w-[260px]">
+          <label
+            htmlFor="search"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Search
+          </label>
+          <div className="relative w-full">
             <Search
               className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
               size={16}
@@ -190,15 +196,24 @@ export default function ProspectsListing() {
               placeholder="Search by name, phone, email, date..."
               value={draftSearch}
               onChange={(e) => setDraftSearch(e.target.value)}
-              className="common-input pl-10 pr-4 h-10 w-full"
+              className="common-input pl-10 pr-4 text-sm h-10 w-full"
             />
           </div>
+        </div>
 
-          {/* Status Dropdown */}
+        {/* Status Dropdown */}
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label
+            htmlFor="status"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Status
+          </label>
           <select
+            id="status"
             value={draftStatus}
             onChange={(e) => setDraftStatus(e.target.value)}
-            className="common-input h-10 w-full sm:w-44 bg-card"
+            className="common-input text-sm h-10 w-full sm:w-44 bg-card text-sm"
           >
             <option value="">All Statuses</option>
             <option value="New">New</option>
@@ -207,24 +222,24 @@ export default function ProspectsListing() {
             <option value="Lost">Lost</option>
             <option value="Converted">Converted</option>
           </select>
+        </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Button
-              variant="primary"
-              onClick={handleApplyFilters}
-              className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
-            >
-              Apply
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleResetFilters}
-              className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
-            >
-              Reset
-            </Button>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
+          <Button
+            variant="primary"
+            onClick={handleApplyFilters}
+            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+          >
+            Apply
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleResetFilters}
+            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+          >
+            Reset
+          </Button>
         </div>
       </div>
 

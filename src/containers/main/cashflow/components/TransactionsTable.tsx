@@ -113,13 +113,18 @@ export default function TransactionsTable({
       </div>
 
       {/* Filters Toolbar Card */}
-      <div className="bg-card border border-border-main p-4 rounded-xl animate-fade-in shadow-xs space-y-4">
-        {/* Row 1: Search, Project, Type */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {/* Search Input */}
+      <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-wrap items-end justify-start md:justify-end gap-3 w-full">
+        {/* Search */}
+        <div className="flex flex-col items-start gap-1 w-full sm:max-w-sm flex-1 md:max-w-md min-w-[260px]">
+          <label
+            htmlFor="search"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Search
+          </label>
           <div className="relative w-full">
             <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
+              className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
               size={16}
             />
             <input
@@ -127,15 +132,24 @@ export default function TransactionsTable({
               placeholder="Search by description, vendor/client, amount..."
               value={draftSearch}
               onChange={(e) => setDraftSearch(e.target.value)}
-              className="common-input pl-9 pr-4 h-10 w-full"
+              className="common-input pl-10 pr-4 text-sm h-10 w-full"
             />
           </div>
+        </div>
 
-          {/* Project Filter */}
+        {/* Project Filter */}
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label
+            htmlFor="project"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Project
+          </label>
           <select
+            id="project"
             value={draftProject}
             onChange={(e) => setDraftProject(e.target.value)}
-            className="common-input h-10 w-full bg-card"
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
           >
             <option value="">All Projects</option>
             {projects.map((p) => (
@@ -144,12 +158,21 @@ export default function TransactionsTable({
               </option>
             ))}
           </select>
+        </div>
 
-          {/* Type Filter */}
+        {/* Type Filter */}
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label
+            htmlFor="type"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Type
+          </label>
           <select
+            id="type"
             value={draftType}
             onChange={(e) => setDraftType(e.target.value)}
-            className="common-input h-10 w-full bg-card"
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
           >
             <option value="">All Types</option>
             <option value="CASH IN">Cash In</option>
@@ -157,48 +180,56 @@ export default function TransactionsTable({
           </select>
         </div>
 
-        {/* Row 2: Dates and Buttons */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-border-main/20">
-          <div className="grid grid-cols-2 gap-3 w-full md:max-w-md">
-            {/* Start Date */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase">Start Date</label>
-              <input
-                type="date"
-                value={draftStartDate}
-                onChange={(e) => setDraftStartDate(e.target.value)}
-                className="common-input h-9 w-full bg-card text-xs"
-              />
-            </div>
+        {/* From Date */}
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label
+            htmlFor="startDate"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            From
+          </label>
+          <input
+            type="date"
+            id="startDate"
+            value={draftStartDate}
+            onChange={(e) => setDraftStartDate(e.target.value)}
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
+          />
+        </div>
 
-            {/* End Date */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase">End Date</label>
-              <input
-                type="date"
-                value={draftEndDate}
-                onChange={(e) => setDraftEndDate(e.target.value)}
-                className="common-input h-9 w-full bg-card text-xs"
-              />
-            </div>
-          </div>
+        {/* To Date */}
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label
+            htmlFor="endDate"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            To
+          </label>
+          <input
+            type="date"
+            id="endDate"
+            value={draftEndDate}
+            onChange={(e) => setDraftEndDate(e.target.value)}
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
+          />
+        </div>
 
-          <div className="flex gap-2 w-full sm:w-auto ml-auto sm:ml-0 mt-auto">
-            <Button
-              variant="primary"
-              onClick={handleApply}
-              className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
-            >
-              Apply
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleReset}
-              className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
-            >
-              Reset
-            </Button>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
+          <Button
+            variant="primary"
+            onClick={handleApply}
+            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+          >
+            Apply
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleReset}
+            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+          >
+            Reset
+          </Button>
         </div>
       </div>
 

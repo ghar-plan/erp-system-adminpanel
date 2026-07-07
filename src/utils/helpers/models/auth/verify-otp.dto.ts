@@ -1,4 +1,5 @@
 export class VerifyOtpDTO {
   email: string = "";
-  otp: string = "";
+  otp: number = 0;
+  verificationType: string = "";
 }

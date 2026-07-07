@@ -14,6 +14,4 @@ export const Vendors_APIS = {
   delete: (id: string) => deleteRequest(`/v1/vendors/${id}`),
   getPaymentSummary: (params: any = {}) =>
     getRequest("/v1/vendors/payment-summary", params),
-  getReport: (params: any = {}) =>
-    getRequest("/v1/vendors/report", params),
 };

@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { Eye, EyeOff } from "lucide-react";
 import useStore from "@/hooks/useStore";
 import Button from "@/components/ui/Button";
 import useAuth from "../useHooks";
@@ -10,6 +11,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { isLoading } = useStore();
   const { login } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -85,19 +87,28 @@ const Login = () => {
           >
             Password
           </label>
-          <input
-            id="password"
-            type="password"
-            {...register("password", {
-              required: "Password is required",
-              minLength: {
-                value: 6,
-                message: "Password must be at least 6 characters long",
-              },
-            })}
-            placeholder="••••••••"
-            className="common-input"
-          />
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              {...register("password", {
+                required: "Password is required",
+                minLength: {
+                  value: 6,
+                  message: "Password must be at least 6 characters long",
+                },
+              })}
+              placeholder="••••••••"
+              className="common-input pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer focus:outline-none"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
           {errors.password && (
             <p className="mt-1 text-sm text-red-500">
               {errors.password.message}
@@ -105,20 +116,11 @@ const Login = () => {
           )}
         </div>
 
-        <div className="flex items-center justify-between">
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              className="w-4 h-4 text-primary border-border-main bg-bg-input rounded focus:ring-primary"
-            />
-            <span className="ml-2 text-sm text-muted-foreground">
-              Remember me
-            </span>
-          </label>
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={() => navigate("/auth/resend-otp")}
-            className="text-sm text-primary hover:underline font-semibold"
+            className="text-sm text-primary hover:underline font-semibold cursor-pointer"
           >
             Forgot password?
           </button>

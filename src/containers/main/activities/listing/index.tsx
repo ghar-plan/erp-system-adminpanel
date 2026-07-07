@@ -33,6 +33,8 @@ export default function ActivitiesListing() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  const [searchVal, setSearchVal] = useState("");
+
   // Filters State
   const [filters, setFilters] = useState<ActivityFilters>({
     search: "",
@@ -64,11 +66,13 @@ export default function ActivitiesListing() {
   };
 
   const handleApplyFilters = () => {
-    setFilters((prev) => ({ ...prev, page: 1 }));
-    fetchActivities({ ...filters, page: 1 });
+    const updatedFilters = { ...filters, search: searchVal, page: 1 };
+    setFilters(updatedFilters);
+    fetchActivities(updatedFilters);
   };
 
   const handleResetFilters = () => {
+    setSearchVal("");
     const cleared = {
       search: "",
       page: 1,
@@ -156,25 +160,33 @@ export default function ActivitiesListing() {
       </div>
 
       {/* Filters Toolbar Card */}
-      <div className="bg-card border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        {/* Left: Search */}
-        <div className="relative w-full md:max-w-md">
-          <Search
-            className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
-            size={16}
-          />
-          <input
-            type="search"
-            name="search"
-            placeholder="Search by activity name..."
-            value={filters.search}
-            onChange={handleChangeFilter}
-            className="common-input pl-10 pr-4 !rounded-lg text-sm h-10 w-full"
-          />
+      <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-wrap items-end justify-start md:justify-end gap-3 w-full">
+        {/* Search */}
+        <div className="flex flex-col items-start gap-1 w-full sm:max-w-sm flex-1 md:max-w-md min-w-[260px]">
+          <label
+            htmlFor="search"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Search
+          </label>
+          <div className="relative w-full">
+            <Search
+              className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
+              size={16}
+            />
+            <input
+              type="search"
+              name="search"
+              placeholder="Search by activity name..."
+              value={searchVal}
+              onChange={(e) => setSearchVal(e.target.value)}
+              className="common-input pl-10 pr-4 text-sm h-10 w-full"
+            />
+          </div>
         </div>
 
-        {/* Right: Buttons */}
-        <div className="flex gap-2 w-full sm:w-auto ml-auto sm:ml-0">
+        {/* Action Buttons */}
+        <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
           <Button
             variant="primary"
             onClick={handleApplyFilters}
