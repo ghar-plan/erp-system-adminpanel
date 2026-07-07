@@ -21,8 +21,26 @@ const AppRoutes = () => {
             )
           }
         />
-        <Route path="/auth/*" element={<AuthRoutes />} />
-        <Route path="/*" element={<DashboardRoutes />} />
+        <Route
+          path="/auth/*"
+          element={
+            !token ? (
+              <AuthRoutes />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        />
+        <Route
+          path="/*"
+          element={
+            token ? (
+              <DashboardRoutes />
+            ) : (
+              <Navigate to="/auth/login" replace />
+            )
+          }
+        />
       </Routes>
     </>
   );
