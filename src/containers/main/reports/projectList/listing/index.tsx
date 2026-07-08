@@ -81,10 +81,10 @@ export default function ProjectLedger() {
         headers: { Authorization: `Bearer ${token}` },
         responseType: "blob",
       });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `receipt-out-${id}.txt`);
+      link.setAttribute("download", `receipt-out-${id}.pdf`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
