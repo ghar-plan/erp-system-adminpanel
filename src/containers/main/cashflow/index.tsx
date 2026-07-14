@@ -13,6 +13,7 @@ export default function Cashflow() {
     getCashflowOutList,
     recordCashIn,
     recordCashOut,
+    deleteCashflow,
     exportCashflowCsv,
   } = useCashflow();
 
@@ -201,6 +202,14 @@ export default function Cashflow() {
     }
   };
 
+  const handleDelete = async (
+    id: string,
+    type: "CASH IN" | "CASH OUT",
+    label: string,
+  ) => {
+    await deleteCashflow(id, type, label, refreshTransactions);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -252,6 +261,7 @@ export default function Cashflow() {
           setFilterEndDate={setFilterEndDate}
           exportToCSV={handleCSVExport}
           formatDate={formatDate}
+          onDelete={handleDelete}
         />
       </div>
     </div>

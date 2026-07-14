@@ -4,7 +4,7 @@ import { Vendors_APIS } from "@/libs/apis/vendors.api";
 import { Activities_APIS } from "@/libs/apis/activities.api";
 import {
   successToaster,
-  errorToaster,
+  confirmationPopup,
 } from "@/utils/helpers/common/alert-service";
 
 const useCashflow = () => {
@@ -78,6 +78,29 @@ const useCashflow = () => {
     }
   };
 
+  const deleteCashflow = async (
+    id: string,
+    type: "CASH IN" | "CASH OUT",
+    label: string,
+    callback?: Function,
+  ) => {
+    const result = await confirmationPopup(
+      `Delete ${type}`,
+      `Are you sure you want to delete "${label}"? This action cannot be undone.`,
+    );
+    if (result.isConfirmed) {
+      const response =
+        type === "CASH IN"
+          ? await Cashflows_APIS.deleteIn(id)
+          : await Cashflows_APIS.deleteOut(id);
+      const { status = false, message = "" } = response || {};
+      if (status) {
+        successToaster(message);
+        callback?.();
+      }
+    }
+  };
+
   const exportCashflowCsv = async (params: any = {}) => {
     return await Cashflows_APIS.exportCsv(params);
   };
@@ -90,6 +113,7 @@ const useCashflow = () => {
     getCashflowOutList,
     recordCashIn,
     recordCashOut,
+    deleteCashflow,
     exportCashflowCsv,
   };
 };

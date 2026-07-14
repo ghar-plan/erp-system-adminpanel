@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import { FileSpreadsheet, Search } from "lucide-react";
+import { FileSpreadsheet, Search, Trash2 } from "lucide-react";
 
 interface Transaction {
   id: string;
@@ -28,6 +28,7 @@ interface TransactionsTableProps {
   setFilterEndDate: (val: string) => void;
   exportToCSV: () => void;
   formatDate: (d: any) => string;
+  onDelete: (id: string, type: "CASH IN" | "CASH OUT", label: string) => void;
 }
 
 export default function TransactionsTable({
@@ -45,6 +46,7 @@ export default function TransactionsTable({
   setFilterEndDate,
   exportToCSV,
   formatDate,
+  onDelete,
 }: TransactionsTableProps) {
   // Local draft states to allow Apply/Reset behavior
   const [draftProject, setDraftProject] = useState(filterProject);
@@ -227,13 +229,16 @@ export default function TransactionsTable({
                 <th className="px-6 py-4 text-xs font-bold text-right text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                   AMOUNT
                 </th>
+                <th className="px-6 py-4 text-xs font-bold text-center text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                  ACTIONS
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-main bg-card text-foreground">
               {transactions.length > 0 ? (
                 transactions.map((tx) => (
                   <tr
-                    key={tx.id}
+                    key={`${tx.type}-${tx.id}`}
                     className="hover:bg-muted-foreground/5 transition-colors"
                   >
                     <td className="table-td">
@@ -262,12 +267,25 @@ export default function TransactionsTable({
                         ? `PKR ${tx.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
                         : "--"}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() =>
+                            onDelete(tx.id, tx.type, tx.description || tx.type)
+                          }
+                          className="btn-action-delete"
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-6 py-10 text-center text-sm text-muted-foreground  "
                   >
                     No transactions recorded yet.

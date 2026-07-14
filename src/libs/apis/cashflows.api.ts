@@ -11,4 +11,6 @@ export const Cashflows_APIS = {
   getAllOut: (params: any = {}) => getRequest("/v1/cashflows/out", params),
   getProjectListSummary: () => getRequest("/v1/cashflows/project-list"),
   exportCsv: (params: any = {}) => getRequest("/v1/cashflows/export", params),
+  deleteIn: (id: string) => deleteRequest(`/v1/cashflows/in/${id}`),
+  deleteOut: (id: string) => deleteRequest(`/v1/cashflows/out/${id}`),
 };

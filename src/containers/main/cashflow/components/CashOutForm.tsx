@@ -211,6 +211,7 @@ export default function CashOutForm({
               <option value="Tons">Tons</option>
               <option value="Hours">Hours</option>
               <option value="Days">Days</option>
+              <option value="Lumpsum">Lumpsum</option>
             </select>
             {errors.uom && (
               <p className="mt-1 text-xs text-danger-text font-semibold">

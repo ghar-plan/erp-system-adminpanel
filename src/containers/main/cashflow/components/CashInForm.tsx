@@ -27,7 +27,7 @@ export default function CashInForm({
   } = useForm<CashInFormInputs>({
     defaultValues: {
       projectId: "",
-      installment: "1st Installment (Booking)",
+      installment: "",
       amount: "",
     },
   });
@@ -36,7 +36,7 @@ export default function CashInForm({
     await onSubmit(data);
     reset({
       projectId: "",
-      installment: "1st Installment (Booking)",
+      installment: "",
       amount: "",
     });
   };
@@ -73,25 +73,14 @@ export default function CashInForm({
 
         <div>
           <label className="mb-2 block ui-form-label">SELECT INSTALLMENT</label>
-          <select
+          <input
+            type="text"
+            placeholder="e.g. 1st Installment (Booking)"
             className="common-input"
             {...register("installment", {
               required: "Installment is required",
             })}
-          >
-            <option value="">Select Installment</option>
-            <option value="1st Installment (Booking)">
-              1st Installment (Booking)
-            </option>
-            <option value="2nd Installment (Excavation)">
-              2nd Installment (Excavation)
-            </option>
-            <option value="3rd Installment (Structure)">
-              3rd Installment (Structure)
-            </option>
-            <option value="Booking Advance">Booking Advance</option>
-            <option value="Final Handover">Final Handover</option>
-          </select>
+          />
           {errors.installment && (
             <p className="mt-1 text-xs text-danger-text font-semibold">
               {errors.installment.message}
