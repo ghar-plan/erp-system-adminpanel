@@ -22,6 +22,8 @@ export default function ProjectListing() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [totalElements, setTotalElements] = useState(0);
 
+  const [searchVal, setSearchVal] = useState("");
+
   // Filters State
   const [filters, setFilters] = useState<ProjectFilters>({
     search: "",
@@ -37,7 +39,8 @@ export default function ProjectListing() {
       offset: (currentFilters.page - 1) * currentFilters.limit,
     };
     if (currentFilters.search) queryParams.search = currentFilters.search;
-    if (currentFilters.startDate) queryParams.startDate = currentFilters.startDate;
+    if (currentFilters.startDate)
+      queryParams.startDate = currentFilters.startDate;
     if (currentFilters.endDate) queryParams.endDate = currentFilters.endDate;
 
     getProjects(setProjects, queryParams, setTotalElements);
@@ -59,11 +62,13 @@ export default function ProjectListing() {
   };
 
   const handleApplyFilters = () => {
-    setFilters((prev) => ({ ...prev, page: 1 }));
-    fetchProjects({ ...filters, page: 1 });
+    const updatedFilters = { ...filters, search: searchVal, page: 1 };
+    setFilters(updatedFilters);
+    fetchProjects(updatedFilters);
   };
 
   const handleResetFilters = () => {
+    setSearchVal("");
     const cleared = {
       search: "",
       startDate: "",
@@ -126,63 +131,83 @@ export default function ProjectListing() {
         </Link>
       </div>
       {/* Filters Toolbar Card */}
-      <div className="bg-card border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        {/* Left: Search */}
-        <div className="relative w-full md:max-w-md">
-          <Search
-            className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
-            size={16}
-          />
+      <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-wrap items-end justify-start md:justify-end gap-3 w-full">
+        {/* Search */}
+        <div className="flex flex-col items-start gap-1 w-full sm:max-w-sm flex-1 md:max-w-md min-w-[260px]">
+          <label
+            htmlFor="search"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Search
+          </label>
+          <div className="relative w-full">
+            <Search
+              className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
+              size={16}
+            />
+            <input
+              type="search"
+              name="search"
+              placeholder="Search construction sites..."
+              value={searchVal}
+              onChange={(e) => setSearchVal(e.target.value)}
+              className="common-input pl-10 pr-4 text-sm h-10 w-full"
+            />
+          </div>
+        </div>
+
+        {/* From Date */}
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label
+            htmlFor="startDate"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            From
+          </label>
           <input
-            type="search"
-            name="search"
-            placeholder="Search construction sites..."
-            value={filters.search}
+            type="date"
+            name="startDate"
+            id="startDate"
+            value={filters.startDate}
             onChange={handleChangeFilter}
-            className="common-input pl-10 pr-4 !rounded-lg text-sm h-10 w-full"
+            className="common-input h-10 w-full sm:w-40 text-sm"
           />
         </div>
 
-        {/* Right: Date Filters & Buttons */}
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">From:</span>
-            <input
-              type="date"
-              name="startDate"
-              value={filters.startDate}
-              onChange={handleChangeFilter}
-              className="common-input h-10 w-full sm:w-40 text-sm"
-            />
-          </div>
+        {/* To Date */}
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label
+            htmlFor="endDate"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            To
+          </label>
+          <input
+            type="date"
+            name="endDate"
+            id="endDate"
+            value={filters.endDate}
+            onChange={handleChangeFilter}
+            className="common-input h-10 w-full sm:w-40 text-sm"
+          />
+        </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">To:</span>
-            <input
-              type="date"
-              name="endDate"
-              value={filters.endDate}
-              onChange={handleChangeFilter}
-              className="common-input h-10 w-full sm:w-40 text-sm"
-            />
-          </div>
-
-          <div className="flex gap-2 w-full sm:w-auto ml-auto sm:ml-0">
-            <Button
-              variant="primary"
-              onClick={handleApplyFilters}
-              className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
-            >
-              Apply
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleResetFilters}
-              className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
-            >
-              Reset
-            </Button>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
+          <Button
+            variant="primary"
+            onClick={handleApplyFilters}
+            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+          >
+            Apply
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleResetFilters}
+            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+          >
+            Reset
+          </Button>
         </div>
       </div>
 

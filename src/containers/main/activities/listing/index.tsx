@@ -24,7 +24,7 @@ interface ActivityFilters {
 
 export default function ActivitiesListing() {
   const navigate = useNavigate();
-  const { getActivities, uploadActivitiesCsv, deleteActivity } = useActivities();
+  const { getActivities, uploadActivitiesCsv, deleteActivity, downloadSampleExcel } = useActivities();
   const [activities, setActivities] = useState<any[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [csvUploading, setCsvUploading] = useState(false);
@@ -32,6 +32,8 @@ export default function ActivitiesListing() {
   // Modal / Import State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const [searchVal, setSearchVal] = useState("");
 
   // Filters State
   const [filters, setFilters] = useState<ActivityFilters>({
@@ -64,11 +66,13 @@ export default function ActivitiesListing() {
   };
 
   const handleApplyFilters = () => {
-    setFilters((prev) => ({ ...prev, page: 1 }));
-    fetchActivities({ ...filters, page: 1 });
+    const updatedFilters = { ...filters, search: searchVal, page: 1 };
+    setFilters(updatedFilters);
+    fetchActivities(updatedFilters);
   };
 
   const handleResetFilters = () => {
+    setSearchVal("");
     const cleared = {
       search: "",
       page: 1,
@@ -120,7 +124,7 @@ export default function ActivitiesListing() {
     }
   };
 
-  const columns = ["Sr No.", "Activity ID", "Activity Name", "Date of Entry", "Actions"];
+  const columns = ["Sr No.", "Activity ID", "Activity Name", "Category", "Date of Entry", "Actions"];
 
   return (
     <div className="space-y-6">
@@ -156,25 +160,33 @@ export default function ActivitiesListing() {
       </div>
 
       {/* Filters Toolbar Card */}
-      <div className="bg-card border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        {/* Left: Search */}
-        <div className="relative w-full md:max-w-md">
-          <Search
-            className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
-            size={16}
-          />
-          <input
-            type="search"
-            name="search"
-            placeholder="Search by activity name..."
-            value={filters.search}
-            onChange={handleChangeFilter}
-            className="common-input pl-10 pr-4 !rounded-lg text-sm h-10 w-full"
-          />
+      <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-wrap items-end justify-start md:justify-end gap-3 w-full">
+        {/* Search */}
+        <div className="flex flex-col items-start gap-1 w-full sm:max-w-sm flex-1 md:max-w-md min-w-[260px]">
+          <label
+            htmlFor="search"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Search
+          </label>
+          <div className="relative w-full">
+            <Search
+              className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
+              size={16}
+            />
+            <input
+              type="search"
+              name="search"
+              placeholder="Search by activity name..."
+              value={searchVal}
+              onChange={(e) => setSearchVal(e.target.value)}
+              className="common-input pl-10 pr-4 text-sm h-10 w-full"
+            />
+          </div>
         </div>
 
-        {/* Right: Buttons */}
-        <div className="flex gap-2 w-full sm:w-auto ml-auto sm:ml-0">
+        {/* Action Buttons */}
+        <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
           <Button
             variant="primary"
             onClick={handleApplyFilters}
@@ -225,6 +237,9 @@ export default function ActivitiesListing() {
                       <td className="table-td font-mono">{act.id}</td>
                       <td className="table-td font-semibold text-foreground">
                         {act.name}
+                      </td>
+                      <td className="table-td font-semibold text-foreground">
+                        {act.category || "—"}
                       </td>
                       <td className="table-td">{formatDate(act.created_at)}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -308,13 +323,13 @@ export default function ActivitiesListing() {
                   <h4 className="text-xs font-bold text-foreground">Need a template?</h4>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Use our predefined format for a smooth import.</p>
                 </div>
-                <a
-                  href="/bulk-data.xlsx"
-                  download="bulk-data.xlsx"
+                <button
+                  type="button"
+                  onClick={downloadSampleExcel}
                   className="text-xs font-bold text-primary hover:underline whitespace-nowrap cursor-pointer"
                 >
                   Download Sample Excel
-                </a>
+                </button>
               </div>
 
               {/* File Drag and Drop / Input */}

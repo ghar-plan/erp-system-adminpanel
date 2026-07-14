@@ -9,7 +9,7 @@ import {
 
 const useCashflow = () => {
   const getProjects = async (setData: Function) => {
-    const response = await Projects_APIS.getAll({ limit: 100 });
+    const response = await Projects_APIS.getAllWithoutPagination();
     const { status = false, data = [] } = response || {};
     if (status && data) {
       setData(data);
@@ -19,7 +19,7 @@ const useCashflow = () => {
   };
 
   const getVendors = async (setData: Function) => {
-    const response = await Vendors_APIS.getAll({ limit: 100 });
+    const response = await Vendors_APIS.getAllWithoutPagination();
     const { status = false, data = [] } = response || {};
     if (status && data) {
       setData(data);
@@ -29,7 +29,7 @@ const useCashflow = () => {
   };
 
   const getActivities = async (setData: Function) => {
-    const response = await Activities_APIS.getAll({ limit: 100 });
+    const response = await Activities_APIS.getAllWithoutPagination();
     const { status = false, data = [] } = response || {};
     if (status && data) {
       setData(data);
@@ -55,6 +55,22 @@ const useCashflow = () => {
       setData(data);
     } else {
       setData([]);
+    }
+  };
+
+  const getCashflowCombinedList = async (
+    setData: Function,
+    queryParams: any = {},
+    setTotalElements?: Function,
+  ) => {
+    const response = await Cashflows_APIS.getAllCombined(queryParams);
+    const { status = false, data = [] } = response || {};
+    if (status && data) {
+      setData(data);
+      setTotalElements?.(response?.total || data.length);
+    } else {
+      setData([]);
+      setTotalElements?.(0);
     }
   };
 
@@ -111,6 +127,7 @@ const useCashflow = () => {
     getActivities,
     getCashflowInList,
     getCashflowOutList,
+    getCashflowCombinedList,
     recordCashIn,
     recordCashOut,
     deleteCashflow,

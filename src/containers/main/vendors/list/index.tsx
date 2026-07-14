@@ -21,6 +21,8 @@ export default function VendorListing() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [totalElements, setTotalElements] = useState(0);
 
+  const [searchVal, setSearchVal] = useState("");
+
   // Filters State
   const [filters, setFilters] = useState<VendorFilters>({
     search: "",
@@ -59,11 +61,13 @@ export default function VendorListing() {
   };
 
   const handleApplyFilters = () => {
-    setFilters((prev) => ({ ...prev, page: 1 }));
-    fetchVendors({ ...filters, page: 1 });
+    const updatedFilters = { ...filters, search: searchVal, page: 1 };
+    setFilters(updatedFilters);
+    fetchVendors(updatedFilters);
   };
 
   const handleResetFilters = () => {
+    setSearchVal("");
     const cleared = {
       search: "",
       vendorType: "",
@@ -92,7 +96,6 @@ export default function VendorListing() {
   const handleDelete = async (id: string, name: string) => {
     await deleteVendor(id, name, () => fetchVendors(filters));
   };
-
 
   const getVendorTypeBadgeClass = (type: string) => {
     switch (type) {
@@ -147,53 +150,69 @@ export default function VendorListing() {
       </div>
 
       {/* Filters Toolbar Card */}
-      <div className="bg-card border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        {/* Left: Search */}
-        <div className="relative w-full md:max-w-md">
-          <Search
-            className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
-            size={16}
-          />
-          <input
-            type="search"
-            name="search"
-            placeholder="Search by name, job description, city, phone..."
-            value={filters.search}
-            onChange={handleChangeFilter}
-            className="common-input pl-10 pr-4 !rounded-lg text-sm h-10 w-full"
-          />
+      <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-wrap items-end justify-start md:justify-end gap-3 w-full">
+        {/* Search */}
+        <div className="flex flex-col items-start gap-1 w-full sm:max-w-sm flex-1 md:max-w-md min-w-[260px]">
+          <label
+            htmlFor="search"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Search
+          </label>
+          <div className="relative w-full">
+            <Search
+              className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
+              size={16}
+            />
+            <input
+              type="search"
+              name="search"
+              placeholder="Search by name, job description, city, phone..."
+              value={searchVal}
+              onChange={(e) => setSearchVal(e.target.value)}
+              className="common-input pl-10 pr-4 text-sm h-10 w-full"
+            />
+          </div>
         </div>
 
-        {/* Right: Vendor Type Filter & Buttons */}
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+        {/* Vendor Type */}
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label
+            htmlFor="vendorType"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Vendor Type
+          </label>
           <select
             name="vendorType"
+            id="vendorType"
             value={filters.vendorType}
             onChange={handleChangeFilter}
-            className="common-input text-sm h-10 w-full sm:w-40"
+            className="common-input text-sm h-10 w-full sm:w-40 text-sm"
           >
             <option value="">Status / Type</option>
             <option value="Both">Both</option>
             <option value="vendorMaterial">Raw Material</option>
             <option value="vendorLabour">Sub Contractor</option>
           </select>
+        </div>
 
-          <div className="flex gap-2 w-full sm:w-auto ml-auto sm:ml-0">
-            <Button
-              variant="primary"
-              onClick={handleApplyFilters}
-              className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
-            >
-              Apply
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleResetFilters}
-              className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
-            >
-              Reset
-            </Button>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
+          <Button
+            variant="primary"
+            onClick={handleApplyFilters}
+            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+          >
+            Apply
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleResetFilters}
+            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+          >
+            Reset
+          </Button>
         </div>
       </div>
 

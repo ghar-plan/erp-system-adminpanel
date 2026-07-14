@@ -4,39 +4,39 @@ import { useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import Button from "@/components/ui/Button";
 import useAuth from "../useHooks";
-import { UpdatePasswordDTO } from "@/utils/helpers/models/auth/update-password.dto";
+import { ResetPasswordDTO } from "@/utils/helpers/models/auth/reset-password.dto";
+
+interface ResetPasswordForm extends ResetPasswordDTO {
+  confirmPassword: string;
+}
 
 const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLoading } = useStore();
-  const { updatePassword } = useAuth();
+  const { resetPassword } = useAuth();
 
-  const email = location.state?.email || "";
-  const otp = location.state?.otp || "";
+  const tempToken = location.state?.tempToken || "";
 
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<UpdatePasswordDTO>({
+  } = useForm<ResetPasswordForm>({
     defaultValues: {
-      email,
-      otp,
       password: "",
       confirmPassword: "",
+      tempToken,
     },
   });
 
   const passwordValue = watch("password");
 
-  const onSubmit = async (data: UpdatePasswordDTO) => {
-    await updatePassword({
-      email,
-      otp,
+  const onSubmit = async (data: ResetPasswordForm) => {
+    await resetPassword({
       password: data.password,
-      confirmPassword: data.confirmPassword,
+      tempToken,
     });
   };
 
@@ -119,7 +119,7 @@ const ResetPassword = () => {
         <button
           type="button"
           onClick={() => navigate("/auth/login")}
-          className="text-sm text-primary hover:underline font-semibold"
+          className="text-sm text-primary hover:underline font-semibold cursor-pointer"
         >
           Back to Login
         </button>

@@ -12,6 +12,7 @@ interface VendorFormInputs {
   address: string;
   phone: string;
   city: string;
+  registrationNo?: string;
 }
 
 export default function VendorCreate() {
@@ -36,6 +37,7 @@ export default function VendorCreate() {
       ...(data.address ? { address: data.address } : {}),
       ...(data.phone ? { phone: data.phone } : {}),
       ...(data.city ? { city: data.city } : {}),
+      ...(data.registrationNo ? { registrationNo: data.registrationNo } : {}),
     };
     await createVendor(payload);
   };
@@ -91,26 +93,17 @@ export default function VendorCreate() {
             </div>
 
             <div>
-              <label className="mb-2 block ui-form-label">
-                Job Description
-              </label>
+              <label className="mb-2 block ui-form-label">Address</label>
               <input
                 type="text"
-                placeholder="e.g., Electrician"
-                className={`common-input ${errors.jobDescription ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("jobDescription", {
-                  required: "Job Description is required",
-                })}
+                placeholder="e.g., 123 Main St, Lahore"
+                className="common-input"
+                {...register("address")}
               />
-              {errors.jobDescription && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  {errors.jobDescription.message}
-                </p>
-              )}
             </div>
           </div>
 
-          <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
+          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
             <div>
               <label className="mb-2 block ui-form-label">Vendor Type</label>
               <select
@@ -126,6 +119,26 @@ export default function VendorCreate() {
               {errors.vendorType && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">
                   {errors.vendorType.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-2 block ui-form-label">Registration No (NTN/FTN)</label>
+              <input
+                type="text"
+                placeholder="e.g., 1234567-8"
+                className={`common-input ${errors.registrationNo ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("registrationNo", {
+                  pattern: {
+                    value: /^(\d{7}-\d{1}|\d{5}-\d{7}-\d{1})$/,
+                    message: "Registration No must be in NTN (XXXXXXX-X) or CNIC (XXXXX-XXXXXXX-X) format",
+                  }
+                })}
+              />
+              {errors.registrationNo && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.registrationNo.message}
                 </p>
               )}
             </div>
@@ -152,13 +165,20 @@ export default function VendorCreate() {
           </div>
 
           <div>
-            <label className="mb-2 block ui-form-label">Address</label>
+            <label className="mb-2 block ui-form-label">Job Description</label>
             <textarea
-              placeholder="e.g., 123 Main St, Lahore"
+              placeholder="e.g., Electrician"
               rows={3}
-              className="common-input py-2 resize-none"
-              {...register("address")}
+              className={`common-input py-2 resize-none ${errors.jobDescription ? "border-red-500 focus:border-red-500" : ""}`}
+              {...register("jobDescription", {
+                required: "Job Description is required",
+              })}
             />
+            {errors.jobDescription && (
+              <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                {errors.jobDescription.message}
+              </p>
+            )}
           </div>
         </div>
 

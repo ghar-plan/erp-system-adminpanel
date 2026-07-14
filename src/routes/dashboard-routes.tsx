@@ -17,7 +17,9 @@ import ProspectsListing from "@/containers/main/prospects/listing";
 import ProspectCreate from "@/containers/main/prospects/create";
 import ProspectView from "@/containers/main/prospects/view";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
-// import Reports from "@/containers/main/reports";
+import Reports from "@/containers/main/reports/vendorList/listing";
+import MyProfile from "@/containers/main/profile";
+import ProjectLedger from "@/containers/main/reports/projectList/listing";
 
 const DashboardRoutes = () => {
   return (
@@ -28,6 +30,7 @@ const DashboardRoutes = () => {
         <Route path={siteRoutes.projectsCreate} element={<ProjectsCreate />} />
         <Route path={siteRoutes.projectsView} element={<ProjectsView />} />
         <Route path={siteRoutes.projectsEdit} element={<ProjectsEdit />} />
+        <Route path={siteRoutes.reportsProjectList} element={<ProjectLedger />} />
         <Route path={siteRoutes.activity} element={<ActivitiesListing />} />
         <Route path={siteRoutes.activityCreate} element={<ActivityCreate />} />
         <Route path={siteRoutes.activityEdit} element={<ActivityEdit />} />
@@ -40,7 +43,8 @@ const DashboardRoutes = () => {
         <Route path={siteRoutes.prospectsCreate} element={<ProspectCreate />} />
         <Route path={siteRoutes.prospectsView} element={<ProspectView />} />
         <Route path={siteRoutes.prospectsEdit} element={<ProspectCreate />} />
-        <Route path={siteRoutes.reports} element={<h1>Reports</h1>} />
+        <Route path={siteRoutes.reportsVendorList} element={<Reports />} />
+        <Route path={siteRoutes.profile} element={<MyProfile />} />
       </Routes>
     </MainLayout>
   );

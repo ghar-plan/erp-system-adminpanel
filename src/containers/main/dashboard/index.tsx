@@ -41,15 +41,8 @@ export default function Dashboard() {
     }
   };
 
-  if (!stats) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  const netIsPositive = stats.netProfit >= 0;
+  const netProfit = stats?.netProfit ?? 0;
+  const netIsPositive = netProfit >= 0;
 
   return (
     <div className="space-y-8 pb-8">
@@ -63,10 +56,6 @@ export default function Dashboard() {
             Overview of ongoing projects, financial summary, and performance
             metrics.
           </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-card border border-border-main px-3.5 py-2 rounded-lg shadow-2xs self-start sm:self-auto font-semibold">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          Live Sync Active
         </div>
       </div>
 
@@ -84,7 +73,7 @@ export default function Dashboard() {
               Total Revenue (IN)
             </span>
             <h2 className="text-2xl font-semibold text-foreground mt-1.5 tracking-tight">
-              {formatCurrency(stats.totalRevenue)}
+              {formatCurrency(stats?.totalRevenue ?? 0)}
             </h2>
           </div>
           <div className="h-1.5 w-full bg-muted-foreground/10 rounded-full mt-6 overflow-hidden">
@@ -104,7 +93,7 @@ export default function Dashboard() {
               Total Costs (OUT)
             </span>
             <h2 className="text-2xl font-semibold text-foreground mt-1.5 tracking-tight">
-              {formatCurrency(stats.totalCosts)}
+              {formatCurrency(stats?.totalCosts ?? 0)}
             </h2>
           </div>
           <div className="h-1.5 w-full bg-muted-foreground/10 rounded-full mt-6 overflow-hidden">
@@ -116,21 +105,41 @@ export default function Dashboard() {
         <div className="bg-card rounded-xl border border-border-main p-6 flex flex-col justify-between shadow-2xs relative overflow-hidden transition-all duration-300 hover:shadow-xs hover:border-primary/20">
           {/* Watermark */}
           <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none text-emerald-500">
-            <svg width="150" height="80" viewBox="0 0 150 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M5 75L30 55L60 62L95 28L120 40L145 5" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+            <svg
+              width="150"
+              height="80"
+              viewBox="0 0 150 80"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M5 75L30 55L60 62L95 28L120 40L145 5"
+                stroke="currentColor"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </div>
           <div className="flex items-center justify-between">
-            <div className={`w-11 h-11 rounded-lg flex items-center justify-center ${netIsPositive ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"}`}>
-              {netIsPositive ? <TrendingUp size={20} className="stroke-[2]" /> : <TrendingDown size={20} className="stroke-[2]" />}
+            <div
+              className={`w-11 h-11 rounded-lg flex items-center justify-center ${netIsPositive ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"}`}
+            >
+              {netIsPositive ? (
+                <TrendingUp size={20} className="stroke-[2]" />
+              ) : (
+                <TrendingDown size={20} className="stroke-[2]" />
+              )}
             </div>
           </div>
           <div className="mt-6 z-10">
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest block">
               Net Profit / Surplus
             </span>
-            <h2 className={`text-2xl font-semibold mt-1.5 tracking-tight ${netIsPositive ? "text-foreground" : "text-red-600"}`}>
-              {formatCurrency(stats.netProfit)}
+            <h2
+              className={`text-2xl font-semibold mt-1.5 tracking-tight ${netIsPositive ? "text-foreground" : "text-red-600"}`}
+            >
+              {formatCurrency(netProfit)}
             </h2>
           </div>
           <span className="text-[11px] text-muted-foreground italic mt-6 block">
@@ -142,22 +151,56 @@ export default function Dashboard() {
       {/* Summary Count Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
         {[
-          { label: "Total Projects", value: stats.totalProjects, icon: Building2, color: "text-primary", bg: "bg-primary/10", link: "/projects" },
-          { label: "Total Vendors", value: stats.totalVendors, icon: Users, color: "text-amber-600", bg: "bg-amber-500/10", link: "/vendors" },
-          { label: "Total Prospects", value: stats.totalProspects, icon: Target, color: "text-purple-600", bg: "bg-purple-500/10", link: "/prospects" },
-          { label: "Total Activities", value: stats.totalActivities, icon: Activity, color: "text-teal-600", bg: "bg-teal-500/10", link: "/activities" },
+          {
+            label: "Total Projects",
+            value: stats?.totalProjects,
+            icon: Building2,
+            color: "text-primary",
+            bg: "bg-primary/10",
+            link: "/projects",
+          },
+          {
+            label: "Total Vendors",
+            value: stats?.totalVendors,
+            icon: Users,
+            color: "text-amber-600",
+            bg: "bg-amber-500/10",
+            link: "/vendors",
+          },
+          {
+            label: "Total Prospects",
+            value: stats?.totalProspects,
+            icon: Target,
+            color: "text-purple-600",
+            bg: "bg-purple-500/10",
+            link: "/prospects",
+          },
+          {
+            label: "Total Activities",
+            value: stats?.totalActivities,
+            icon: Activity,
+            color: "text-teal-600",
+            bg: "bg-teal-500/10",
+            link: "/activities",
+          },
         ].map(({ label, value, icon: Icon, color, bg, link }) => (
           <Link
             key={label}
             to={link}
             className="bg-card rounded-xl border border-border-main p-5 shadow-2xs hover:shadow-xs hover:border-primary/20 transition-all duration-300 flex items-center gap-4 group"
           >
-            <div className={`w-11 h-11 ${bg} rounded-lg flex items-center justify-center ${color} shrink-0`}>
+            <div
+              className={`w-11 h-11 ${bg} rounded-lg flex items-center justify-center ${color} shrink-0`}
+            >
               <Icon size={20} className="stroke-[2]" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
-              <p className="text-xl font-bold text-foreground mt-0.5">{value ?? 0}</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                {label}
+              </p>
+              <p className="text-xl font-bold text-foreground mt-0.5">
+                {value ?? 0}
+              </p>
             </div>
           </Link>
         ))}
@@ -167,42 +210,74 @@ export default function Dashboard() {
       <div className="bg-card rounded-xl border border-border-main shadow-2xs animate-slide-up">
         <div className="flex items-center justify-between p-5 border-b border-border-main/60">
           <div>
-            <h3 className="text-base font-bold text-foreground">Recent Transactions</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Latest cash inflows and outflows across all projects.</p>
+            <h3 className="text-base font-bold text-foreground">
+              Recent Transactions
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Latest cash inflows and outflows across all projects.
+            </p>
           </div>
-          <Link to="/cashflow" className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5">
+          <Link
+            to="/cashflow"
+            className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5"
+          >
             View All <ChevronRight size={14} />
           </Link>
         </div>
 
-        {stats.recentTransactions && stats.recentTransactions.length > 0 ? (
+        {stats?.recentTransactions && stats.recentTransactions.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-border-main">
               <thead className="bg-muted-foreground/5">
                 <tr>
-                  {["Date", "Project", "Type", "Description", "Vendor / Client", "Amount"].map((h) => (
-                    <th key={h} className="px-5 py-3.5 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                  {[
+                    "Date",
+                    "Project",
+                    "Type",
+                    "Description",
+                    "Vendor / Client",
+                    "Amount",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="px-5 py-3.5 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap"
+                    >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-main bg-card text-foreground">
-                {stats.recentTransactions.map((tx: any) => (
-                  <tr key={tx.id} className="hover:bg-muted-foreground/5 transition-colors">
-                    <td className="table-td text-muted-foreground text-xs">{formatDate(tx.date)}</td>
-                    <td className="table-td font-semibold text-xs">{tx.project}</td>
+                {(stats?.recentTransactions || []).map((tx: any) => (
+                  <tr
+                    key={tx.id}
+                    className="hover:bg-muted-foreground/5 transition-colors"
+                  >
+                    <td className="table-td text-muted-foreground text-xs">
+                      {formatDate(tx.date)}
+                    </td>
+                    <td className="table-td font-semibold text-xs">
+                      {tx.project}
+                    </td>
                     <td className="table-td">
-                      <span className={`inline-flex items-center gap-1 font-bold text-[10px] tracking-wider px-2 py-0.5 rounded border ${
-                        tx.type === "CASH IN"
-                          ? "bg-success-bg text-success-text border-success-text/10"
-                          : "bg-warning-bg text-warning-text border-warning-text/10"
-                      }`}>
-                        {tx.type === "CASH IN" ? <ArrowDownCircle size={10} /> : <ArrowUpCircle size={10} />}
+                      <span
+                        className={`inline-flex items-center gap-1 font-bold text-[10px] tracking-wider px-2 py-0.5 rounded border ${
+                          tx.type === "CASH IN"
+                            ? "bg-success-bg text-success-text border-success-text/10"
+                            : "bg-warning-bg text-warning-text border-warning-text/10"
+                        }`}
+                      >
+                        {tx.type === "CASH IN" ? (
+                          <ArrowDownCircle size={10} />
+                        ) : (
+                          <ArrowUpCircle size={10} />
+                        )}
                         {tx.type}
                       </span>
                     </td>
-                    <td className="table-td text-muted-foreground text-xs max-w-[180px] truncate">{tx.description}</td>
+                    <td className="table-td text-muted-foreground text-xs max-w-[180px] truncate">
+                      {tx.description}
+                    </td>
                     <td className="table-td text-xs">{tx.vendorClient}</td>
                     <td className="table-td font-bold text-right whitespace-nowrap">
                       {formatCurrency(tx.amount)}
@@ -213,7 +288,9 @@ export default function Dashboard() {
             </table>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground py-10 text-center">No transactions recorded yet.</p>
+          <p className="text-sm text-muted-foreground py-10 text-center">
+            No transactions recorded yet.
+          </p>
         )}
       </div>
 
@@ -221,42 +298,65 @@ export default function Dashboard() {
       <div className="bg-card rounded-xl border border-border-main shadow-2xs animate-slide-up">
         <div className="flex items-center justify-between p-5 border-b border-border-main/60">
           <div>
-            <h3 className="text-base font-bold text-foreground">Recent Prospects</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Latest potential customers registered in the system.</p>
+            <h3 className="text-base font-bold text-foreground">
+              Recent Prospects
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Latest potential customers registered in the system.
+            </p>
           </div>
-          <Link to="/prospects" className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5">
+          <Link
+            to="/prospects"
+            className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5"
+          >
             View All <ChevronRight size={14} />
           </Link>
         </div>
 
-        {stats.recentProspects && stats.recentProspects.length > 0 ? (
+        {stats?.recentProspects && stats.recentProspects.length > 0 ? (
           <div className="divide-y divide-border-main">
-            {stats.recentProspects.map((prospect: any) => {
+            {(stats?.recentProspects || []).map((prospect: any) => {
               const statusColors: Record<string, string> = {
                 New: "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400",
-                Contacted: "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400",
-                Qualified: "bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400",
+                Contacted:
+                  "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400",
+                Qualified:
+                  "bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400",
                 Lost: "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400",
-                Converted: "bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400",
+                Converted:
+                  "bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400",
               };
               return (
-                <div key={prospect.id} className="flex items-center justify-between px-5 py-4 hover:bg-muted-foreground/5 transition-colors">
+                <div
+                  key={prospect.id}
+                  className="flex items-center justify-between px-5 py-4 hover:bg-muted-foreground/5 transition-colors"
+                >
                   <div className="space-y-0.5">
-                    <p className="text-sm font-bold text-foreground">{prospect.name}</p>
-                    <p className="text-xs text-muted-foreground">{prospect.phone || "—"} · {prospect.email || "—"}</p>
+                    <p className="text-sm font-bold text-foreground">
+                      {prospect.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {prospect.phone || "—"} · {prospect.email || "—"}
+                    </p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${statusColors[prospect.status] || "bg-slate-100 text-slate-500"}`}>
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${statusColors[prospect.status] || "bg-slate-100 text-slate-500"}`}
+                    >
                       {prospect.status}
                     </span>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(prospect.created_at)}</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {formatDate(prospect.created_at)}
+                    </span>
                   </div>
                 </div>
               );
             })}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground py-10 text-center">No prospects found.</p>
+          <p className="text-sm text-muted-foreground py-10 text-center">
+            No prospects found.
+          </p>
         )}
       </div>
     </div>

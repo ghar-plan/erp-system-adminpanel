@@ -13,7 +13,7 @@ const ResendOtp = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLoading } = useStore();
-  const { resetPassword } = useAuth();
+  const { resendOtp } = useAuth();
 
   const {
     register,
@@ -26,7 +26,7 @@ const ResendOtp = () => {
   });
 
   const onSubmit = async (data: ResendOtpForm) => {
-    const success = await resetPassword({ email: data.email });
+    const success = await resendOtp({ email: data.email });
     if (success) {
       navigate("/auth/verify-otp", { state: { email: data.email } });
     }
@@ -90,7 +90,7 @@ const ResendOtp = () => {
         <button
           type="button"
           onClick={() => navigate("/auth/login")}
-          className="text-sm text-primary hover:underline font-semibold"
+          className="text-sm text-primary hover:underline font-semibold cursor-pointer"
         >
           Back to Login
         </button>

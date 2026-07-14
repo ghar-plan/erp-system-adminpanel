@@ -37,19 +37,19 @@ const useAuth = () => {
 
   const verifyOtp = async (body: VerifyOtpDTO) => {
     const response = await Auth_APIS.verifyOtp(body);
-    const { status = false, message = "" } = response || {};
+    const { status = false, message = "", data = null } = response || {};
     if (status) {
       successToaster(message || "OTP verified successfully!");
-      return true;
+      return data;
     }
-    return false;
+    return null;
   };
 
   const resendOtp = async (body: ResendOtpDTO) => {
     const response = await Auth_APIS.resendOtp(body);
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "OTP resent successfully!");
+      successToaster(message || "OTP sent successfully!");
       return true;
     }
     return false;
@@ -59,7 +59,8 @@ const useAuth = () => {
     const response = await Auth_APIS.resetPassword(body);
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "Password reset instructions sent!");
+      successToaster(message || "Password reset successfully!");
+      navigate(siteRoutes.login, { replace: true });
       return true;
     }
     return false;
@@ -70,7 +71,6 @@ const useAuth = () => {
     const { status = false, message = "" } = response || {};
     if (status) {
       successToaster(message || "Password updated successfully!");
-      navigate(siteRoutes.login, { replace: true });
       return true;
     }
     return false;

@@ -6,5 +6,6 @@ export interface Vendor {
   address?: string;
   phone?: string;
   city?: string;
+  registrationNo?: string;
   created_at: string;
 }

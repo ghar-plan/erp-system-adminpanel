@@ -5,6 +5,8 @@ import {
   errorToaster,
   confirmationPopup,
 } from "@/utils/helpers/common/alert-service";
+import axios from "@/utils/helpers/common/axios.config";
+import { store } from "@/store";
 
 const useActivities = () => {
   const navigate = useNavigate();
@@ -33,7 +35,7 @@ const useActivities = () => {
     }
   };
 
-  const createActivity = async (body: { name: string }) => {
+  const createActivity = async (body: { name: string; category?: string }) => {
     const response = await Activities_APIS.create(body);
     const { status = false, message = "" } = response || {};
     if (status) {
@@ -66,7 +68,7 @@ const useActivities = () => {
     }
   };
 
-  const updateActivity = async (id: string, body: { name: string }) => {
+  const updateActivity = async (id: string, body: { name: string; category?: string }) => {
     const response = await Activities_APIS.update(id, body);
     const { status = false, message = "" } = response || {};
     if (status) {
@@ -97,6 +99,33 @@ const useActivities = () => {
     }
   };
 
+  const downloadSampleExcel = async () => {
+    try {
+      const state = store.getState();
+      const token = state.sharedReducer.token;
+      const response = await axios.get("/v1/activities/sample-download", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        responseType: "blob",
+      });
+      
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "activities_sample.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download sample file", error);
+    }
+  };
+
   return {
     getActivities,
     getActivityById,
@@ -105,6 +134,7 @@ const useActivities = () => {
     uploadActivitiesCsv,
     updateActivity,
     deleteActivity,
+    downloadSampleExcel,
   };
 };
 

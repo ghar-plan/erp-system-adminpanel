@@ -82,10 +82,16 @@ const errorHandler = (error: any) => {
     const responseData = error.response.data;
 
     if (status === 401) {
-      if (error.config.url !== "/login") {
+      const isLoginRequest = error.config?.url?.includes("/login") || error.config?.url?.includes("/auth/login");
+      if (isLoginRequest) {
+        const errorMsg = responseData?.message || responseData?.error || "Invalid email or password";
+        errorToaster(errorMsg);
+        message = errorMsg;
+      } else {
         errorToaster(warningMessages.sessionExpired);
+        localStorage.clear();
+        message = warningMessages.sessionExpired;
       }
-      localStorage.clear();
     } else {
       const errorMsg = responseData?.message || responseData?.error || errorMessages.somethingWentWrong;
       if (Array.isArray(errorMsg)) {
