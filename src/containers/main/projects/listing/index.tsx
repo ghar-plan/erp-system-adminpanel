@@ -104,6 +104,7 @@ export default function ProjectListing() {
     "Site Name",
     "Region",
     "Subregion",
+    "Start Date",
     "Date of Entry",
     "Actions",
   ];
@@ -259,6 +260,18 @@ export default function ProjectListing() {
                       </td>
                       <td className="table-td">{project?.region || "--"}</td>
                       <td className="table-td">{project?.subregion || "--"}</td>
+                      <td className="table-td">
+                        {project?.startDate
+                          ? new Date(project.startDate).toLocaleDateString(
+                              "en-US",
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              },
+                            )
+                          : "--"}
+                      </td>
                       <td className="table-td">
                         {project?.created_at
                           ? new Date(project.created_at).toLocaleDateString(

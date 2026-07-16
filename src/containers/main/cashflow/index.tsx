@@ -15,6 +15,7 @@ export default function Cashflow() {
     recordCashOut,
     deleteCashflow,
     exportCashflowCsv,
+    downloadReceipt,
   } = useCashflow();
 
   // Dropdown states
@@ -196,6 +197,13 @@ export default function Cashflow() {
     await deleteCashflow(id, type, label, refreshTransactions);
   };
 
+  const handleDownloadReceipt = async (
+    id: string,
+    type: "CASH IN" | "CASH OUT",
+  ) => {
+    await downloadReceipt(id, type);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -248,6 +256,7 @@ export default function Cashflow() {
           exportToCSV={handleCSVExport}
           formatDate={formatDate}
           onDelete={handleDelete}
+          onDownloadReceipt={handleDownloadReceipt}
         />
 
         {totalElements > 0 && (

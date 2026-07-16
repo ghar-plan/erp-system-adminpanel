@@ -14,6 +14,7 @@ const useProjects = () => {
     siteName: string;
     region: string;
     subregion: string;
+    startDate: string;
     mediaId: string | null;
   }) => {
     // Sanitize payload: remove null/empty mediaId to avoid UUID validation check error on NestJS backend
@@ -21,6 +22,7 @@ const useProjects = () => {
       siteName: data.siteName,
       region: data.region,
       subregion: data.subregion,
+      startDate: data.startDate,
       ...(data.mediaId ? { mediaId: data.mediaId } : {}),
     };
 

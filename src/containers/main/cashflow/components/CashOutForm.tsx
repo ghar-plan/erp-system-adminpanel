@@ -74,7 +74,7 @@ export default function CashOutForm({
           <div>
             <label className="mb-2 block ui-form-label">SELECT VENDOR</label>
             <select
-              className="common-input"
+              className="common-input cursor-pointer"
               {...register("vendorId", { required: "Vendor is required" })}
             >
               <option value="">Select a Vendor</option>
@@ -94,7 +94,7 @@ export default function CashOutForm({
           <div>
             <label className="mb-2 block ui-form-label">SELECT ACTIVITY</label>
             <select
-              className="common-input"
+              className="common-input cursor-pointer"
               {...register("activityId", { required: "Activity is required" })}
             >
               <option value="">Select an Activity</option>
@@ -114,7 +114,7 @@ export default function CashOutForm({
           <div>
             <label className="mb-2 block ui-form-label">PROJECT</label>
             <select
-              className="common-input"
+              className="common-input cursor-pointer"
               {...register("projectId", { required: "Project is required" })}
             >
               <option value="">Select a Project</option>
@@ -153,7 +153,7 @@ export default function CashOutForm({
           <div>
             <label className="mb-2 block ui-form-label">CATEGORY</label>
             <select
-              className="common-input"
+              className="common-input cursor-pointer"
               {...register("category", { required: "Category is required" })}
             >
               <option value="">Select Category</option>
@@ -197,7 +197,7 @@ export default function CashOutForm({
           <div>
             <label className="mb-2 block ui-form-label">UOM (UNIT)</label>
             <select
-              className="common-input"
+              className="common-input cursor-pointer"
               {...register("uom", { required: "UOM is required" })}
             >
               <option value="">Select UOM</option>

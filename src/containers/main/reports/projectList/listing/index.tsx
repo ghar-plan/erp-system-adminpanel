@@ -77,7 +77,7 @@ export default function ProjectLedger() {
   const handleDownloadReceipt = async (id: string) => {
     try {
       const token = store.getState().sharedReducer.token;
-      const response = await axios.get(Cashflows_APIS.downloadReceipt(id), {
+      const response = await axios.get(Cashflows_APIS.downloadReceipt(id, "out"), {
         headers: { Authorization: `Bearer ${token}` },
         responseType: "blob",
       });
@@ -254,10 +254,10 @@ export default function ProjectLedger() {
                     <td className="table-td text-center">
                       <button
                         onClick={() => handleDownloadReceipt(tx.id)}
-                        className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg dark:text-amber-500 dark:hover:bg-amber-950/30 transition-colors inline-flex cursor-pointer"
+                        className="btn-action-download"
                         title="Download Receipt"
                       >
-                        <Download size={18} />
+                        <Download size={16} />
                       </button>
                     </td>
                   </tr>

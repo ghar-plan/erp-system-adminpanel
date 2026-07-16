@@ -3,6 +3,7 @@ export interface Project {
   siteName: string;
   region: string;
   subregion: string;
+  startDate?: string | null;
   mediaId?: string | null;
   media?: {
     id: string;
@@ -16,6 +17,7 @@ export class ProjectDTO {
   siteName: string = "";
   region: string = "";
   subregion: string = "";
+  startDate?: string | null = null;
   mediaId?: string | null = null;
   media?: {
     id: string;

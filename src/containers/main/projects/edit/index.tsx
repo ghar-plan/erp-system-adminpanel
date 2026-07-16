@@ -11,6 +11,7 @@ interface ProjectFormInputs {
   siteName: string;
   region: string;
   subregion: string;
+  startDate: string;
   mediaId: string | null;
 }
 
@@ -38,6 +39,9 @@ export default function ProjectsEdit() {
           siteName: project.siteName,
           region: project.region,
           subregion: project.subregion,
+          startDate: project.startDate
+            ? String(project.startDate).slice(0, 10)
+            : "",
           mediaId: project.mediaId || project.media?.id || null,
         });
         if (project.media?.url) {
@@ -73,6 +77,7 @@ export default function ProjectsEdit() {
         siteName: data.siteName,
         region: data.region,
         subregion: data.subregion,
+        startDate: data.startDate,
       };
       if (data.mediaId) {
         payload.mediaId = data.mediaId;
@@ -173,6 +178,22 @@ export default function ProjectsEdit() {
                   </p>
                 )}
               </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block ui-form-label">Start Date</label>
+              <input
+                type="date"
+                className={`common-input ${errors.startDate ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("startDate", {
+                  required: "Start Date is required",
+                })}
+              />
+              {errors.startDate && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.startDate.message}
+                </p>
+              )}
             </div>
           </div>
 

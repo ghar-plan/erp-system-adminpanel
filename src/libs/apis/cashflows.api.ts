@@ -11,7 +11,8 @@ export const Cashflows_APIS = {
   getAllOut: (params: any = {}) => getRequest("/v1/cashflows/out", params),
   getAllCombined: (params: any = {}) => getRequest("/v1/cashflows", params),
   getProjectListSummary: () => getRequest("/v1/cashflows/project-list"),
-  downloadReceipt: (id: string) => `/v1/cashflows/out/${id}/receipt`,
+  downloadReceipt: (id: string, type: "in" | "out" = "out") =>
+    `/v1/cashflows/${type}/${id}/receipt`,
   exportCsv: (params: any = {}) => getRequest("/v1/cashflows/export", params),
   deleteIn: (id: string) => deleteRequest(`/v1/cashflows/in/${id}`),
   deleteOut: (id: string) => deleteRequest(`/v1/cashflows/out/${id}`),

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import { FileSpreadsheet, Search, Trash2 } from "lucide-react";
+import { Download, FileSpreadsheet, Search, Trash2 } from "lucide-react";
 
 interface Transaction {
   id: string;
@@ -29,6 +29,7 @@ interface TransactionsTableProps {
   exportToCSV: () => void;
   formatDate: (d: any) => string;
   onDelete: (id: string, type: "CASH IN" | "CASH OUT", label: string) => void;
+  onDownloadReceipt: (id: string, type: "CASH IN" | "CASH OUT") => void;
 }
 
 export default function TransactionsTable({
@@ -47,6 +48,7 @@ export default function TransactionsTable({
   exportToCSV,
   formatDate,
   onDelete,
+  onDownloadReceipt,
 }: TransactionsTableProps) {
   // Local draft states to allow Apply/Reset behavior
   const [draftProject, setDraftProject] = useState(filterProject);
@@ -299,7 +301,14 @@ export default function TransactionsTable({
                         : "--"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex justify-center">
+                      <div className="flex justify-center gap-2">
+                        <button
+                          onClick={() => onDownloadReceipt(tx.id, tx.type)}
+                          className="btn-action-download"
+                          title="Download Receipt"
+                        >
+                          <Download size={16} />
+                        </button>
                         <button
                           onClick={() =>
                             onDelete(tx.id, tx.type, tx.description || tx.type)

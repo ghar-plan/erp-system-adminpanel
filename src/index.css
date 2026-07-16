@@ -193,11 +193,15 @@ body {
 
   /* Global Action Buttons */
   .btn-action-view {
-    @apply p-2 rounded-lg text-primary bg-primary/5 hover:bg-primary/10 transition-colors inline-flex items-center justify-center;
+    @apply p-2 rounded-lg text-primary bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer inline-flex items-center justify-center;
   }
 
   .btn-action-edit {
-    @apply p-2 rounded-lg text-amber-600 bg-amber-500/10 hover:bg-amber-500/20 dark:text-amber-400 transition-colors inline-flex items-center justify-center;
+    @apply p-2 rounded-lg text-amber-600 bg-amber-500/10 hover:bg-amber-500/20 dark:text-amber-400 transition-colors cursor-pointer inline-flex items-center justify-center;
+  }
+
+  .btn-action-download {
+    @apply p-2 rounded-lg text-amber-600 bg-amber-500/10 hover:bg-amber-500/20 dark:text-amber-400 dark:hover:bg-amber-950/30 transition-colors cursor-pointer inline-flex items-center justify-center;
   }
 
   .btn-action-delete {

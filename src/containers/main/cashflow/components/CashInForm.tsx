@@ -54,7 +54,7 @@ export default function CashInForm({
         <div>
           <label className="mb-2 block ui-form-label">SELECT PROJECT</label>
           <select
-            className="common-input"
+            className="common-input cursor-pointer"
             {...register("projectId", { required: "Project is required" })}
           >
             <option value="">Select a Project</option>

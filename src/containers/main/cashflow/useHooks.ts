@@ -4,8 +4,11 @@ import { Vendors_APIS } from "@/libs/apis/vendors.api";
 import { Activities_APIS } from "@/libs/apis/activities.api";
 import {
   successToaster,
+  errorToaster,
   confirmationPopup,
 } from "@/utils/helpers/common/alert-service";
+import axios from "@/utils/helpers/common/axios.config";
+import { store } from "@/store";
 
 const useCashflow = () => {
   const getProjects = async (setData: Function) => {
@@ -121,6 +124,33 @@ const useCashflow = () => {
     return await Cashflows_APIS.exportCsv(params);
   };
 
+  const downloadReceipt = async (id: string, type: "CASH IN" | "CASH OUT") => {
+    try {
+      const receiptType = type === "CASH IN" ? "in" : "out";
+      const token = store.getState().sharedReducer.token;
+      const response = await axios.get(
+        Cashflows_APIS.downloadReceipt(id, receiptType),
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
+        },
+      );
+      const url = window.URL.createObjectURL(
+        new Blob([response.data], { type: "application/pdf" }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `receipt-${receiptType}-${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading receipt", error);
+      errorToaster("Failed to download receipt");
+    }
+  };
+
   return {
     getProjects,
     getVendors,
@@ -132,6 +162,7 @@ const useCashflow = () => {
     recordCashOut,
     deleteCashflow,
     exportCashflowCsv,
+    downloadReceipt,
   };
 };
 

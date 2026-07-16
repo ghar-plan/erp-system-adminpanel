@@ -137,6 +137,30 @@ export default function ProjectsView() {
                   </div>
                   <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                      Start Date
+                    </span>
+                    <span className="text-sm font-semibold text-foreground mt-0.5 block">
+                      {project.startDate
+                        ? new Date(project.startDate).toLocaleDateString(
+                            "en-US",
+                            {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            },
+                          )
+                        : "--"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-lg bg-warning-bg text-warning-text">
+                    <Calendar size={20} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
                       Registration Date
                     </span>
                     <span className="text-sm font-semibold text-foreground mt-0.5 block">
