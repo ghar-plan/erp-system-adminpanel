@@ -14,7 +14,7 @@ export default function Cashflow() {
     recordCashIn,
     recordCashOut,
     deleteCashflow,
-    exportCashflowCsv,
+    exportCashflowExcel,
     downloadReceipt,
   } = useCashflow();
 
@@ -27,6 +27,11 @@ export default function Cashflow() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [submittingIn, setSubmittingIn] = useState(false);
   const [submittingOut, setSubmittingOut] = useState(false);
+  const [totals, setTotals] = useState({ totalIn: 0, totalOut: 0 });
+
+  // Edit states
+  const [editDataIn, setEditDataIn] = useState<any>(null);
+  const [editDataOut, setEditDataOut] = useState<any>(null);
 
   // Pagination states
   const [totalElements, setTotalElements] = useState(0);
@@ -97,7 +102,7 @@ export default function Cashflow() {
     if (startDate) queryParams.startDate = startDate;
     if (endDate) queryParams.endDate = endDate;
 
-    await getCashflowCombinedList(setTransactions, queryParams, setTotalElements);
+    await getCashflowCombinedList(setTransactions, queryParams, setTotalElements, setTotals);
   };
 
   useEffect(() => {
@@ -146,14 +151,27 @@ export default function Cashflow() {
       installment: data.installment,
       amount: Number(data.amount),
     };
-    await recordCashIn(payload, () => {
-      refreshTransactions();
-    });
+    if (editDataIn) {
+      await useCashflow().editCashIn(editDataIn.id, payload, () => {
+        setEditDataIn(null);
+        refreshTransactions();
+      });
+    } else {
+      await recordCashIn(payload, () => {
+        refreshTransactions();
+      });
+    }
     setSubmittingIn(false);
   };
 
   const handleRecordExpense = async (data: any) => {
     setSubmittingOut(true);
+    let unitPrice = Number(data.price);
+    const totalAmount = data.amount ? Number(data.amount) : Number(data.quantity) * Number(data.price);
+    if (data.amount && Number(data.quantity) > 0) {
+      unitPrice = totalAmount / Number(data.quantity);
+    }
+
     const payload = {
       projectId: data.projectId,
       vendorId: data.vendorId,
@@ -162,31 +180,44 @@ export default function Cashflow() {
       category: data.category,
       quantity: Number(data.quantity),
       uom: data.uom,
-      amount: Number(data.amount),
+      amount: unitPrice,
     };
-    await recordCashOut(payload, () => {
-      refreshTransactions();
-    });
+    if (editDataOut) {
+      await useCashflow().editCashOut(editDataOut.id, payload, () => {
+        setEditDataOut(null);
+        refreshTransactions();
+      });
+    } else {
+      await recordCashOut(payload, () => {
+        refreshTransactions();
+      });
+    }
     setSubmittingOut(false);
+  };
+
+  const handleEdit = (tx: any) => {
+    if (tx.type === "CASH IN") {
+      setEditDataOut(null);
+      setEditDataIn(tx);
+    } else {
+      setEditDataIn(null);
+      setEditDataOut(tx);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
 
 
-  // Export to CSV from backend
-  const handleCSVExport = async () => {
-    const csvData = await exportCashflowCsv();
-    if (csvData && !csvData.error) {
-      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;\uFEFF" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      const dateStr = formatDateToYMD(new Date()).replace(/-/g, "_");
-      link.setAttribute("download", `cashflow_report_${dateStr}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
+  // Export to Excel from backend
+  const handleExcelExport = async () => {
+    const queryParams: any = {};
+    if (filterProject) queryParams.projectId = filterProject;
+    if (filterType && filterType !== "ALL") queryParams.type = filterType;
+    if (filterSearch) queryParams.search = filterSearch;
+    if (filterStartDate) queryParams.startDate = filterStartDate;
+    if (filterEndDate) queryParams.endDate = filterEndDate;
+
+    await exportCashflowExcel(queryParams);
   };
 
   const handleDelete = async (
@@ -219,6 +250,8 @@ export default function Cashflow() {
 
       <hr className="border-border-main" />
 
+
+
       {/* Forms Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-slide-up">
         {/* CASH IN FORM */}
@@ -226,6 +259,8 @@ export default function Cashflow() {
           projects={projects}
           onSubmit={handleRecordPayment}
           submitting={submittingIn}
+          editData={editDataIn}
+          onCancelEdit={() => setEditDataIn(null)}
         />
 
         {/* CASH OUT FORM */}
@@ -235,6 +270,8 @@ export default function Cashflow() {
           activities={activities}
           onSubmit={handleRecordExpense}
           submitting={submittingOut}
+          editData={editDataOut}
+          onCancelEdit={() => setEditDataOut(null)}
         />
       </div>
 
@@ -253,10 +290,12 @@ export default function Cashflow() {
           setFilterStartDate={setFilterStartDate}
           filterEndDate={filterEndDate}
           setFilterEndDate={setFilterEndDate}
-          exportToCSV={handleCSVExport}
+          exportData={handleExcelExport}
           formatDate={formatDate}
           onDelete={handleDelete}
           onDownloadReceipt={handleDownloadReceipt}
+          onEdit={handleEdit}
+          totals={totals}
         />
 
         {totalElements > 0 && (

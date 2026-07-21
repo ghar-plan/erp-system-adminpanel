@@ -26,10 +26,12 @@ interface TransactionsTableProps {
   setFilterStartDate: (val: string) => void;
   filterEndDate: string;
   setFilterEndDate: (val: string) => void;
-  exportToCSV: () => void;
+  exportData: () => void;
   formatDate: (d: any) => string;
   onDelete: (id: string, type: "CASH IN" | "CASH OUT", label: string) => void;
   onDownloadReceipt: (id: string, type: "CASH IN" | "CASH OUT") => void;
+  onEdit: (tx: any) => void;
+  totals?: { totalIn: number; totalOut: number };
 }
 
 export default function TransactionsTable({
@@ -45,10 +47,12 @@ export default function TransactionsTable({
   setFilterStartDate,
   filterEndDate,
   setFilterEndDate,
-  exportToCSV,
+  exportData,
   formatDate,
   onDelete,
   onDownloadReceipt,
+  onEdit,
+  totals,
 }: TransactionsTableProps) {
   // Local draft states to allow Apply/Reset behavior
   const [draftProject, setDraftProject] = useState(filterProject);
@@ -108,11 +112,11 @@ export default function TransactionsTable({
         </h2>
 
         <button
-          onClick={exportToCSV}
+          onClick={exportData}
           className="flex h-10 px-5 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs whitespace-nowrap self-start sm:self-auto"
         >
           <FileSpreadsheet size={16} />
-          Export CSV
+          Export Data
         </button>
       </div>
 
@@ -237,6 +241,24 @@ export default function TransactionsTable({
         </div>
       </div>
 
+      {/* Filter Totals Display */}
+      {filterProject && totals && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-slide-up">
+          <div className="p-5 rounded-xl border border-primary/20 bg-primary/5 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Total Cash In</p>
+              <p className="text-2xl font-bold text-primary mt-1">PKR {totals.totalIn.toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="p-5 rounded-xl border border-warning-text/20 bg-warning-bg/10 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Total Cash Out</p>
+              <p className="text-2xl font-bold text-warning-text mt-1">PKR {totals.totalOut.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Transactions Table Card */}
       <div className="bg-card rounded-xl border border-border-main overflow-hidden shadow-xs animate-slide-up">
         <div className="overflow-x-auto">
@@ -302,6 +324,13 @@ export default function TransactionsTable({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex justify-center gap-2">
+                        <button
+                          onClick={() => onEdit(tx)}
+                          className="btn-action-edit"
+                          title="Edit"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                        </button>
                         <button
                           onClick={() => onDownloadReceipt(tx.id, tx.type)}
                           className="btn-action-download"

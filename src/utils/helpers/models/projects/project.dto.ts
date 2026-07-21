@@ -9,6 +9,8 @@ export interface Project {
     id: string;
     url: string;
   } | null;
+  cashflowsIn?: any[];
+  cashflowsOut?: any[];
   created_at: string;
 }
 

@@ -65,15 +65,20 @@ const useCashflow = () => {
     setData: Function,
     queryParams: any = {},
     setTotalElements?: Function,
+    setTotals?: Function,
   ) => {
     const response = await Cashflows_APIS.getAllCombined(queryParams);
-    const { status = false, data = [] } = response || {};
+    const { status = false, data } = response || {};
     if (status && data) {
-      setData(data);
-      setTotalElements?.(response?.total || data.length);
+      // In ApiResponseDto.success mapping, data is now an object: { data: [], total: number, totalIn: number, totalOut: number }
+      const items = Array.isArray(data) ? data : data.data || [];
+      setData(items);
+      setTotalElements?.(response?.total || data.total || items.length);
+      setTotals?.({ totalIn: data.totalIn || 0, totalOut: data.totalOut || 0 });
     } else {
       setData([]);
       setTotalElements?.(0);
+      setTotals?.({ totalIn: 0, totalOut: 0 });
     }
   };
 
@@ -89,6 +94,26 @@ const useCashflow = () => {
 
   const recordCashOut = async (body: any, callback?: Function) => {
     const response = await Cashflows_APIS.createOut(body);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message);
+      callback?.();
+      return response;
+    }
+  };
+
+  const editCashIn = async (id: string, body: any, callback?: Function) => {
+    const response = await Cashflows_APIS.updateIn(id, body);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message);
+      callback?.();
+      return response;
+    }
+  };
+
+  const editCashOut = async (id: string, body: any, callback?: Function) => {
+    const response = await Cashflows_APIS.updateOut(id, body);
     const { status = false, message = "" } = response || {};
     if (status) {
       successToaster(message);
@@ -122,6 +147,33 @@ const useCashflow = () => {
 
   const exportCashflowCsv = async (params: any = {}) => {
     return await Cashflows_APIS.exportCsv(params);
+  };
+
+  const exportCashflowExcel = async (params: any = {}) => {
+    try {
+      const token = store.getState().sharedReducer.token;
+      const response = await axios.get(Cashflows_APIS.exportExcel(), {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(
+        new Blob([response.data], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      const dateStr = new Date().toISOString().split("T")[0].replace(/-/g, "_");
+      link.setAttribute("download", `Cashflow_Report_${dateStr}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading excel", error);
+      errorToaster("Failed to download Excel report");
+    }
   };
 
   const downloadReceipt = async (id: string, type: "CASH IN" | "CASH OUT") => {
@@ -160,8 +212,11 @@ const useCashflow = () => {
     getCashflowCombinedList,
     recordCashIn,
     recordCashOut,
+    editCashIn,
+    editCashOut,
     deleteCashflow,
     exportCashflowCsv,
+    exportCashflowExcel,
     downloadReceipt,
   };
 };

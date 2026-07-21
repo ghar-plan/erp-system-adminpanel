@@ -176,6 +176,20 @@ export default function ProjectsView() {
                     </span>
                   </div>
                 </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
+                    <TrendingUp size={20} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                      Total Number of Cash Out
+                    </span>
+                    <span className="text-sm font-semibold text-foreground mt-0.5 block">
+                      {project?.cashflowsOut?.length || 0}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

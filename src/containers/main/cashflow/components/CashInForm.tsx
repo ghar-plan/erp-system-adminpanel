@@ -12,12 +12,16 @@ interface CashInFormProps {
   projects: any[];
   onSubmit: (data: CashInFormInputs) => Promise<void>;
   submitting: boolean;
+  editData?: any;
+  onCancelEdit?: () => void;
 }
 
 export default function CashInForm({
   projects,
   onSubmit,
   submitting,
+  editData,
+  onCancelEdit,
 }: CashInFormProps) {
   const {
     register,
@@ -31,6 +35,22 @@ export default function CashInForm({
       amount: "",
     },
   });
+
+  React.useEffect(() => {
+    if (editData) {
+      reset({
+        projectId: editData.projectId || "",
+        installment: editData.installment || "",
+        amount: editData.amount ? String(editData.amount) : "",
+      });
+    } else {
+      reset({
+        projectId: "",
+        installment: "",
+        amount: "",
+      });
+    }
+  }, [editData, reset]);
 
   const handleFormSubmit = async (data: CashInFormInputs) => {
     await onSubmit(data);
@@ -47,7 +67,9 @@ export default function CashInForm({
         <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
           <ArrowDownCircle size={22} className="stroke-[2.5]" />
         </div>
-        <h2 className="text-xl font-bold text-foreground  ">Cash In</h2>
+        <h2 className="text-xl font-bold text-foreground">
+          {editData ? "Edit Cash In" : "Cash In"}
+        </h2>
       </div>
 
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
@@ -107,20 +129,31 @@ export default function CashInForm({
           )}
         </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="flex h-10 px-6 w-full items-center justify-center gap-2 rounded-md bg-primary hover:opacity-95 text-white font-bold text-sm tracking-wide transition-all cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {submitting ? (
-            <Loader2 className="animate-spin" size={16} />
-          ) : (
-            <>
-              <Coins size={16} />
-              RECORD PAYMENT
-            </>
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="flex h-10 px-6 w-full items-center justify-center gap-2 rounded-md bg-primary hover:opacity-95 text-white font-bold text-sm tracking-wide transition-all cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? (
+              <Loader2 className="animate-spin" size={16} />
+            ) : (
+              <>
+                <Coins size={16} />
+                {editData ? "UPDATE PAYMENT" : "RECORD PAYMENT"}
+              </>
+            )}
+          </button>
+          {editData && (
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              className="flex h-10 px-6 items-center justify-center rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 font-bold text-sm tracking-wide transition-all cursor-pointer shadow-sm"
+            >
+              Cancel
+            </button>
           )}
-        </button>
+        </div>
       </form>
     </div>
   );
