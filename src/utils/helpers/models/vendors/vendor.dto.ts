@@ -8,4 +8,6 @@ export interface Vendor {
   city?: string;
   registrationNo?: string;
   created_at: string;
+  contracts?: any[];
+  cashflowsOut?: any[];
 }

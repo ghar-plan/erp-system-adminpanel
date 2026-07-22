@@ -17,7 +17,7 @@ export const Cashflows_APIS = {
   downloadReceipt: (id: string, type: "in" | "out" = "out") =>
     `/v1/cashflows/${type}/${id}/receipt`,
   exportCsv: (params: any = {}) => getRequest("/v1/cashflows/export", params),
-  exportExcel: () => `/v1/cashflows/export/excel`,
+  exportPdf: () => `/v1/cashflows/export/pdf`,
   deleteIn: (id: string) => deleteRequest(`/v1/cashflows/in/${id}`),
   deleteOut: (id: string) => deleteRequest(`/v1/cashflows/out/${id}`),
 };

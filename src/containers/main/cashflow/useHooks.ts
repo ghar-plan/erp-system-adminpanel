@@ -149,30 +149,30 @@ const useCashflow = () => {
     return await Cashflows_APIS.exportCsv(params);
   };
 
-  const exportCashflowExcel = async (params: any = {}) => {
+  const exportCashflowPdf = async (params: any = {}) => {
     try {
       const token = store.getState().sharedReducer.token;
-      const response = await axios.get(Cashflows_APIS.exportExcel(), {
+      const response = await axios.get(Cashflows_APIS.exportPdf(), {
         params,
         headers: { Authorization: `Bearer ${token}` },
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(
         new Blob([response.data], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          type: "application/pdf",
         }),
       );
       const link = document.createElement("a");
       link.href = url;
       const dateStr = new Date().toISOString().split("T")[0].replace(/-/g, "_");
-      link.setAttribute("download", `Cashflow_Report_${dateStr}.xlsx`);
+      link.setAttribute("download", `Expense_Sheet_${dateStr}.pdf`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error downloading excel", error);
-      errorToaster("Failed to download Excel report");
+      console.error("Error downloading pdf", error);
+      errorToaster("Failed to download PDF report");
     }
   };
 
@@ -216,7 +216,7 @@ const useCashflow = () => {
     editCashOut,
     deleteCashflow,
     exportCashflowCsv,
-    exportCashflowExcel,
+    exportCashflowPdf,
     downloadReceipt,
   };
 };

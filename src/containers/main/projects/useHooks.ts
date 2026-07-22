@@ -51,6 +51,16 @@ const useProjects = () => {
     }
   };
 
+  const getAllProjects = async (setData: Function) => {
+    const response = await Projects_APIS.getAllWithoutPagination();
+    const { status = false, data = [] } = response || {};
+    if (status && data) {
+      setData(data);
+    } else {
+      setData([]);
+    }
+  };
+
   const deleteProject = async (
     id: string,
     name: string,
@@ -114,6 +124,7 @@ const useProjects = () => {
   return {
     createProject,
     getProjects,
+    getAllProjects,
     deleteProject,
     uploadImage,
     getProjectById,

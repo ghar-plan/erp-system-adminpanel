@@ -20,6 +20,9 @@ import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import Reports from "@/containers/main/reports/vendorList/listing";
 import MyProfile from "@/containers/main/profile";
 import ProjectLedger from "@/containers/main/reports/projectList/listing";
+import ContractsListing from "@/containers/main/contracts/listing";
+import ContractCreate from "@/containers/main/contracts/create";
+import ContractEdit from "@/containers/main/contracts/edit";
 
 const DashboardRoutes = () => {
   return (
@@ -45,6 +48,9 @@ const DashboardRoutes = () => {
         <Route path={siteRoutes.prospectsEdit} element={<ProspectCreate />} />
         <Route path={siteRoutes.reportsVendorList} element={<Reports />} />
         <Route path={siteRoutes.profile} element={<MyProfile />} />
+        <Route path={siteRoutes.contracts} element={<ContractsListing />} />
+        <Route path={siteRoutes.contractsCreate} element={<ContractCreate />} />
+        <Route path={siteRoutes.contractsEdit} element={<ContractEdit />} />
       </Routes>
     </MainLayout>
   );

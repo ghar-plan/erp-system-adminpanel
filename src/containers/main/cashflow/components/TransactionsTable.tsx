@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import { Download, FileSpreadsheet, Search, Trash2 } from "lucide-react";
+import { Download, FileText, Search, Trash2 } from "lucide-react";
 
 interface Transaction {
   id: string;
@@ -115,8 +115,8 @@ export default function TransactionsTable({
           onClick={exportData}
           className="flex h-10 px-5 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs whitespace-nowrap self-start sm:self-auto"
         >
-          <FileSpreadsheet size={16} />
-          Export Data
+          <FileText size={16} />
+          Export PDF
         </button>
       </div>
 

@@ -14,7 +14,8 @@ export default function Cashflow() {
     recordCashIn,
     recordCashOut,
     deleteCashflow,
-    exportCashflowExcel,
+    exportCashflowCsv,
+    exportCashflowPdf,
     downloadReceipt,
   } = useCashflow();
 
@@ -208,8 +209,8 @@ export default function Cashflow() {
 
 
 
-  // Export to Excel from backend
-  const handleExcelExport = async () => {
+  // Export to PDF from backend
+  const handlePdfExport = async () => {
     const queryParams: any = {};
     if (filterProject) queryParams.projectId = filterProject;
     if (filterType && filterType !== "ALL") queryParams.type = filterType;
@@ -217,7 +218,7 @@ export default function Cashflow() {
     if (filterStartDate) queryParams.startDate = filterStartDate;
     if (filterEndDate) queryParams.endDate = filterEndDate;
 
-    await exportCashflowExcel(queryParams);
+    await exportCashflowPdf(queryParams);
   };
 
   const handleDelete = async (
@@ -290,7 +291,7 @@ export default function Cashflow() {
           setFilterStartDate={setFilterStartDate}
           filterEndDate={filterEndDate}
           setFilterEndDate={setFilterEndDate}
-          exportData={handleExcelExport}
+          exportData={handlePdfExport}
           formatDate={formatDate}
           onDelete={handleDelete}
           onDownloadReceipt={handleDownloadReceipt}

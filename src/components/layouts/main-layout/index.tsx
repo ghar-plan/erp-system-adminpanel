@@ -15,6 +15,7 @@ import {
   BarChart3,
   ChevronDown,
   ChevronRight,
+  FileSignature,
 } from "lucide-react";
 
 interface LayoutProps {
@@ -73,6 +74,11 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
       text: "Prospects",
       path: siteRoutes.prospects,
       icon: <UserSearch size={20} />,
+    },
+    {
+      text: "Contracts",
+      path: siteRoutes.contracts,
+      icon: <FileSignature size={20} />,
     },
     {
       text: "Reports",

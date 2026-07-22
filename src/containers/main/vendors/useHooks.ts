@@ -35,6 +35,16 @@ const useVendors = () => {
     }
   };
 
+  const getAllVendors = async (setData: Function) => {
+    const response = await Vendors_APIS.getAllWithoutPagination();
+    const { status = false, data = [] } = response || {};
+    if (status && data) {
+      setData(data);
+    } else {
+      setData([]);
+    }
+  };
+
   const getVendorById = async (id: string, setData: Function) => {
     const response = await Vendors_APIS.getById(id);
     const { status = false, data = null } = response || {};
@@ -93,6 +103,7 @@ const useVendors = () => {
   return {
     createVendor,
     getVendors,
+    getAllVendors,
     getVendorById,
     updateVendor,
     deleteVendor,

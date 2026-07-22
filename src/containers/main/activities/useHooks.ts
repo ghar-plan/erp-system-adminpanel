@@ -27,6 +27,16 @@ const useActivities = () => {
     }
   };
 
+  const getAllActivities = async (setData: Function) => {
+    const response = await Activities_APIS.getAllWithoutPagination();
+    const { status = false, data = [] } = response || {};
+    if (status && data) {
+      setData(data);
+    } else {
+      setData([]);
+    }
+  };
+
   const getActivityById = async (id: string, setData: Function) => {
     const response = await Activities_APIS.getById(id);
     const { status = false, data = null } = response || {};
@@ -128,6 +138,7 @@ const useActivities = () => {
 
   return {
     getActivities,
+    getAllActivities,
     getActivityById,
     createActivity,
     createActivitiesBulk,

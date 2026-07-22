@@ -21,4 +21,8 @@ export enum siteRoutes {
   reportsProjectList = "/reports/project-list",
   reportsVendorList = "/reports/vendor-list",
   profile = "/profile",
+  contracts = "/contracts",
+  contractsCreate = "/contracts/create",
+  contractsView = "/contracts/view/:id",
+  contractsEdit = "/contracts/edit/:id",
 }
