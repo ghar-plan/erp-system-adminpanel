@@ -171,12 +171,8 @@ export default function Cashflow() {
 
   const handleRecordExpense = async (data: any) => {
     setSubmittingOut(true);
-    let unitPrice = Number(data.price);
-    const totalAmount = data.amount ? Number(data.amount) : Number(data.quantity) * Number(data.price);
-    if (data.amount && Number(data.quantity) > 0) {
-      unitPrice = totalAmount / Number(data.quantity);
-    }
 
+    // DB stores unit price in `amount`; total shown in UI is quantity × price
     const payload = {
       projectId: data.projectId,
       vendorId: data.vendorId,
@@ -185,7 +181,7 @@ export default function Cashflow() {
       category: data.category,
       quantity: Number(data.quantity),
       uom: data.uom,
-      amount: unitPrice,
+      amount: Number(data.price),
     };
     if (editDataOut) {
       await useCashflow().editCashOut(editDataOut.id, payload, () => {

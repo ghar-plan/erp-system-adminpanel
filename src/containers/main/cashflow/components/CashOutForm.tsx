@@ -57,33 +57,32 @@ export default function CashOutForm({
   const quantity = watch("quantity");
   const price = watch("price");
 
-  const prevQuantityRef = React.useRef(quantity);
-  const prevPriceRef = React.useRef(price);
-
+  // Total is always derived: quantity × price (read-only)
   React.useEffect(() => {
-    if (quantity !== prevQuantityRef.current || price !== prevPriceRef.current) {
-      if (quantity && price) {
-        setValue("amount", (Number(quantity) * Number(price)).toFixed(2));
-      }
-      prevQuantityRef.current = quantity;
-      prevPriceRef.current = price;
+    if (quantity && price && Number(quantity) > 0 && Number(price) > 0) {
+      setValue("amount", (Number(quantity) * Number(price)).toFixed(2));
+    } else {
+      setValue("amount", "");
     }
   }, [quantity, price, setValue]);
 
   React.useEffect(() => {
     if (editData) {
+      const qty = editData.quantity ? Number(editData.quantity) : 0;
+      // List/API edit payloads expose amount as grand total (qty × unit rate)
+      const total = editData.amount ? Number(editData.amount) : 0;
+      const unitPrice = qty > 0 && total > 0 ? total / qty : 0;
+
       reset({
         projectId: editData.projectId || "",
         vendorId: editData.vendorId || "",
         activityId: editData.activityId || "",
         items: editData.items || "",
         category: editData.category || "",
-        quantity: editData.quantity ? String(editData.quantity) : "",
+        quantity: qty ? String(qty) : "",
         uom: editData.uom || "",
-        price: editData.amount && editData.quantity && Number(editData.quantity) > 0 
-                ? String(Number(editData.amount) / Number(editData.quantity)) 
-                : "",
-        amount: editData.amount ? String(editData.amount) : "",
+        price: unitPrice ? String(unitPrice) : "",
+        amount: total ? total.toFixed(2) : "",
       });
     } else {
       reset({
@@ -278,7 +277,7 @@ export default function CashOutForm({
             </div>
 
             <div>
-              <label className="mb-2 block ui-form-label">PRICE / RATE</label>
+              <label className="mb-2 block ui-form-label">PRICE (Per Item)</label>
               <input
                 type="number"
                 step="0.01"
@@ -297,22 +296,19 @@ export default function CashOutForm({
             </div>
 
             <div>
-              <label className="mb-2 block ui-form-label">TOTAL AMOUNT</label>
+              <label className="mb-2 block ui-form-label">Total</label>
               <input
                 type="number"
                 step="0.01"
-                placeholder="Enter Amount"
-                className="common-input"
-                {...register("amount", {
-                  required: "Total amount is required",
-                  min: { value: 0.01, message: "Amount must be greater than 0" },
-                })}
+                placeholder="Auto-calculated"
+                readOnly
+                tabIndex={-1}
+                className="common-input bg-muted-foreground/5 cursor-not-allowed text-muted-foreground"
+                {...register("amount")}
               />
-              {errors.amount && (
-                <p className="mt-1 text-xs text-danger-text font-semibold">
-                  {errors.amount.message}
-                </p>
-              )}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Auto-calculated from Quantity × Price (Per Item)
+              </p>
             </div>
           </div>
 
