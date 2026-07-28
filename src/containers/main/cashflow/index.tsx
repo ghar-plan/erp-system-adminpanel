@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useCashflow from "./useHooks";
 import CashInForm from "./components/CashInForm";
 import CashOutForm from "./components/CashOutForm";
@@ -18,6 +18,10 @@ export default function Cashflow() {
     exportCashflowPdf,
     downloadReceipt,
   } = useCashflow();
+
+  const formsSectionRef = useRef<HTMLDivElement>(null);
+  const cashInFormRef = useRef<HTMLDivElement>(null);
+  const cashOutFormRef = useRef<HTMLDivElement>(null);
 
   // Dropdown states
   const [projects, setProjects] = useState<any[]>([]);
@@ -204,7 +208,18 @@ export default function Cashflow() {
       setEditDataIn(null);
       setEditDataOut(tx);
     }
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // Scroll the relevant form into view (main layout scrolls inside <main>, not window)
+    requestAnimationFrame(() => {
+      const target =
+        tx.type === "CASH IN"
+          ? cashInFormRef.current
+          : cashOutFormRef.current;
+      (target || formsSectionRef.current)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
   };
 
 
@@ -254,26 +269,33 @@ export default function Cashflow() {
 
 
       {/* Forms Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-slide-up">
+      <div
+        ref={formsSectionRef}
+        className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-slide-up scroll-mt-4"
+      >
         {/* CASH IN FORM */}
-        <CashInForm
-          projects={projects}
-          onSubmit={handleRecordPayment}
-          submitting={submittingIn}
-          editData={editDataIn}
-          onCancelEdit={() => setEditDataIn(null)}
-        />
+        <div ref={cashInFormRef} className="scroll-mt-4">
+          <CashInForm
+            projects={projects}
+            onSubmit={handleRecordPayment}
+            submitting={submittingIn}
+            editData={editDataIn}
+            onCancelEdit={() => setEditDataIn(null)}
+          />
+        </div>
 
         {/* CASH OUT FORM */}
-        <CashOutForm
-          projects={projects}
-          vendors={vendors}
-          activities={activities}
-          onSubmit={handleRecordExpense}
-          submitting={submittingOut}
-          editData={editDataOut}
-          onCancelEdit={() => setEditDataOut(null)}
-        />
+        <div ref={cashOutFormRef} className="scroll-mt-4 lg:col-span-2">
+          <CashOutForm
+            projects={projects}
+            vendors={vendors}
+            activities={activities}
+            onSubmit={handleRecordExpense}
+            submitting={submittingOut}
+            editData={editDataOut}
+            onCancelEdit={() => setEditDataOut(null)}
+          />
+        </div>
       </div>
 
       {/* RECENT TRANSACTIONS TABLE */}
