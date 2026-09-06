@@ -6,6 +6,7 @@ import storage from "redux-persist/lib/storage";
 const persistConfig = {
   key: "root",
   storage,
+  blacklist: ["isLoading", "sessionStatus"],
 };
 
 const persistedReducer = persistReducer(persistConfig, sharedReducer);

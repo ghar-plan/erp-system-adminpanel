@@ -30,13 +30,22 @@ export const getRequest = async (url: string, params: any = {}) => {
   try {
     const headers = getHeaders();
     const response: any = await axios.get(url, { params, headers });
-    console.log(response.data)
     if(response.data?.data?.pendrequstsCount){
       localStorage.setItem('pendrequstsCount', response?.data?.data?.pendrequstsCount)
     }
     return response.data;
   } catch (error) {
     return errorHandler(error);
+  }
+};
+
+export const getRequestSilent = async (url: string, params: any = {}) => {
+  try {
+    const headers = getHeaders();
+    const response: any = await axios.get(url, { params, headers });
+    return response.data;
+  } catch {
+    return { status: false, silent: true };
   }
 };
 
@@ -70,7 +79,6 @@ export const deleteRequest: any = async (url: string, params: any = {}) => {
     const response = await axios.delete(url, { params, headers });
     return response?.data;
   } catch (error) {
-    console.log(url, "url");
     return errorHandler(error);
   }
 };
@@ -113,7 +121,7 @@ const errorHandler = (error: any) => {
     errorToaster(message);
   }
 
-  return { error: message };
+  return { status: false, error: message, message, toasted: true };
 };
 
 export const getFilePathWithBackendUrl = (path: any): string => {

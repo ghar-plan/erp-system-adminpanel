@@ -15,6 +15,9 @@ import useActivities from "../useHooks";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
+import { Can } from "@/components/auth/Can";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
 interface ActivityFilters {
   search: string;
@@ -24,7 +27,11 @@ interface ActivityFilters {
 
 export default function ActivitiesListing() {
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
   const { getActivities, uploadActivitiesCsv, deleteActivity, downloadSampleExcel } = useActivities();
+  const canUpdate = hasPermission(PERMISSIONS.ACTIVITY_UPDATE);
+  const canDelete = hasPermission(PERMISSIONS.ACTIVITY_DELETE);
+  const showActions = canUpdate || canDelete;
   const [activities, setActivities] = useState<any[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [csvUploading, setCsvUploading] = useState(false);
@@ -124,7 +131,15 @@ export default function ActivitiesListing() {
     }
   };
 
-  const columns = ["Sr No.", "Activity ID", "Activity Name", "Category", "Date of Entry", "Actions"];
+  const columns = [
+    "Sr No.",
+    "Activity ID",
+    "Activity Name",
+    "Category",
+    "Work Stages",
+    "Date of Entry",
+    ...(showActions ? ["Actions"] : []),
+  ];
 
   return (
     <div className="space-y-6">
@@ -139,23 +154,25 @@ export default function ActivitiesListing() {
         </div>
 
         <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
-          {/* CSV Import */}
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="flex h-10 px-4 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs"
-          >
-            <Upload size={16} />
-            Import CSV
-          </button>
+          <Can permission={PERMISSIONS.ACTIVITY_IMPORT}>
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex h-10 px-4 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs"
+            >
+              <Upload size={16} />
+              Import CSV
+            </button>
+          </Can>
 
-          {/* Add Activity Button */}
-          <Link
-            to="/activity/create"
-            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
-          >
-            <Plus size={18} />
-            Register New Activity
-          </Link>
+          <Can permission={PERMISSIONS.ACTIVITY_CREATE}>
+            <Link
+              to="/activity/create"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
+            >
+              <Plus size={18} />
+              Create Activity
+            </Link>
+          </Can>
         </div>
       </div>
 
@@ -241,25 +258,34 @@ export default function ActivitiesListing() {
                       <td className="table-td font-semibold text-foreground">
                         {act.category || "—"}
                       </td>
+                      <td className="table-td font-semibold text-foreground">
+                        {act.workStage || "—"}
+                      </td>
                       <td className="table-td">{formatDate(act.created_at)}</td>
+                      {showActions ? (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex gap-2">
-                          <Link
-                            to={`/activity/edit/${act.id}`}
-                            className="btn-action-edit"
-                            title="Edit Activity"
-                          >
-                            <Pencil size={16} />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(act.id, act.name)}
-                            className="btn-action-delete"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {canUpdate ? (
+                            <Link
+                              to={`/activity/edit/${act.id}`}
+                              className="btn-action-edit"
+                              title="Edit Activity"
+                            >
+                              <Pencil size={16} />
+                            </Link>
+                          ) : null}
+                          {canDelete ? (
+                            <button
+                              onClick={() => handleDelete(act.id, act.name)}
+                              className="btn-action-delete"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          ) : null}
                         </div>
                       </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>

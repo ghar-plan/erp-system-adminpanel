@@ -6,6 +6,9 @@ import { Vendor } from "@/utils/helpers/models/vendors/vendor.dto";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
+import { Can } from "@/components/auth/Can";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
 interface VendorFilters {
   search: string;
@@ -17,7 +20,12 @@ interface VendorFilters {
 
 export default function VendorListing() {
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
   const { getVendors, deleteVendor } = useVendors();
+  const canView = hasPermission(PERMISSIONS.VENDORS_READ);
+  const canUpdate = hasPermission(PERMISSIONS.VENDORS_UPDATE);
+  const canDelete = hasPermission(PERMISSIONS.VENDORS_DELETE);
+  const showActions = canView || canUpdate || canDelete;
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [totalElements, setTotalElements] = useState(0);
 
@@ -128,7 +136,7 @@ export default function VendorListing() {
     "Type",
     "Phone",
     "City",
-    "Actions",
+    ...(showActions ? ["Actions"] : []),
   ];
 
   return (
@@ -140,13 +148,15 @@ export default function VendorListing() {
             Vendor Profiles
           </h1>
         </div>
-        <Link
-          to="/vendors/create"
-          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap self-start sm:self-auto text-sm"
-        >
-          <Plus size={18} />
-          Register New Vendor
-        </Link>
+        <Can permission={PERMISSIONS.VENDORS_CREATE}>
+          <Link
+            to="/vendors/create"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap self-start sm:self-auto text-sm"
+          >
+            <Plus size={18} />
+            Create Vendor
+          </Link>
+        </Can>
       </div>
 
       {/* Filters Toolbar Card */}
@@ -261,33 +271,41 @@ export default function VendorListing() {
                       </td>
                       <td className="table-td">{vendor?.phone || "--"}</td>
                       <td className="table-td">{vendor?.city || "--"}</td>
+                      {showActions ? (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex gap-2">
-                          <Link
-                            to={`/vendors/view/${vendor.id}`}
-                            className="btn-action-view"
-                            title="View Details"
-                          >
-                            <Eye size={16} />
-                          </Link>
-                          <Link
-                            to={`/vendors/edit/${vendor.id}`}
-                            className="btn-action-edit"
-                            title="Edit Vendor"
-                          >
-                            <Pencil size={16} />
-                          </Link>
-                          <button
-                            onClick={() =>
-                              handleDelete(vendor.id, vendor.vendorName)
-                            }
-                            className="btn-action-delete"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {canView ? (
+                            <Link
+                              to={`/vendors/view/${vendor.id}`}
+                              className="btn-action-view"
+                              title="View Details"
+                            >
+                              <Eye size={16} />
+                            </Link>
+                          ) : null}
+                          {canUpdate ? (
+                            <Link
+                              to={`/vendors/edit/${vendor.id}`}
+                              className="btn-action-edit"
+                              title="Edit Vendor"
+                            >
+                              <Pencil size={16} />
+                            </Link>
+                          ) : null}
+                          {canDelete ? (
+                            <button
+                              onClick={() =>
+                                handleDelete(vendor.id, vendor.vendorName)
+                              }
+                              className="btn-action-delete"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          ) : null}
                         </div>
                       </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>

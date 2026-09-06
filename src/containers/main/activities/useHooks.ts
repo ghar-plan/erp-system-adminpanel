@@ -45,7 +45,11 @@ const useActivities = () => {
     }
   };
 
-  const createActivity = async (body: { name: string; category?: string }) => {
+  const createActivity = async (body: {
+    name: string;
+    category?: string;
+    workStage: string;
+  }) => {
     const response = await Activities_APIS.create(body);
     const { status = false, message = "" } = response || {};
     if (status) {
@@ -78,7 +82,10 @@ const useActivities = () => {
     }
   };
 
-  const updateActivity = async (id: string, body: { name: string; category?: string }) => {
+  const updateActivity = async (
+    id: string,
+    body: { name: string; category?: string; workStage: string },
+  ) => {
     const response = await Activities_APIS.update(id, body);
     const { status = false, message = "" } = response || {};
     if (status) {

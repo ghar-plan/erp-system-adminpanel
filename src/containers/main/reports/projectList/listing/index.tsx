@@ -9,6 +9,10 @@ import { store } from "@/store";
 import Pagination from "@/components/particles/table/pagination";
 
 import useReports from "@/containers/main/reports/useHooks";
+import { Can } from "@/components/auth/Can";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { Vendor } from "@/utils/helpers/models/vendors/vendor.dto";
 
 interface LedgerSummaryData {
   totalActiveProjects: number;
@@ -17,10 +21,17 @@ interface LedgerSummaryData {
 }
 
 export default function ProjectLedger() {
-  const { getProjects, getProjectTransactionReport } = useReports();
+  const { getProjects, getVendors, getProjectTransactionReport } = useReports();
+  const { hasAnyPermission } = usePermissions();
+  const canFilterVendors = hasAnyPermission([
+    PERMISSIONS.VENDORS_READ,
+    PERMISSIONS.REPORTS_VENDOR_FILTER,
+  ]);
 
   const [projects, setProjects] = useState<Project[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [selectedVendorId, setSelectedVendorId] = useState<string>("");
   const [totalElements, setTotalElements] = useState(0);
   const [filters, setFilters] = useState({ page: 1, limit: 10 });
   const [summaryData, setSummaryData] = useState<LedgerSummaryData>({
@@ -31,29 +42,38 @@ export default function ProjectLedger() {
 
   useEffect(() => {
     getProjects(setProjects);
-    fetchLedgerData(filters, selectedProjectId);
+    if (canFilterVendors) {
+      getVendors(setVendors);
+    }
+    fetchLedgerData(filters, selectedProjectId, canFilterVendors ? selectedVendorId : "");
   }, []);
 
   useEffect(() => {
     if (filters.page !== 1 || filters.limit !== 10) {
-      fetchLedgerData(filters, selectedProjectId);
+      fetchLedgerData(filters, selectedProjectId, canFilterVendors ? selectedVendorId : "");
     }
   }, [filters.page, filters.limit]);
 
   const handleApplyFilters = () => {
     setFilters((prev) => ({ ...prev, page: 1 }));
-    fetchLedgerData({ ...filters, page: 1 }, selectedProjectId);
+    fetchLedgerData(
+      { ...filters, page: 1 },
+      selectedProjectId,
+      canFilterVendors ? selectedVendorId : "",
+    );
   };
 
   const handleResetFilters = () => {
     setSelectedProjectId("");
+    setSelectedVendorId("");
     setFilters((prev) => ({ ...prev, page: 1 }));
-    fetchLedgerData({ ...filters, page: 1 }, "");
+    fetchLedgerData({ ...filters, page: 1 }, "", "");
   };
 
   const fetchLedgerData = (
     currentFilters: { page: number; limit: number },
     projectId: string,
+    vendorId: string,
   ) => {
     const params: any = {
       limit: currentFilters.limit,
@@ -61,6 +81,9 @@ export default function ProjectLedger() {
     };
     if (projectId) {
       params.projectId = projectId;
+    }
+    if (vendorId) {
+      params.vendorId = vendorId;
     }
     getProjectTransactionReport(setSummaryData, params, setTotalElements);
   };
@@ -71,6 +94,7 @@ export default function ProjectLedger() {
     fetchLedgerData(
       { page: nextPage, limit: pageInfo.limit },
       selectedProjectId,
+      canFilterVendors ? selectedVendorId : "",
     );
   };
 
@@ -175,6 +199,30 @@ export default function ProjectLedger() {
           </select>
         </div>
 
+        {canFilterVendors && (
+          <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[260px]">
+            <label
+              htmlFor="vendorId"
+              className="text-xs text-foreground font-medium whitespace-nowrap"
+            >
+              Vendor
+            </label>
+            <select
+              id="vendorId"
+              value={selectedVendorId}
+              onChange={(e) => setSelectedVendorId(e.target.value)}
+              className="common-input text-sm h-10 w-full sm:w-64 bg-card"
+            >
+              <option value="">All Vendors</option>
+              {vendors.map((vendor) => (
+                <option key={vendor.id} value={vendor.id}>
+                  {vendor.vendorName}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
           <Button
@@ -252,13 +300,15 @@ export default function ProjectLedger() {
                     </td>
                     <td className="table-td">{formatDate(tx.date)}</td>
                     <td className="table-td text-center">
-                      <button
-                        onClick={() => handleDownloadReceipt(tx.id)}
-                        className="btn-action-download"
-                        title="Download Receipt"
-                      >
-                        <Download size={16} />
-                      </button>
+                      <Can permission={PERMISSIONS.CASH_FLOW_PRINT}>
+                        <button
+                          onClick={() => handleDownloadReceipt(tx.id)}
+                          className="btn-action-download"
+                          title="Download Receipt"
+                        >
+                          <Download size={16} />
+                        </button>
+                      </Can>
                     </td>
                   </tr>
                 ))}

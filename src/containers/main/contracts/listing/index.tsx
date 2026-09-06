@@ -10,6 +10,9 @@ import useContracts from "../useHooks";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
+import { Can } from "@/components/auth/Can";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
 interface ContractFilters {
   search: string;
@@ -19,7 +22,11 @@ interface ContractFilters {
 
 export default function ContractsListing() {
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
   const { getContracts, deleteContract } = useContracts();
+  const canUpdate = hasPermission(PERMISSIONS.CONTRACTS_UPDATE);
+  const canDelete = hasPermission(PERMISSIONS.CONTRACTS_DELETE);
+  const showActions = canUpdate || canDelete;
   const [contracts, setContracts] = useState<any[]>([]);
   const [totalElements, setTotalElements] = useState(0);
 
@@ -93,7 +100,7 @@ export default function ContractsListing() {
     }
   };
 
-  const columns = ["Sr No.", "Vendor", "Project", "Activity", "Description", "Amount", "Date", "Actions"];
+  const columns = ["Sr No.", "Vendor", "Project", "Activity", "Description", "Amount", "Date", ...(showActions ? ["Actions"] : [])];
 
   return (
     <div className="space-y-6">
@@ -107,13 +114,15 @@ export default function ContractsListing() {
         </div>
 
         <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
-          <Link
-            to="/contracts/create"
-            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
-          >
-            <Plus size={18} />
-            Register New Contract
-          </Link>
+          <Can permission={PERMISSIONS.CONTRACTS_CREATE}>
+            <Link
+              to="/contracts/create"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
+            >
+              <Plus size={18} />
+              Create Contract
+            </Link>
+          </Can>
         </div>
       </div>
 
@@ -202,24 +211,30 @@ export default function ContractsListing() {
                         PKR {Number(contract.amount).toLocaleString()}
                       </td>
                       <td className="table-td">{formatDate(contract.created_at)}</td>
+                      {showActions ? (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex gap-2">
-                          <Link
-                            to={`/contracts/edit/${contract.id}`}
-                            className="btn-action-edit"
-                            title="Edit Contract"
-                          >
-                            <Pencil size={16} />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(contract.id)}
-                            className="btn-action-delete"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {canUpdate ? (
+                            <Link
+                              to={`/contracts/edit/${contract.id}`}
+                              className="btn-action-edit"
+                              title="Edit Contract"
+                            >
+                              <Pencil size={16} />
+                            </Link>
+                          ) : null}
+                          {canDelete ? (
+                            <button
+                              onClick={() => handleDelete(contract.id)}
+                              className="btn-action-delete"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          ) : null}
                         </div>
                       </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>

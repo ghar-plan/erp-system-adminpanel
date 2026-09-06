@@ -1,11 +1,19 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import AuthRoutes from "./auth-routes";
-import DashboardRoutes from "./dashboard-routes";
+import ProtectedApp from "./ProtectedApp";
 import { useAppSelector } from "@/store/hooks";
 import Loader from "@/components/particles/loader";
+import { usePermissions } from "@/hooks/usePermissions";
+import { firstAllowedPath } from "@/navigation/menu.config";
 
 const AppRoutes = () => {
   const { isLoading, token } = useAppSelector((state) => state.sharedReducer);
+  const { hasPermission, hasAnyPermission, hasExplicitPermission, isSessionReady } =
+    usePermissions();
+  const homePath =
+    token && isSessionReady
+      ? firstAllowedPath(hasPermission, hasAnyPermission, hasExplicitPermission)
+      : "/dashboard";
 
   return (
     <>
@@ -15,7 +23,7 @@ const AppRoutes = () => {
           path="/"
           element={
             token ? (
-              <Navigate to="/dashboard" replace />
+              <Navigate to={homePath} replace />
             ) : (
               <Navigate to="/auth/login" replace />
             )
@@ -27,7 +35,7 @@ const AppRoutes = () => {
             !token ? (
               <AuthRoutes />
             ) : (
-              <Navigate to="/dashboard" replace />
+              <Navigate to={homePath} replace />
             )
           }
         />
@@ -35,7 +43,7 @@ const AppRoutes = () => {
           path="/*"
           element={
             token ? (
-              <DashboardRoutes />
+              <ProtectedApp />
             ) : (
               <Navigate to="/auth/login" replace />
             )

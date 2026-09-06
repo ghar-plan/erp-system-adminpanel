@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from "react";
+import React, { ReactNode, useMemo, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { useAppSelector } from "@/store/hooks";
 import Navbar from "@/components/navigation/Navbar";
@@ -16,79 +16,72 @@ import {
   ChevronDown,
   ChevronRight,
   FileSignature,
+  Shield,
+  ClipboardList,
+  Store,
+  KeyRound,
+  UserCheck,
+  Users,
+  MessageSquare,
 } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
+import { filterMenuByPermissions, menuConfig } from "@/navigation/menu.config";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
-interface MenuItem {
-  text: string;
-  path?: string;
-  icon: React.ReactNode;
-  children?: { text: string; path: string }[];
-}
+const MENU_ICONS: Record<string, React.ReactNode> = {
+  dashboard: <LayoutDashboard size={20} />,
+  projects: <Compass size={20} />,
+  comments: <MessageSquare size={20} />,
+  vendors: <UserCog size={20} />,
+  activities: <List size={20} />,
+  cashflow: <Banknote size={20} />,
+  prospects: <UserSearch size={20} />,
+  contracts: <FileSignature size={20} />,
+  reports: <BarChart3 size={20} />,
+  "roles-permissions": <Shield size={20} />,
+};
+
+const CHILD_ICONS: Record<string, React.ReactNode> = {
+  "project-list": <ClipboardList size={16} />,
+  "vendor-list": <Store size={16} />,
+  permissions: <KeyRound size={16} />,
+  roles: <UserCheck size={16} />,
+  users: <Users size={16} />,
+};
 
 const MainLayout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const isSidebarExpanded = useAppSelector(
     (state) => state.sharedReducer?.isSidebarExpanded ?? true,
   );
+  const { hasPermission, hasAnyPermission, hasExplicitPermission } =
+    usePermissions();
+
+  const menuItems = useMemo(
+    () =>
+      filterMenuByPermissions(
+        menuConfig,
+        hasPermission,
+        hasAnyPermission,
+        hasExplicitPermission,
+      ).map((entry) => ({
+        ...entry,
+        icon: MENU_ICONS[entry.key] ?? null,
+      })),
+    [hasPermission, hasAnyPermission, hasExplicitPermission],
+  );
 
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({
     Reports: false,
+    "Roles & Users": false,
   });
 
   const toggleDropdown = (text: string) => {
     setOpenDropdowns((prev) => ({ ...prev, [text]: !prev[text] }));
   };
-
-  // Menu items aligned with sidebar mock image
-  const menuItems: MenuItem[] = [
-    {
-      text: "Dashboard",
-      path: siteRoutes.dashboard,
-      icon: <LayoutDashboard size={20} />,
-    },
-    {
-      text: "Projects",
-      path: siteRoutes.projects,
-      icon: <Compass size={20} />,
-    },
-    {
-      text: "Vendors",
-      path: siteRoutes.vendors,
-      icon: <UserCog size={20} />,
-    },
-    {
-      text: "Activities",
-      path: siteRoutes.activity,
-      icon: <List size={20} />,
-    },
-    {
-      text: "Cashflow",
-      path: siteRoutes.cashflow,
-      icon: <Banknote size={20} />,
-    },
-    {
-      text: "Prospects",
-      path: siteRoutes.prospects,
-      icon: <UserSearch size={20} />,
-    },
-    {
-      text: "Contracts",
-      path: siteRoutes.contracts,
-      icon: <FileSignature size={20} />,
-    },
-    {
-      text: "Reports",
-      icon: <BarChart3 size={20} />,
-      children: [
-        { text: "Project List", path: siteRoutes.reportsProjectList },
-        { text: "Vendor List", path: siteRoutes.reportsVendorList },
-      ],
-    },
-  ];
 
   const isActive = (path?: string) => {
     if (!path) return false;
@@ -110,25 +103,29 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="h-screen bg-background text-foreground flex transition-colors duration-200">
       <Sidebar>
-        {menuItems.map((item, index) => {
-          const hasChildren = !!item.children;
+        {menuItems.map((item) => {
+          const hasChildren = !!item.children?.length;
           const isOpen = openDropdowns[item.text];
-          const activeParent = hasChildren ? isChildActive(item.children!) : isActive(item.path);
+          const activeParent = hasChildren
+            ? isChildActive(item.children!)
+            : isActive(item.path);
 
           return (
-            <li key={index} className="mx-3 mb-1.5 list-none">
+            <li key={item.key} className="mx-3 mb-1.5 list-none">
               {hasChildren ? (
                 <div>
                   <button
                     onClick={() => toggleDropdown(item.text)}
-                    className={`w-full group flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
+                    className={`w-full group flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer ${
                       activeParent
                         ? "bg-tertiary/20 text-white shadow-sm"
                         : "text-white/70 hover:bg-white/10 hover:text-white"
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className={`transition-transform duration-200 ${activeParent ? "scale-110" : "group-hover:scale-110"}`}>
+                      <span
+                        className={`transition-transform duration-200 ${activeParent ? "scale-110" : "group-hover:scale-110"}`}
+                      >
                         {item.icon}
                       </span>
                       <span
@@ -145,20 +142,29 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
                       </span>
                     )}
                   </button>
-                  
+
                   {isOpen && isSidebarExpanded && (
-                    <ul className="mt-1 ml-9 space-y-1">
-                      {item.children!.map((child, childIndex) => (
-                        <li key={childIndex}>
+                    <ul className="mt-1 ml-6 space-y-1">
+                      {item.children!.map((child) => (
+                        <li key={child.path}>
                           <Link
                             to={child.path}
-                            className={`block px-4 py-2 text-sm rounded-lg transition-all duration-200 ${
+                            className={`group/child flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-200 cursor-pointer ${
                               isActive(child.path)
                                 ? "bg-tertiary text-white shadow-lg shadow-tertiary/30 font-medium"
                                 : "text-white/60 hover:text-white hover:bg-white/5"
                             }`}
                           >
-                            {child.text}
+                            <span
+                              className={`shrink-0 transition-transform duration-200 ${
+                                isActive(child.path)
+                                  ? "scale-110"
+                                  : "group-hover/child:scale-110"
+                              }`}
+                            >
+                              {child.icon ? CHILD_ICONS[child.icon] : null}
+                            </span>
+                            <span>{child.title}</span>
                           </Link>
                         </li>
                       ))}
@@ -167,8 +173,8 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
               ) : (
                 <Link
-                  to={item.path!}
-                  className={`group flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                  to={item.path}
+                  className={`group flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer ${
                     isActive(item.path)
                       ? "bg-tertiary text-white shadow-lg shadow-tertiary/30"
                       : "text-white/70 hover:bg-white/10 hover:text-white"

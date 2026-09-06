@@ -94,7 +94,7 @@ export default function ProspectCreate() {
             <IoArrowBackOutline size={20} className="stroke-[2.5]" />
           </button>
           <h1 className="text-2xl text-foreground font-bold">
-            {isEditMode ? "Edit Prospect Profile" : "Register New Prospect"}
+            {isEditMode ? "Edit Prospect Profile" : "Create Prospect"}
           </h1>
         </div>
       </div>
@@ -233,7 +233,7 @@ export default function ProspectCreate() {
             ) : (
               <>
                 {isEditMode ? <Save size={18} /> : <PlusSquare size={18} />}
-                {isEditMode ? "Save Changes" : "Register Prospect"}
+                {isEditMode ? "Save Changes" : "Create Prospect"}
               </>
             )}
           </button>

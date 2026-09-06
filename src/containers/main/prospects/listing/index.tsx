@@ -13,6 +13,9 @@ import useProspects from "../useHooks";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
+import { Can } from "@/components/auth/Can";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
 interface Prospect {
   id: string;
@@ -27,7 +30,12 @@ interface Prospect {
 }
 
 export default function ProspectsListing() {
+  const { hasPermission } = usePermissions();
   const { getProspects, deleteProspect } = useProspects();
+  const canView = hasPermission(PERMISSIONS.PROSPECT_READ);
+  const canUpdate = hasPermission(PERMISSIONS.PROSPECT_UPDATE);
+  const canDelete = hasPermission(PERMISSIONS.PROSPECT_DELETE);
+  const showActions = canView || canUpdate || canDelete;
   const [prospects, setProspects] = useState<Prospect[]>([]);
 
   // Applied (active) filter state — triggers API call
@@ -135,7 +143,7 @@ export default function ProspectsListing() {
     "Lead Source",
     "Status",
     "Date of Entry",
-    "Actions",
+    ...(showActions ? ["Actions"] : []),
   ];
 
   return (
@@ -150,13 +158,15 @@ export default function ProspectsListing() {
           </div>
         </div>
 
-        <Link
-          to="/prospects/create"
-          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
-        >
-          <Plus size={18} />
-          Register New Prospect
-        </Link>
+        <Can permission={PERMISSIONS.PROSPECT_CREATE}>
+          <Link
+            to="/prospects/create"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
+          >
+            <Plus size={18} />
+            Create Prospect
+          </Link>
+        </Can>
       </div>
 
       {/* Stats Cards Grid */}
@@ -292,33 +302,41 @@ export default function ProspectsListing() {
                           ? formatDate(prospect.created_at)
                           : "--"}
                       </td>
+                      {showActions ? (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex gap-2">
-                          <Link
-                            to={`/prospects/view/${prospect.id}`}
-                            className="btn-action-view"
-                            title="View Details"
-                          >
-                            <Eye size={16} />
-                          </Link>
-                          <Link
-                            to={`/prospects/edit/${prospect.id}`}
-                            className="btn-action-edit"
-                            title="Edit Prospect"
-                          >
-                            <Pencil size={16} />
-                          </Link>
-                          <button
-                            onClick={() =>
-                              handleDelete(prospect.id, prospect.name)
-                            }
-                            className="btn-action-delete"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {canView ? (
+                            <Link
+                              to={`/prospects/view/${prospect.id}`}
+                              className="btn-action-view"
+                              title="View Details"
+                            >
+                              <Eye size={16} />
+                            </Link>
+                          ) : null}
+                          {canUpdate ? (
+                            <Link
+                              to={`/prospects/edit/${prospect.id}`}
+                              className="btn-action-edit"
+                              title="Edit Prospect"
+                            >
+                              <Pencil size={16} />
+                            </Link>
+                          ) : null}
+                          {canDelete ? (
+                            <button
+                              onClick={() =>
+                                handleDelete(prospect.id, prospect.name)
+                              }
+                              className="btn-action-delete"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          ) : null}
                         </div>
                       </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>

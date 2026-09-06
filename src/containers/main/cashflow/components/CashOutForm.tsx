@@ -1,6 +1,10 @@
 import React from "react";
 import { useForm } from "react-hook-form";
 import { ArrowUpCircle, Coins, Loader2 } from "lucide-react";
+import PaymentDetailsFields, {
+  emptyPaymentDetails,
+  mapPaymentDetailsFromEdit,
+} from "./PaymentDetailsFields";
 
 interface CashOutFormInputs {
   projectId: string;
@@ -12,6 +16,13 @@ interface CashOutFormInputs {
   uom: string;
   price: string;
   amount: string;
+  entryDate: string;
+  enteredBy: string;
+  paymentSource: string;
+  chequeNo: string;
+  transactionId: string;
+  mediaId: string;
+  receiptUrl: string;
 }
 
 interface CashOutFormProps {
@@ -51,6 +62,7 @@ export default function CashOutForm({
       uom: "",
       price: "",
       amount: "",
+      ...emptyPaymentDetails,
     },
   });
 
@@ -83,6 +95,7 @@ export default function CashOutForm({
         uom: editData.uom || "",
         price: unitPrice ? String(unitPrice) : "",
         amount: total ? total.toFixed(2) : "",
+        ...mapPaymentDetailsFromEdit(editData),
       });
     } else {
       reset({
@@ -95,6 +108,7 @@ export default function CashOutForm({
         uom: "",
         price: "",
         amount: "",
+        ...emptyPaymentDetails,
       });
     }
   }, [editData, reset]);
@@ -111,6 +125,7 @@ export default function CashOutForm({
       uom: "",
       price: "",
       amount: "",
+      ...emptyPaymentDetails,
     });
   };
 
@@ -311,6 +326,13 @@ export default function CashOutForm({
               </p>
             </div>
           </div>
+
+        <PaymentDetailsFields
+          register={register}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+        />
 
         <div className="flex gap-3">
           <button

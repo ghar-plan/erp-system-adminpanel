@@ -13,6 +13,10 @@ export const Cashflows_APIS = {
   getAllIn: (params: any = {}) => getRequest("/v1/cashflows/in", params),
   getAllOut: (params: any = {}) => getRequest("/v1/cashflows/out", params),
   getAllCombined: (params: any = {}) => getRequest("/v1/cashflows", params),
+  suggestEnteredBy: (search: string) =>
+    getRequest("/v1/cashflows/entered-by", { search }),
+  getInById: (id: string) => getRequest(`/v1/cashflows/in/${id}`),
+  getOutById: (id: string) => getRequest(`/v1/cashflows/out/${id}`),
   getProjectListSummary: () => getRequest("/v1/cashflows/project-list"),
   downloadReceipt: (id: string, type: "in" | "out" = "out") =>
     `/v1/cashflows/${type}/${id}/receipt`,
@@ -20,4 +24,6 @@ export const Cashflows_APIS = {
   exportPdf: () => `/v1/cashflows/export/pdf`,
   deleteIn: (id: string) => deleteRequest(`/v1/cashflows/in/${id}`),
   deleteOut: (id: string) => deleteRequest(`/v1/cashflows/out/${id}`),
+  uploadReceipt: (formData: FormData) =>
+    postRequest("/v1/media/upload", formData),
 };

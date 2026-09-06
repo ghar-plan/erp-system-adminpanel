@@ -35,6 +35,7 @@ const useStore = () => {
   };
 
   const logout = () => {
+    localStorage.removeItem("token");
     dispatch(logoutAction());
     navigate(siteRoutes.login);
   };

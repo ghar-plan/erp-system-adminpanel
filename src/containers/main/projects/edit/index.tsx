@@ -6,12 +6,29 @@ import useStore from "@/hooks/useStore";
 import useProjects from "../useHooks";
 import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
 import { IoArrowBackOutline } from "react-icons/io5";
+import {
+  ConstructionType,
+  PaymentPlan,
+  sanitizePercentageInput,
+} from "@/utils/helpers/models/projects/project.dto";
 
 interface ProjectFormInputs {
+  clientFullName: string;
+  clientEmail: string;
+  clientPhone: string;
+  guardName: string;
+  guardContactNumber: string;
+  supervisorName: string;
+  supervisorContactNumber: string;
+  managerName: string;
+  managerContactNumber: string;
   siteName: string;
   region: string;
   subregion: string;
   startDate: string;
+  constructionType: string;
+  paymentPlan: string;
+  markupPercentage: string;
   mediaId: string | null;
 }
 
@@ -23,25 +40,69 @@ export default function ProjectsEdit() {
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [hasClient, setHasClient] = useState(false);
 
   const {
     register,
     handleSubmit,
     setValue,
     reset,
+    watch,
     formState: { errors },
   } = useForm<ProjectFormInputs>();
+
+  const paymentPlan = watch("paymentPlan");
+  const { onChange: onMarkupChange, ...markupPercentageField } = register(
+    "markupPercentage",
+    {
+      required:
+        paymentPlan === PaymentPlan.MARKUP
+          ? "Markup percentage is required"
+          : false,
+      validate: (value) => {
+        if (paymentPlan !== PaymentPlan.MARKUP) return true;
+        if (value === "" || value === undefined) {
+          return "Markup percentage is required";
+        }
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue)) {
+          return "Only numbers are allowed";
+        }
+        if (numericValue < 0) {
+          return "Markup percentage cannot be below 0";
+        }
+        return true;
+      },
+    },
+  );
 
   useEffect(() => {
     if (id) {
       getProjectById(id, (project: any) => {
+        setHasClient(Boolean(project.clientUserId || project.client?.id));
         reset({
+          clientFullName: project.client?.fullName || "",
+          clientEmail: project.client?.email || "",
+          clientPhone: project.client?.phone || "",
+          guardName: project.guardName || "",
+          guardContactNumber: project.guardContactNumber || "",
+          supervisorName: project.supervisorName || "",
+          supervisorContactNumber: project.supervisorContactNumber || "",
+          managerName: project.managerName || "",
+          managerContactNumber: project.managerContactNumber || "",
           siteName: project.siteName,
           region: project.region,
           subregion: project.subregion,
           startDate: project.startDate
             ? String(project.startDate).slice(0, 10)
             : "",
+          constructionType: project.constructionType || "",
+          paymentPlan: project.paymentPlan || "",
+          markupPercentage:
+            project.markupPercentage !== null &&
+            project.markupPercentage !== undefined
+              ? String(Number(project.markupPercentage))
+              : "",
           mediaId: project.mediaId || project.media?.id || null,
         });
         if (project.media?.url) {
@@ -74,11 +135,25 @@ export default function ProjectsEdit() {
   const onSubmitForm = async (data: ProjectFormInputs) => {
     if (id) {
       const payload: any = {
+        clientFullName: data.clientFullName.trim(),
+        clientEmail: data.clientEmail.trim(),
+        clientPhone: data.clientPhone.trim(),
+        guardName: data.guardName.trim(),
+        guardContactNumber: data.guardContactNumber.trim(),
+        supervisorName: data.supervisorName.trim(),
+        supervisorContactNumber: data.supervisorContactNumber.trim(),
+        managerName: data.managerName.trim(),
+        managerContactNumber: data.managerContactNumber.trim(),
         siteName: data.siteName,
         region: data.region,
         subregion: data.subregion,
         startDate: data.startDate,
+        constructionType: data.constructionType,
+        paymentPlan: data.paymentPlan,
       };
+      if (data.paymentPlan === PaymentPlan.MARKUP) {
+        payload.markupPercentage = Number(data.markupPercentage);
+      }
       if (data.mediaId) {
         payload.mediaId = data.mediaId;
       }
@@ -125,6 +200,227 @@ export default function ProjectsEdit() {
         <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-8">
           {/* LEFT COLUMN: Input Fields */}
           <div className="space-y-5">
+            <div>
+              <h2 className="text-sm font-bold text-foreground">Client details</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                {hasClient
+                  ? "This project already has a client. Saving updates their details. A login email is not sent again."
+                  : "This project has no client yet. Saving creates the client account and emails login credentials."}
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-2 block ui-form-label">
+                Full Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., Ali Khan"
+                className={`common-input ${errors.clientFullName ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("clientFullName", {
+                  required: "Full name is required",
+                  validate: (value) =>
+                    value.trim().length > 0 || "Full name is required",
+                })}
+              />
+              {errors.clientFullName && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.clientFullName.message}
+                </p>
+              )}
+            </div>
+
+            <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g., ali@example.com"
+                  readOnly={hasClient}
+                  disabled={hasClient}
+                  className={`common-input ${errors.clientEmail ? "border-red-500 focus:border-red-500" : ""} ${
+                    hasClient ? "bg-muted-foreground/10 cursor-not-allowed" : ""
+                  }`}
+                  {...register("clientEmail", {
+                    required: "Email address is required",
+                    pattern: {
+                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: "Enter a valid email address",
+                    },
+                  })}
+                />
+                {hasClient ? (
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    Email cannot be changed after the client is created.
+                  </p>
+                ) : null}
+                {errors.clientEmail && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.clientEmail.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Mobile Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  placeholder="e.g., 03001234567"
+                  className={`common-input ${errors.clientPhone ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("clientPhone", {
+                    required: "Mobile number is required",
+                    validate: (value) =>
+                      value.trim().length >= 7 || "Enter a valid mobile number",
+                  })}
+                />
+                {errors.clientPhone && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.clientPhone.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-sm font-bold text-foreground">Site contacts</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Guard, supervisor, and manager details for this project.
+              </p>
+            </div>
+
+            <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Guard Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Ahmed Ali"
+                  className={`common-input ${errors.guardName ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("guardName", {
+                    required: "Guard name is required",
+                    validate: (value) =>
+                      value.trim().length > 0 || "Guard name is required",
+                  })}
+                />
+                {errors.guardName && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.guardName.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Guard Contact Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  placeholder="e.g., 03001234567"
+                  className={`common-input ${errors.guardContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("guardContactNumber", {
+                    required: "Guard contact number is required",
+                    validate: (value) =>
+                      value.trim().length >= 7 || "Enter a valid contact number",
+                  })}
+                />
+                {errors.guardContactNumber && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.guardContactNumber.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Supervisor Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Imran Khan"
+                  className={`common-input ${errors.supervisorName ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("supervisorName", {
+                    required: "Supervisor name is required",
+                    validate: (value) =>
+                      value.trim().length > 0 || "Supervisor name is required",
+                  })}
+                />
+                {errors.supervisorName && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.supervisorName.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Supervisor Contact Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  placeholder="e.g., 03001234567"
+                  className={`common-input ${errors.supervisorContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("supervisorContactNumber", {
+                    required: "Supervisor contact number is required",
+                    validate: (value) =>
+                      value.trim().length >= 7 || "Enter a valid contact number",
+                  })}
+                />
+                {errors.supervisorContactNumber && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.supervisorContactNumber.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Manager Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Sara Malik"
+                  className={`common-input ${errors.managerName ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("managerName", {
+                    required: "Manager name is required",
+                    validate: (value) =>
+                      value.trim().length > 0 || "Manager name is required",
+                  })}
+                />
+                {errors.managerName && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.managerName.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Manager Contact Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  placeholder="e.g., 03001234567"
+                  className={`common-input ${errors.managerContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("managerContactNumber", {
+                    required: "Manager contact number is required",
+                    validate: (value) =>
+                      value.trim().length >= 7 || "Enter a valid contact number",
+                  })}
+                />
+                {errors.managerContactNumber && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.managerContactNumber.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
             <div>
               <label className="mb-2 block ui-form-label">Site Name</label>
               <input
@@ -195,6 +491,97 @@ export default function ProjectsEdit() {
                 </p>
               )}
             </div>
+
+            <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Construction Type{" "}
+                  <span className="text-red-500">*</span>
+                </label>
+                <select
+                  className={`common-input bg-card ${errors.constructionType ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("constructionType", {
+                    required: "Construction Type is required",
+                  })}
+                >
+                  <option value="" disabled>
+                    Select Construction Type
+                  </option>
+                  <option value={ConstructionType.GREY_STRUCTURE}>
+                    {ConstructionType.GREY_STRUCTURE}
+                  </option>
+                  <option value={ConstructionType.FINISHING}>
+                    {ConstructionType.FINISHING}
+                  </option>
+                </select>
+                {errors.constructionType && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.constructionType.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Payment Plan <span className="text-red-500">*</span>
+                </label>
+                <select
+                  className={`common-input bg-card ${errors.paymentPlan ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("paymentPlan", {
+                    required: "Payment Plan is required",
+                    onChange: (e) => {
+                      if (e.target.value !== PaymentPlan.MARKUP) {
+                        setValue("markupPercentage", "");
+                      }
+                    },
+                  })}
+                >
+                  <option value="" disabled>
+                    Select Payment Plan
+                  </option>
+                  <option value={PaymentPlan.LUMP_SUM}>
+                    {PaymentPlan.LUMP_SUM}
+                  </option>
+                  <option value={PaymentPlan.MARKUP}>
+                    {PaymentPlan.MARKUP}
+                  </option>
+                </select>
+                {errors.paymentPlan && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.paymentPlan.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {paymentPlan === PaymentPlan.MARKUP && (
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Markup Percentage <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="e.g. 12"
+                    className={`common-input pr-10 ${errors.markupPercentage ? "border-red-500 focus:border-red-500" : ""}`}
+                    {...markupPercentageField}
+                    onChange={(e) => {
+                      e.target.value = sanitizePercentageInput(e.target.value);
+                      onMarkupChange(e);
+                    }}
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
+                    %
+                  </span>
+                </div>
+                {errors.markupPercentage && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.markupPercentage.message}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* RIGHT COLUMN: Cover Image Upload Field inside the same card */}

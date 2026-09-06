@@ -37,7 +37,11 @@ const useHttp = () => {
       path = "/" + path;
     }
 
-    const stopLoaderAPIs = [/^\/v1\/media\/upload$/];
+    const stopLoaderAPIs = [
+      /^\/v1\/media\/upload$/,
+      /^\/v1\/cashflows\/entered-by$/,
+      /\/comments(\/|$)/,
+    ];
 
     const matches = stopLoaderAPIs.some((regex) => regex.test(path));
 
