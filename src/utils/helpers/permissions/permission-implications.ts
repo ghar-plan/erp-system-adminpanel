@@ -10,6 +10,9 @@ const ACTIONS_THAT_IMPLY_VIEW = new Set([
   "post",
   "put",
   "patch",
+  "read_all",
+  "approve",
+  "reject",
 ]);
 
 export function splitCodename(permission: string): {

@@ -10,7 +10,7 @@ import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import { errorToaster } from "@/utils/helpers/common/alert-service";
 import useStore from "@/hooks/useStore";
-import useRoles from "../../roles/useHooks";
+import useRoles, { isSystemRole } from "../../roles/useHooks";
 import useUsers from "../useHooks";
 import type { RbacRole } from "../../roles/types";
 
@@ -52,6 +52,7 @@ export default function UsersListing() {
     if (nextSearch.trim()) queryParams.search = nextSearch.trim();
     if (nextStatus) queryParams.status = nextStatus;
     if (nextRoleId) queryParams.roleId = nextRoleId;
+    queryParams.accountType = "internal";
     getUsersWithRoles(setList, queryParams, setTotalElements);
   };
 
@@ -88,6 +89,9 @@ export default function UsersListing() {
 
   const currentRoleIds = (row: any) =>
     (row?.assignedRoles || [])
+      .filter((role: RbacRole) =>
+        roles.some((available) => available.id === role?.id),
+      )
       .map((role: RbacRole) => role?.id)
       .filter(Boolean) as string[];
 
@@ -117,7 +121,7 @@ export default function UsersListing() {
       const nextIds = checked
         ? [...new Set([...current, roleId])]
         : current.filter((id) => id !== roleId);
-      if (!nextIds.length) {
+      if (!nextIds.length && !isEmployeeUser(viewingRow)) {
         errorToaster("A user must have at least one role");
         return current;
       }
@@ -125,9 +129,14 @@ export default function UsersListing() {
     });
   };
 
+  const isEmployeeUser = (row: any) =>
+    (row?.assignedRoles || []).some(
+      (role: RbacRole) => String(role?.name || "").trim().toLowerCase() === "employee",
+    );
+
   const onSaveRoles = async () => {
     if (!viewingRow?.user?.id) return;
-    if (!selectedRoleIds.length) {
+    if (!selectedRoleIds.length && !isEmployeeUser(viewingRow)) {
       errorToaster("A user must have at least one role");
       return;
     }
@@ -143,10 +152,9 @@ export default function UsersListing() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl text-foreground font-bold">Users</h1>
+          <h1 className="text-2xl sm:text-3xl text-foreground font-bold">Internal Users</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Create users and assign one or more roles. Disabled users cannot
-            sign in.
+            Create internal users and assign admin-created roles.
           </p>
         </div>
         <Can permission={PERMISSIONS.USERS_CREATE}>
@@ -155,7 +163,7 @@ export default function UsersListing() {
             className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap self-start sm:self-auto text-sm"
           >
             <Plus size={18} />
-            Create User
+            Create Internal User
           </Link>
         </Can>
       </div>
@@ -277,9 +285,8 @@ export default function UsersListing() {
                     const assignedRoles = (row.assignedRoles || []).filter(
                       (role: RbacRole) => role?.name,
                     );
-                    const isClientUser = assignedRoles.some(
-                      (role: RbacRole) =>
-                        String(role?.name || "").trim().toLowerCase() === "client",
+                    const customRoles = assignedRoles.filter(
+                      (role: RbacRole) => !isSystemRole(role.name),
                     );
                     return (
                       <tr
@@ -299,9 +306,9 @@ export default function UsersListing() {
                         <td className="table-td">{row.user?.title || "—"}</td>
                         <td className="table-td">{row.user?.email || "--"}</td>
                         <td className="px-6 py-4">
-                          {assignedRoles.length ? (
+                          {customRoles.length ? (
                             <div className="flex flex-wrap gap-1.5">
-                              {assignedRoles.slice(0, 2).map((role: RbacRole) => (
+                              {customRoles.slice(0, 2).map((role: RbacRole) => (
                                 <span
                                   key={role.id || role.name}
                                   className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
@@ -313,9 +320,9 @@ export default function UsersListing() {
                                   {role.name}
                                 </span>
                               ))}
-                              {assignedRoles.length > 2 ? (
+                              {customRoles.length > 2 ? (
                                 <span className="inline-flex items-center rounded-full border border-border-main bg-muted-foreground/10 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-                                  +{assignedRoles.length - 2}
+                                  +{customRoles.length - 2}
                                 </span>
                               ) : null}
                             </div>
@@ -386,13 +393,11 @@ export default function UsersListing() {
                                 title={
                                   isSelf
                                     ? "You cannot edit your own account"
-                                    : isClientUser
-                                      ? "Client roles are managed from Projects"
-                                      : "Edit roles"
+                                    : "Edit roles"
                                 }
-                                disabled={isSelf || isClientUser || !userId}
+                                disabled={isSelf || !userId}
                                 onClick={() => {
-                                  if (isSelf || isClientUser || !userId) return;
+                                  if (isSelf || !userId) return;
                                   openRolesModal(row);
                                 }}
                               >
@@ -406,13 +411,11 @@ export default function UsersListing() {
                                 title={
                                   isSelf
                                     ? "You cannot delete your own account"
-                                    : isClientUser
-                                      ? "Client users cannot be deleted from here"
-                                      : "Delete user"
+                                    : "Delete user"
                                 }
-                                disabled={isSelf || isClientUser || !userId}
+                                disabled={isSelf || !userId}
                                 onClick={() => {
-                                  if (isSelf || isClientUser || !userId) return;
+                                  if (isSelf || !userId) return;
                                   deleteUser(
                                     userId,
                                     row.user?.fullName || row.user?.email || "user",
@@ -487,14 +490,17 @@ export default function UsersListing() {
                 Roles
               </p>
               <p className="text-xs text-muted-foreground mb-3">
-                Assigned roles are checked. A user must keep at least one role.
+                These are admin-created roles only. A user must keep at least one role.
                 Disabled roles stay assigned but grant no access on login.
               </p>
               {roles.length ? (
                 <div className="grid gap-2 sm:grid-cols-2">
                   {roles.map((role) => {
                     const checked = selectedRoleIds.includes(role.id);
-                    const lastRole = checked && selectedRoleIds.length === 1;
+                    const lastRole =
+                      checked &&
+                      selectedRoleIds.length === 1 &&
+                      !isEmployeeUser(viewingRow);
                     return (
                       <Can
                         key={role.id}

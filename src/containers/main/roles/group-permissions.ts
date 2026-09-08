@@ -8,11 +8,15 @@ const MODULE_LABELS: Record<string, string> = {
   cash_flow: "Cashflow",
   prospect: "Prospects",
   contracts: "Contracts",
-  users: "Users",
+  users: "Internal Users",
+  clients: "Clients",
   roles: "Roles",
   permissions: "Permissions",
   reports: "Reports",
   comments: "Comments",
+  employee: "Employees",
+  attendance: "Attendance",
+  leave: "Leave",
   super_admin: "Super Admin",
 };
 
@@ -27,6 +31,9 @@ const ACTION_LABELS: Record<string, string> = {
   in: "Record Cash In",
   out: "Record Cash Out",
   manage: "Assign roles",
+  read_all: "View all",
+  approve: "Approve",
+  reject: "Reject",
   project_list: "Project List",
   vendor_list: "Vendor List",
   vendor_filter: "Vendor filter",
@@ -71,10 +78,13 @@ const PERMISSION_LABELS: Record<string, string> = {
   "contracts.update": "Edit contract",
   "contracts.delete": "Delete contract",
 
-  "users.create": "Create user",
-  "users.read": "View users",
-  "users.update": "Edit user",
-  "users.delete": "Delete user",
+  "users.create": "Create internal user",
+  "users.read": "View internal users",
+  "users.update": "Edit internal user",
+  "users.delete": "Delete internal user",
+
+  "clients.read": "View clients",
+  "clients.delete": "Delete client",
 
   "roles.create": "Create role",
   "roles.read": "View roles",
@@ -93,6 +103,25 @@ const PERMISSION_LABELS: Record<string, string> = {
   "comments.read": "View comments",
   "comments.update": "Edit comments",
   "comments.delete": "Delete comments",
+
+  "employee.create": "Register employee",
+  "employee.read": "View employees",
+  "employee.update": "Edit employee",
+  "employee.delete": "Delete employee",
+
+  "attendance.create": "Mark attendance",
+  "attendance.read": "View own attendance",
+  "attendance.read_all": "View all attendance",
+  "attendance.update": "Edit attendance",
+  "attendance.delete": "Delete attendance",
+
+  "leave.create": "Apply for leave",
+  "leave.read": "View own leave",
+  "leave.read_all": "View all leave requests",
+  "leave.approve": "Approve leave",
+  "leave.reject": "Reject leave",
+  "leave.update": "Edit leave",
+  "leave.delete": "Delete leave",
 };
 
 export function toPermissionCodename(permission: {
@@ -125,6 +154,7 @@ export function groupPermissionsByModule(
   const map = new Map<string, RbacPermission[]>();
   for (const p of perms) {
     if (p.resource === "super_admin") continue;
+    if (p.resource === "attendance" || p.resource === "leave") continue;
     if (p.resource === "dashboard" && p.action !== "read") continue;
     if (p.resource === "cash_flow" && p.action === "create") continue;
     const mod = p.resource || "other";

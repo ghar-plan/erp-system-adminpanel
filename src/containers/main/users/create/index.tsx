@@ -65,7 +65,7 @@ export default function UsersCreate() {
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-2xl text-foreground font-bold">Create User</h1>
+            <h1 className="text-2xl text-foreground font-bold">Create Internal User</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Email is verified automatically. A random 8-character password
               is emailed to the user.

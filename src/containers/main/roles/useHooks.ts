@@ -7,9 +7,9 @@ import {
 import { mapCatalogPermission, toPermissionCodename } from "./group-permissions";
 import type { RbacPermission, RbacRole } from "./types";
 
-const SYSTEM_ROLE_NAMES = ["superAdmin", "vendor", "user", "admin", "client"];
+export const SYSTEM_ROLE_NAMES = ["superAdmin", "vendor", "user", "admin", "client", "employee"];
 
-const isSystemRole = (name?: string) =>
+export const isSystemRole = (name?: string) =>
   SYSTEM_ROLE_NAMES.includes(String(name || "").trim());
 
 const getRoleErrorMessage = (response: any, fallback: string) => {

@@ -42,6 +42,9 @@ export const PERMISSIONS = {
   USERS_UPDATE: "users.update",
   USERS_DELETE: "users.delete",
 
+  CLIENTS_READ: "clients.read",
+  CLIENTS_DELETE: "clients.delete",
+
   ROLES_CREATE: "roles.create",
   ROLES_READ: "roles.read",
   ROLES_UPDATE: "roles.update",
@@ -59,6 +62,25 @@ export const PERMISSIONS = {
   COMMENTS_READ: "comments.read",
   COMMENTS_UPDATE: "comments.update",
   COMMENTS_DELETE: "comments.delete",
+
+  EMPLOYEE_CREATE: "employee.create",
+  EMPLOYEE_READ: "employee.read",
+  EMPLOYEE_UPDATE: "employee.update",
+  EMPLOYEE_DELETE: "employee.delete",
+
+  ATTENDANCE_CREATE: "attendance.create",
+  ATTENDANCE_READ: "attendance.read",
+  ATTENDANCE_READ_ALL: "attendance.read_all",
+  ATTENDANCE_UPDATE: "attendance.update",
+  ATTENDANCE_DELETE: "attendance.delete",
+
+  LEAVE_CREATE: "leave.create",
+  LEAVE_READ: "leave.read",
+  LEAVE_READ_ALL: "leave.read_all",
+  LEAVE_APPROVE: "leave.approve",
+  LEAVE_REJECT: "leave.reject",
+  LEAVE_UPDATE: "leave.update",
+  LEAVE_DELETE: "leave.delete",
 } as const;
 
 export type PermissionCodename =

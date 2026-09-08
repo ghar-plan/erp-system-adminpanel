@@ -22,7 +22,10 @@ import {
   KeyRound,
   UserCheck,
   Users,
+  Building2,
   MessageSquare,
+  Clock,
+  CalendarDays,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { filterMenuByPermissions, menuConfig } from "@/navigation/menu.config";
@@ -42,6 +45,8 @@ const MENU_ICONS: Record<string, React.ReactNode> = {
   contracts: <FileSignature size={20} />,
   reports: <BarChart3 size={20} />,
   "roles-permissions": <Shield size={20} />,
+  attendance: <Clock size={20} />,
+  leaves: <CalendarDays size={20} />,
 };
 
 const CHILD_ICONS: Record<string, React.ReactNode> = {
@@ -50,6 +55,8 @@ const CHILD_ICONS: Record<string, React.ReactNode> = {
   permissions: <KeyRound size={16} />,
   roles: <UserCheck size={16} />,
   users: <Users size={16} />,
+  clients: <Building2 size={16} />,
+  employees: <Users size={16} />,
 };
 
 const MainLayout: React.FC<LayoutProps> = ({ children }) => {

@@ -115,11 +115,45 @@ export const menuConfig: MenuGroup[] = [
         permission: PERMISSIONS.ROLES_READ,
       },
       {
-        title: "Users",
+        title: "Clients",
+        path: siteRoutes.clients,
+        icon: "clients",
+        permission: PERMISSIONS.CLIENTS_READ,
+      },
+      {
+        title: "Employees",
+        path: siteRoutes.employees,
+        icon: "employees",
+        permission: PERMISSIONS.EMPLOYEE_READ,
+      },
+      {
+        title: "Internal Users",
         path: siteRoutes.users,
         icon: "users",
         permission: PERMISSIONS.USERS_READ,
       },
+    ],
+  },
+  {
+    key: "attendance",
+    text: "Attendance",
+    path: siteRoutes.attendance,
+    anyOf: [
+      PERMISSIONS.ATTENDANCE_CREATE,
+      PERMISSIONS.ATTENDANCE_READ,
+      PERMISSIONS.ATTENDANCE_READ_ALL,
+    ],
+  },
+  {
+    key: "leaves",
+    text: "Leave",
+    path: siteRoutes.leaves,
+    anyOf: [
+      PERMISSIONS.LEAVE_CREATE,
+      PERMISSIONS.LEAVE_READ,
+      PERMISSIONS.LEAVE_READ_ALL,
+      PERMISSIONS.LEAVE_APPROVE,
+      PERMISSIONS.LEAVE_REJECT,
     ],
   },
 ];

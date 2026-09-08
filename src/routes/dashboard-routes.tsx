@@ -30,8 +30,16 @@ import RolesListing from "@/containers/main/roles/listing";
 import RoleEdit from "@/containers/main/roles/edit";
 import UsersListing from "@/containers/main/users/listing";
 import UsersCreate from "@/containers/main/users/create";
+import ClientsListing from "@/containers/main/clients/listing";
+import ClientsView from "@/containers/main/clients/view";
 import PermissionsListing from "@/containers/main/permissions/listing";
 import Unauthorized from "@/containers/main/unauthorized";
+import EmployeesListing from "@/containers/main/employees/listing";
+import EmployeesCreate from "@/containers/main/employees/create";
+import EmployeesView from "@/containers/main/employees/view";
+import EmployeesEdit from "@/containers/main/employees/edit";
+import AttendancePage from "@/containers/main/attendance";
+import LeavesPage from "@/containers/main/leaves";
 import PermissionGuard from "@/components/auth/PermissionGuard";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
@@ -193,8 +201,50 @@ const DashboardRoutes = () => {
           element={guard(<UsersCreate />, PERMISSIONS.USERS_CREATE)}
         />
         <Route
+          path={siteRoutes.clients}
+          element={guard(<ClientsListing />, PERMISSIONS.CLIENTS_READ)}
+        />
+        <Route
+          path={siteRoutes.clientsView}
+          element={guard(<ClientsView />, PERMISSIONS.CLIENTS_READ)}
+        />
+        <Route
           path={siteRoutes.permissions}
           element={guard(<PermissionsListing />, PERMISSIONS.PERMISSIONS_READ)}
+        />
+        <Route
+          path={siteRoutes.employees}
+          element={guard(<EmployeesListing />, PERMISSIONS.EMPLOYEE_READ)}
+        />
+        <Route
+          path={siteRoutes.employeesCreate}
+          element={guard(<EmployeesCreate />, PERMISSIONS.EMPLOYEE_CREATE)}
+        />
+        <Route
+          path={siteRoutes.employeesView}
+          element={guard(<EmployeesView />, PERMISSIONS.EMPLOYEE_READ)}
+        />
+        <Route
+          path={siteRoutes.employeesEdit}
+          element={guard(<EmployeesEdit />, PERMISSIONS.EMPLOYEE_UPDATE)}
+        />
+        <Route
+          path={siteRoutes.attendance}
+          element={guard(<AttendancePage />, undefined, [
+            PERMISSIONS.ATTENDANCE_CREATE,
+            PERMISSIONS.ATTENDANCE_READ,
+            PERMISSIONS.ATTENDANCE_READ_ALL,
+          ])}
+        />
+        <Route
+          path={siteRoutes.leaves}
+          element={guard(<LeavesPage />, undefined, [
+            PERMISSIONS.LEAVE_CREATE,
+            PERMISSIONS.LEAVE_READ,
+            PERMISSIONS.LEAVE_READ_ALL,
+            PERMISSIONS.LEAVE_APPROVE,
+            PERMISSIONS.LEAVE_REJECT,
+          ])}
         />
         <Route path={siteRoutes.unauthorized} element={<Unauthorized />} />
       </Routes>
