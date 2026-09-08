@@ -154,7 +154,12 @@ export function groupPermissionsByModule(
   const map = new Map<string, RbacPermission[]>();
   for (const p of perms) {
     if (p.resource === "super_admin") continue;
-    if (p.resource === "attendance" || p.resource === "leave") continue;
+    if (
+      (p.resource === "attendance" && (p.action === "create" || p.action === "read")) ||
+      (p.resource === "leave" && (p.action === "create" || p.action === "read"))
+    ) {
+      continue;
+    }
     if (p.resource === "dashboard" && p.action !== "read") continue;
     if (p.resource === "cash_flow" && p.action === "create") continue;
     const mod = p.resource || "other";
