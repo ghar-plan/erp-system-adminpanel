@@ -5,10 +5,12 @@ import { useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import useActivities from "../useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
+import { WORK_STAGE_OPTIONS } from "@/utils/helpers/models/activities/activity.dto";
 
 interface ActivityFormInputs {
   name: string;
   category: string;
+  workStage: string;
 }
 
 export default function ActivityEdit() {
@@ -31,6 +33,7 @@ export default function ActivityEdit() {
         setInitialData(data);
         setValue("name", data.name);
         setValue("category", data.category || "");
+        setValue("workStage", data.workStage || "");
       });
     }
   }, [id]);
@@ -40,6 +43,7 @@ export default function ActivityEdit() {
     await updateActivity(id, {
       name: data.name.trim(),
       category: data.category || undefined,
+      workStage: data.workStage,
     });
   };
 
@@ -123,6 +127,32 @@ export default function ActivityEdit() {
               {errors.category && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">
                   {errors.category.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-2 block ui-form-label">
+                Work Stages <span className="text-red-500">*</span>
+              </label>
+              <select
+                className={`common-input py-3 ${errors.workStage ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("workStage", {
+                  required: "Work Stages is required",
+                })}
+              >
+                <option value="" disabled>
+                  Select Work Stage
+                </option>
+                {WORK_STAGE_OPTIONS.map((stage) => (
+                  <option key={stage} value={stage}>
+                    {stage}
+                  </option>
+                ))}
+              </select>
+              {errors.workStage && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.workStage.message}
                 </p>
               )}
             </div>

@@ -1,10 +1,12 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import type { SessionStatus } from '@/utils/helpers/permissions/types';
 
 interface SharedState {
   isLoading: boolean;
   token: string | null;
   userData: any | null;
   isSidebarExpanded: boolean;
+  sessionStatus: SessionStatus;
 }
 
 const initialState: SharedState = {
@@ -12,6 +14,7 @@ const initialState: SharedState = {
   token: null,
   userData: null,
   isSidebarExpanded: true,
+  sessionStatus: "idle",
 };
 
 const sharedSlice = createSlice({
@@ -34,12 +37,15 @@ const sharedSlice = createSlice({
       state.isSidebarExpanded = action.payload;
     },
 
+    setSessionStatus: (state, action: PayloadAction<SessionStatus>) => {
+      state.sessionStatus = action.payload;
+    },
+
     logout: (state) => {
       state.token = null;
       state.userData = null;
       state.isLoading = false;
-      // localStorage is cleared by redux-persist purge or we can dispatch PURGE
-      // For now, simple state reset is enough as persist uses state
+      state.sessionStatus = "idle";
     },
   },
 });
@@ -49,6 +55,7 @@ export const {
   saveToken,
   saveUserData,
   setExpandSidebar,
+  setSessionStatus,
   logout,
 } = sharedSlice.actions;
 

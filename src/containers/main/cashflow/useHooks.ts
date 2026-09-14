@@ -61,6 +61,12 @@ const useCashflow = () => {
     }
   };
 
+  const suggestEnteredBy = async (search: string): Promise<string[]> => {
+    const response = await Cashflows_APIS.suggestEnteredBy(search);
+    const { status = false, data = [] } = response || {};
+    return status && Array.isArray(data) ? data : [];
+  };
+
   const getCashflowCombinedList = async (
     setData: Function,
     queryParams: any = {},
@@ -79,6 +85,26 @@ const useCashflow = () => {
       setData([]);
       setTotalElements?.(0);
       setTotals?.({ totalIn: 0, totalOut: 0 });
+    }
+  };
+
+  const getCashInById = async (id: string, setData: Function) => {
+    const response = await Cashflows_APIS.getInById(id);
+    const { status = false, data = null } = response || {};
+    if (status && data) {
+      setData(data);
+    } else {
+      setData(null);
+    }
+  };
+
+  const getCashOutById = async (id: string, setData: Function) => {
+    const response = await Cashflows_APIS.getOutById(id);
+    const { status = false, data = null } = response || {};
+    if (status && data) {
+      setData(data);
+    } else {
+      setData(null);
     }
   };
 
@@ -157,6 +183,16 @@ const useCashflow = () => {
         headers: { Authorization: `Bearer ${token}` },
         responseType: "blob",
       });
+      const contentType = String(response.headers?.["content-type"] || "");
+      if (contentType.includes("application/json")) {
+        const text = await (response.data as Blob).text();
+        const json = JSON.parse(text);
+        const message = Array.isArray(json?.message)
+          ? json.message.join(", ")
+          : json?.message;
+        errorToaster(message || "Please update the Payment Plan for the projects");
+        return;
+      }
       const url = window.URL.createObjectURL(
         new Blob([response.data], {
           type: "application/pdf",
@@ -170,10 +206,42 @@ const useCashflow = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error downloading pdf", error);
-      errorToaster("Failed to download PDF report");
+      const data = error?.response?.data;
+      if (data instanceof Blob) {
+        try {
+          const json = JSON.parse(await data.text());
+          const message = Array.isArray(json?.message)
+            ? json.message.join(", ")
+            : json?.message;
+          errorToaster(
+            message || "Please update the Payment Plan for the projects",
+          );
+          return;
+        } catch {
+          /* fall through */
+        }
+      }
+      errorToaster(
+        error?.response?.data?.message || "Failed to download PDF report",
+      );
     }
+  };
+
+  const uploadReceipt = async (file: File) => {
+    const formData = new FormData();
+    formData.append("files", file);
+
+    const response = await Cashflows_APIS.uploadReceipt(formData);
+    const data = response?.data || response || [];
+    if (Array.isArray(data) && data.length > 0) {
+      return data[0];
+    }
+    if (!response?.error) {
+      errorToaster("Failed to upload receipt");
+    }
+    return null;
   };
 
   const downloadReceipt = async (id: string, type: "CASH IN" | "CASH OUT") => {
@@ -209,7 +277,10 @@ const useCashflow = () => {
     getActivities,
     getCashflowInList,
     getCashflowOutList,
+    suggestEnteredBy,
     getCashflowCombinedList,
+    getCashInById,
+    getCashOutById,
     recordCashIn,
     recordCashOut,
     editCashIn,
@@ -217,6 +288,7 @@ const useCashflow = () => {
     deleteCashflow,
     exportCashflowCsv,
     exportCashflowPdf,
+    uploadReceipt,
     downloadReceipt,
   };
 };

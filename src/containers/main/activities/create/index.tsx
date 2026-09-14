@@ -5,10 +5,12 @@ import { useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import useActivities from "../useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
+import { WORK_STAGE_OPTIONS } from "@/utils/helpers/models/activities/activity.dto";
 
 interface ActivityFormInputs {
   name: string;
   category: string;
+  workStage: string;
 }
 
 export default function ActivityCreate() {
@@ -23,6 +25,7 @@ export default function ActivityCreate() {
   } = useForm<ActivityFormInputs>({
     defaultValues: {
       category: "",
+      workStage: "",
     },
   });
 
@@ -31,6 +34,7 @@ export default function ActivityCreate() {
     await createActivity({
       name: data.name.trim(),
       category: data.category || undefined,
+      workStage: data.workStage,
     });
   };
 
@@ -52,7 +56,7 @@ export default function ActivityCreate() {
             <IoArrowBackOutline size={20} className="stroke-[2.5]" />
           </button>
           <h1 className="text-2xl text-foreground font-bold">
-            Register New Activity
+            Create Activity
           </h1>
         </div>
       </div>
@@ -109,6 +113,32 @@ export default function ActivityCreate() {
                 </p>
               )}
             </div>
+
+            <div>
+              <label className="mb-2 block ui-form-label">
+                Work Stages <span className="text-red-500">*</span>
+              </label>
+              <select
+                className={`common-input ${errors.workStage ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("workStage", {
+                  required: "Work Stages is required",
+                })}
+              >
+                <option value="" disabled>
+                  Select Work Stage
+                </option>
+                {WORK_STAGE_OPTIONS.map((stage) => (
+                  <option key={stage} value={stage}>
+                    {stage}
+                  </option>
+                ))}
+              </select>
+              {errors.workStage && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.workStage.message}
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -124,7 +154,7 @@ export default function ActivityCreate() {
             ) : (
               <>
                 <Plus size={18} />
-                Add Activity
+                Create Activity
               </>
             )}
           </button>

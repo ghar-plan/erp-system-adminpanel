@@ -116,7 +116,11 @@ export default function MyProfile() {
               {currentUser?.fullName || "Active User"}
             </h2>
             <span className="text-xs text-primary font-bold bg-primary/10 border border-primary/20 px-2 py-0.5 rounded uppercase mt-1 inline-block">
-              {currentUser?.role || "Administrator"}
+              {currentUser?.currentRole ||
+                (typeof currentUser?.role === "string"
+                  ? currentUser.role
+                  : currentUser?.role?.name) ||
+                "User"}
             </span>
           </div>
           <div className="w-full border-t border-border-main pt-4 space-y-3 text-left">

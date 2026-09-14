@@ -1,11 +1,22 @@
 import React from "react";
 import { useForm } from "react-hook-form";
 import { ArrowDownCircle, Coins, Loader2 } from "lucide-react";
+import PaymentDetailsFields, {
+  emptyPaymentDetails,
+  mapPaymentDetailsFromEdit,
+} from "./PaymentDetailsFields";
 
 interface CashInFormInputs {
   projectId: string;
   installment: string;
   amount: string;
+  entryDate: string;
+  enteredBy: string;
+  paymentSource: string;
+  chequeNo: string;
+  transactionId: string;
+  mediaId: string;
+  receiptUrl: string;
 }
 
 interface CashInFormProps {
@@ -27,12 +38,15 @@ export default function CashInForm({
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<CashInFormInputs>({
     defaultValues: {
       projectId: "",
       installment: "",
       amount: "",
+      ...emptyPaymentDetails,
     },
   });
 
@@ -42,12 +56,14 @@ export default function CashInForm({
         projectId: editData.projectId || "",
         installment: editData.installment || "",
         amount: editData.amount ? String(editData.amount) : "",
+        ...mapPaymentDetailsFromEdit(editData),
       });
     } else {
       reset({
         projectId: "",
         installment: "",
         amount: "",
+        ...emptyPaymentDetails,
       });
     }
   }, [editData, reset]);
@@ -58,11 +74,12 @@ export default function CashInForm({
       projectId: "",
       installment: "",
       amount: "",
+      ...emptyPaymentDetails,
     });
   };
 
   return (
-    <div className="lg:col-span-1 border-l-[5px] border-primary rounded-xl bg-card shadow-xs border  p-6 space-y-6">
+    <div className="lg:col-span-1 border-l-[5px] border-primary rounded-xl bg-card shadow-xs border p-6 space-y-6 overflow-visible">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
           <ArrowDownCircle size={22} className="stroke-[2.5]" />
@@ -128,6 +145,14 @@ export default function CashInForm({
             </p>
           )}
         </div>
+
+        <PaymentDetailsFields
+          register={register}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          narrow
+        />
 
         <div className="flex gap-3">
           <button

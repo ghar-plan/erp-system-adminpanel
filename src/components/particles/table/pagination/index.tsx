@@ -12,7 +12,6 @@ const Pagination: FC<PaginationProps> = ({ onPageChange, page, count, limit }) =
     const perPageOptions: number[] = [10, 30, 50, 100];
     const handlePerPageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const value = parseInt(event.target.value, 10);
-        console.log(value)
         if (value !== limit) {
             onPageChange({ selected: 0, limit: value });
         }
@@ -56,10 +55,11 @@ const Pagination: FC<PaginationProps> = ({ onPageChange, page, count, limit }) =
                 renderOnZeroPageCount={null}
                 forcePage={page - 1}
                 containerClassName="flex list-none gap-2 flex-wrap"
-                pageLinkClassName="px-3 py-2 bg-card text-foreground text-sm font-bold border border-border-main rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                activeLinkClassName="!bg-primary !text-white"
-                previousLinkClassName="px-3 py-2 text-foreground hover:text-primary text-sm font-bold transition-colors"
-                nextLinkClassName="px-3 py-2 text-foreground hover:text-primary text-sm font-bold transition-colors"
+                pageLinkClassName="px-3 py-2 bg-card text-foreground text-sm font-bold border border-border-main rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                activeLinkClassName="!bg-primary !text-white cursor-pointer"
+                previousLinkClassName="px-3 py-2 text-foreground hover:text-primary text-sm font-bold transition-colors cursor-pointer"
+                nextLinkClassName="px-3 py-2 text-foreground hover:text-primary text-sm font-bold transition-colors cursor-pointer"
+                breakLinkClassName="px-3 py-2 text-foreground text-sm font-bold cursor-pointer"
             />
         </div>
     );

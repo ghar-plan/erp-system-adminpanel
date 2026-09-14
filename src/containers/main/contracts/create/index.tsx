@@ -77,7 +77,7 @@ export default function ContractCreate() {
             <IoArrowBackOutline size={20} className="stroke-[2.5]" />
           </button>
           <h1 className="text-2xl text-foreground font-bold">
-            Register New Contract
+            Create Contract
           </h1>
         </div>
       </div>
@@ -200,7 +200,7 @@ export default function ContractCreate() {
             ) : (
               <>
                 <Plus size={18} />
-                Add Contract
+                Create Contract
               </>
             )}
           </button>

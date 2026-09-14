@@ -14,6 +14,8 @@ import {
   ArrowUpCircle,
 } from "lucide-react";
 import useDashboard from "./useHooks";
+import { Can } from "@/components/auth/Can";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
 export default function Dashboard() {
   const { stats, getStats } = useDashboard();
@@ -158,6 +160,7 @@ export default function Dashboard() {
             color: "text-primary",
             bg: "bg-primary/10",
             link: "/projects",
+            permission: PERMISSIONS.CONSTRUCTION_SITE_READ,
           },
           {
             label: "Total Vendors",
@@ -166,6 +169,7 @@ export default function Dashboard() {
             color: "text-amber-600",
             bg: "bg-amber-500/10",
             link: "/vendors",
+            permission: PERMISSIONS.VENDORS_READ,
           },
           {
             label: "Total Prospects",
@@ -174,6 +178,7 @@ export default function Dashboard() {
             color: "text-purple-600",
             bg: "bg-purple-500/10",
             link: "/prospects",
+            permission: PERMISSIONS.PROSPECT_READ,
           },
           {
             label: "Total Activities",
@@ -181,11 +186,12 @@ export default function Dashboard() {
             icon: Activity,
             color: "text-teal-600",
             bg: "bg-teal-500/10",
-            link: "/activities",
+            link: "/activity",
+            permission: PERMISSIONS.ACTIVITY_READ,
           },
-        ].map(({ label, value, icon: Icon, color, bg, link }) => (
+        ].map(({ label, value, icon: Icon, color, bg, link, permission }) => (
+          <Can key={label} permission={permission}>
           <Link
-            key={label}
             to={link}
             className="bg-card rounded-xl border border-border-main p-5 shadow-2xs hover:shadow-xs hover:border-primary/20 transition-all duration-300 flex items-center gap-4 group"
           >
@@ -203,6 +209,7 @@ export default function Dashboard() {
               </p>
             </div>
           </Link>
+          </Can>
         ))}
       </div>
 
@@ -214,15 +221,17 @@ export default function Dashboard() {
               Recent Transactions
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Latest cash inflows and outflows across all projects.
+              Latest cash inflows and outflows for the projects you can access.
             </p>
           </div>
-          <Link
-            to="/cashflow"
-            className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5"
-          >
-            View All <ChevronRight size={14} />
-          </Link>
+          <Can permission={PERMISSIONS.CASH_FLOW_READ}>
+            <Link
+              to="/cashflow"
+              className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5"
+            >
+              View All <ChevronRight size={14} />
+            </Link>
+          </Can>
         </div>
 
         {stats?.recentTransactions && stats.recentTransactions.length > 0 ? (
@@ -295,6 +304,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Prospects */}
+      <Can permission={PERMISSIONS.PROSPECT_READ}>
       <div className="bg-card rounded-xl border border-border-main shadow-2xs animate-slide-up">
         <div className="flex items-center justify-between p-5 border-b border-border-main/60">
           <div>
@@ -305,12 +315,14 @@ export default function Dashboard() {
               Latest potential customers registered in the system.
             </p>
           </div>
-          <Link
-            to="/prospects"
-            className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5"
-          >
-            View All <ChevronRight size={14} />
-          </Link>
+          <Can permission={PERMISSIONS.PROSPECT_READ}>
+            <Link
+              to="/prospects"
+              className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5"
+            >
+              View All <ChevronRight size={14} />
+            </Link>
+          </Can>
         </div>
 
         {stats?.recentProspects && stats.recentProspects.length > 0 ? (
@@ -359,6 +371,7 @@ export default function Dashboard() {
           </p>
         )}
       </div>
+      </Can>
     </div>
   );
 }

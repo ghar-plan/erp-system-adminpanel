@@ -60,7 +60,7 @@ export default function VendorCreate() {
             <IoArrowBackOutline size={20} className="stroke-[2.5]" />
           </button>
           <h1 className="text-2xl text-foreground font-bold  ">
-            Register New Vendor
+            Create Vendor
           </h1>
         </div>
       </div>
@@ -189,7 +189,7 @@ export default function VendorCreate() {
             className="flex h-10 px-6 items-center justify-center gap-2 rounded-md bg-primary hover:opacity-95 font-semibold text-white text-sm transition-all cursor-pointer shadow-sm animate-fade-in"
           >
             <Plus size={18} />
-            Add Vendor
+            Create Vendor
           </button>
         </div>
       </form>

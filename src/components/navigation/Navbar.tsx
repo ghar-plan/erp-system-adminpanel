@@ -30,7 +30,10 @@ const Navbar: React.FC = () => {
   }
 
   const currentRole =
-    storeUser?.currentRole || (storeUser?.roles && storeUser.roles[0]) || "";
+    storeUser?.currentRole ||
+    storeUser?.role?.name ||
+    (Array.isArray(storeUser?.roles) ? storeUser.roles[0]?.name : "") ||
+    "";
   const displayFullName =
     fullName ||
     (firstName || lastName ? `${firstName} ${lastName}`.trim() : email);

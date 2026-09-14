@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import { Download, FileText, Search, Trash2 } from "lucide-react";
+import { Download, Eye, FileText, Search, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Can } from "@/components/auth/Can";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
 interface Transaction {
   id: string;
@@ -11,6 +15,12 @@ interface Transaction {
   description: string;
   vendorClient: string;
   amount: number;
+  enteredBy?: string;
+  paymentSource?: string;
+  chequeNo?: string;
+  transactionId?: string;
+  mediaId?: string;
+  receiptUrl?: string | null;
 }
 
 interface TransactionsTableProps {
@@ -54,6 +64,12 @@ export default function TransactionsTable({
   onEdit,
   totals,
 }: TransactionsTableProps) {
+  const { hasPermission } = usePermissions();
+  const canView = hasPermission(PERMISSIONS.CASH_FLOW_READ);
+  const canUpdate = hasPermission(PERMISSIONS.CASH_FLOW_UPDATE);
+  const canDelete = hasPermission(PERMISSIONS.CASH_FLOW_DELETE);
+  const canPrint = hasPermission(PERMISSIONS.CASH_FLOW_PRINT);
+  const showActions = canView || canUpdate || canDelete || canPrint;
   // Local draft states to allow Apply/Reset behavior
   const [draftProject, setDraftProject] = useState(filterProject);
   const [draftType, setDraftType] = useState(filterType);
@@ -111,13 +127,15 @@ export default function TransactionsTable({
           Recent Transactions
         </h2>
 
-        <button
-          onClick={exportData}
-          className="flex h-10 px-5 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs whitespace-nowrap self-start sm:self-auto"
-        >
-          <FileText size={16} />
-          Export PDF
-        </button>
+        <Can permission={PERMISSIONS.CASH_FLOW_EXPORT}>
+          <button
+            onClick={exportData}
+            className="flex h-10 px-5 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs whitespace-nowrap self-start sm:self-auto"
+          >
+            <FileText size={16} />
+            Export PDF
+          </button>
+        </Can>
       </div>
 
       {/* Filters Toolbar Card */}
@@ -281,12 +299,20 @@ export default function TransactionsTable({
                 <th className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                   VENDOR / CLIENT
                 </th>
+                <th className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                  NAME BY
+                </th>
+                <th className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                  SOURCE
+                </th>
                 <th className="px-6 py-4 text-xs font-bold text-right text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                   AMOUNT
                 </th>
+                {showActions ? (
                 <th className="px-6 py-4 text-xs font-bold text-center text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                   ACTIONS
                 </th>
+                ) : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-border-main bg-card text-foreground">
@@ -317,44 +343,70 @@ export default function TransactionsTable({
                       {tx?.description || "--"}
                     </td>
                     <td className="table-td">{tx?.vendorClient || "--"}</td>
+                    <td className="table-td">{tx?.enteredBy || "--"}</td>
+                    <td className="table-td">
+                      {tx?.paymentSource === "Cheque" && tx.chequeNo
+                        ? `Cheque (${tx.chequeNo})`
+                        : tx?.paymentSource === "Online Transfer" &&
+                            tx.transactionId
+                          ? `Online Transfer (${tx.transactionId})`
+                          : tx?.paymentSource || "--"}
+                    </td>
                     <td className="table-td font-bold text-foreground text-right">
                       {tx?.amount !== undefined
                         ? `PKR ${tx.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
                         : "--"}
                     </td>
+                    {showActions ? (
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex justify-center gap-2">
-                        <button
-                          onClick={() => onEdit(tx)}
-                          className="btn-action-edit"
-                          title="Edit"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                        </button>
-                        <button
-                          onClick={() => onDownloadReceipt(tx.id, tx.type)}
-                          className="btn-action-download"
-                          title="Download Receipt"
-                        >
-                          <Download size={16} />
-                        </button>
-                        <button
-                          onClick={() =>
-                            onDelete(tx.id, tx.type, tx.description || tx.type)
-                          }
-                          className="btn-action-delete"
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {canView ? (
+                          <Link
+                            to={`/cashflow/view/${tx.type === "CASH IN" ? "in" : "out"}/${tx.id}`}
+                            className="btn-action-view"
+                            title="View Details"
+                          >
+                            <Eye size={16} />
+                          </Link>
+                        ) : null}
+                        {canUpdate ? (
+                          <button
+                            onClick={() => onEdit(tx)}
+                            className="btn-action-edit"
+                            title="Edit"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                          </button>
+                        ) : null}
+                        {canPrint ? (
+                          <button
+                            onClick={() => onDownloadReceipt(tx.id, tx.type)}
+                            className="btn-action-download"
+                            title="Download generated receipt"
+                          >
+                            <Download size={16} />
+                          </button>
+                        ) : null}
+                        {canDelete ? (
+                          <button
+                            onClick={() =>
+                              onDelete(tx.id, tx.type, tx.description || tx.type)
+                            }
+                            className="btn-action-delete"
+                            title="Delete"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        ) : null}
                       </div>
                     </td>
+                    ) : null}
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={showActions ? 9 : 8}
                     className="px-6 py-10 text-center text-sm text-muted-foreground  "
                   >
                     No transactions recorded yet.

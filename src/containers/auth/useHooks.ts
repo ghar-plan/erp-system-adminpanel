@@ -10,10 +10,20 @@ import { VerifyOtpDTO } from "@/utils/helpers/models/auth/verify-otp.dto";
 import { ResendOtpDTO } from "@/utils/helpers/models/auth/resend-otp.dto";
 import { ResetPasswordDTO } from "@/utils/helpers/models/auth/reset-password.dto";
 import { UpdatePasswordDTO } from "@/utils/helpers/models/auth/update-password.dto";
+import { normalizeAuthSession } from "@/utils/helpers/common/auth-mapper";
+import { useAppDispatch } from "@/store/hooks";
+import { setSessionStatus } from "@/store/slices/sharedSlice";
+import { firstAllowedPath } from "@/navigation/menu.config";
+import {
+  buildPermissionContext,
+  checkAnyPermission,
+  checkPermission,
+} from "@/utils/helpers/permissions/permission-engine";
 
 const useAuth = () => {
   const { setToken, userData } = useStore();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
   const login = async (body: LoginDTO) => {
     const response = await Auth_APIS.login(body);
@@ -21,16 +31,20 @@ const useAuth = () => {
 
     if (status) {
       const token = response?.data?.token;
-      const user = response?.data?.user;
 
       if (token) {
         localStorage.setItem("token", token);
+        const session = normalizeAuthSession(response.data);
         setToken(token);
-        if (user) {
-          userData(user);
-        }
+        userData(session);
+        dispatch(setSessionStatus("ready"));
+        const ctx = buildPermissionContext(session);
+        const home = firstAllowedPath(
+          (permission) => checkPermission(ctx, permission),
+          (permissions) => checkAnyPermission(ctx, permissions),
+        );
         successToaster(message || "Logged in successfully!");
-        navigate(siteRoutes.home, { replace: true });
+        navigate(home, { replace: true });
       }
     }
   };

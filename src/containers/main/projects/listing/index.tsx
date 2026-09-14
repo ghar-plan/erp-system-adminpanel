@@ -2,11 +2,14 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Plus, Search, Trash2, Eye, Building2, Pencil } from "lucide-react";
 import useProjects from "../useHooks";
-import { Project } from "@/utils/helpers/models/projects/project.dto";
+import { Project, PaymentPlan } from "@/utils/helpers/models/projects/project.dto";
 import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
+import { Can } from "@/components/auth/Can";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
 interface ProjectFilters {
   search: string;
@@ -18,7 +21,12 @@ interface ProjectFilters {
 
 export default function ProjectListing() {
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
   const { getProjects, deleteProject } = useProjects();
+  const canView = hasPermission(PERMISSIONS.CONSTRUCTION_SITE_READ);
+  const canUpdate = hasPermission(PERMISSIONS.CONSTRUCTION_SITE_UPDATE);
+  const canDelete = hasPermission(PERMISSIONS.CONSTRUCTION_SITE_DELETE);
+  const showActions = canView || canUpdate || canDelete;
   const [projects, setProjects] = useState<Project[]>([]);
   const [totalElements, setTotalElements] = useState(0);
 
@@ -102,11 +110,14 @@ export default function ProjectListing() {
     "Sr No.",
     "Image",
     "Site Name",
+    "Client",
     "Region",
     "Subregion",
+    "Construction Type",
+    "Payment Plan",
     "Start Date",
     "Date of Entry",
-    "Actions",
+    ...(showActions ? ["Actions"] : []),
   ];
 
   return (
@@ -123,13 +134,15 @@ export default function ProjectListing() {
             </span> */}
           </div>
         </div>
-        <Link
-          to="/projects/create"
-          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap self-start sm:self-auto text-sm"
-        >
-          <Plus size={18} />
-          Register New Site
-        </Link>
+        <Can permission={PERMISSIONS.CONSTRUCTION_SITE_CREATE}>
+          <Link
+            to="/projects/create"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap self-start sm:self-auto text-sm"
+          >
+            <Plus size={18} />
+            Create Project
+          </Link>
+        </Can>
       </div>
       {/* Filters Toolbar Card */}
       <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-wrap items-end justify-start md:justify-end gap-3 w-full">
@@ -258,8 +271,21 @@ export default function ProjectListing() {
                       <td className="table-td font-semibold text-foreground">
                         {project?.siteName || "--"}
                       </td>
+                      <td className="table-td">
+                        {project?.client?.fullName || "--"}
+                      </td>
                       <td className="table-td">{project?.region || "--"}</td>
                       <td className="table-td">{project?.subregion || "--"}</td>
+                      <td className="table-td">
+                        {project?.constructionType || "--"}
+                      </td>
+                      <td className="table-td">
+                        {project?.paymentPlan === PaymentPlan.MARKUP &&
+                        project.markupPercentage !== null &&
+                        project.markupPercentage !== undefined
+                          ? `${project.paymentPlan} (${Number(project.markupPercentage)}%)`
+                          : project?.paymentPlan || "--"}
+                      </td>
                       <td className="table-td">
                         {project?.startDate
                           ? new Date(project.startDate).toLocaleDateString(
@@ -284,33 +310,41 @@ export default function ProjectListing() {
                             )
                           : "--"}
                       </td>
+                      {showActions ? (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex gap-2">
-                          <Link
-                            to={`/projects/view/${project.id}`}
-                            className="btn-action-view"
-                            title="View Details"
-                          >
-                            <Eye size={16} />
-                          </Link>
-                          <Link
-                            to={`/projects/edit/${project.id}`}
-                            className="btn-action-edit"
-                            title="Edit Project"
-                          >
-                            <Pencil size={16} />
-                          </Link>
-                          <button
-                            onClick={() =>
-                              handleDelete(project.id, project.siteName)
-                            }
-                            className="btn-action-delete"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {canView ? (
+                            <Link
+                              to={`/projects/view/${project.id}`}
+                              className="btn-action-view"
+                              title="View Details"
+                            >
+                              <Eye size={16} />
+                            </Link>
+                          ) : null}
+                          {canUpdate ? (
+                            <Link
+                              to={`/projects/edit/${project.id}`}
+                              className="btn-action-edit"
+                              title="Edit Project"
+                            >
+                              <Pencil size={16} />
+                            </Link>
+                          ) : null}
+                          {canDelete ? (
+                            <button
+                              onClick={() =>
+                                handleDelete(project.id, project.siteName)
+                              }
+                              className="btn-action-delete"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          ) : null}
                         </div>
                       </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>

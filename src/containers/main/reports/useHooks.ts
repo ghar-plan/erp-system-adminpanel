@@ -1,4 +1,5 @@
 import { Reports_APIS } from "@/libs/apis/reports.api";
+import { Vendors_APIS } from "@/libs/apis/vendors.api";
 
 const useReports = () => {
   const getProjectTransactionReport = async (setData: Function, queryParams: any = {}, setTotalElements?: Function) => {
@@ -15,6 +16,16 @@ const useReports = () => {
 
   const getProjects = async (setData: Function) => {
     const response = await Reports_APIS.getProjectsList();
+    const { status = false, data = [] } = response || {};
+    if (status && data) {
+      setData(data);
+    } else {
+      setData([]);
+    }
+  };
+
+  const getVendors = async (setData: Function) => {
+    const response = await Vendors_APIS.getAllWithoutPagination();
     const { status = false, data = [] } = response || {};
     if (status && data) {
       setData(data);
@@ -44,6 +55,7 @@ const useReports = () => {
   return {
     getProjectTransactionReport,
     getProjects,
+    getVendors,
     getVendorReport,
   };
 };

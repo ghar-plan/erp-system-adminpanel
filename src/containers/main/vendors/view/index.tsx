@@ -14,6 +14,8 @@ import {
 import { IoArrowBackOutline } from "react-icons/io5";
 import useVendors from "../useHooks";
 import { Vendor } from "@/utils/helpers/models/vendors/vendor.dto";
+import { Can } from "@/components/auth/Can";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
 export default function VendorView() {
   const { id } = useParams<{ id: string }>();
@@ -51,13 +53,15 @@ export default function VendorView() {
           </div>
         </div>
 
-        <Link
-          to={`/vendors/edit/${vendor.id}`}
-          className="flex h-10 px-5 items-center justify-center gap-2 rounded-md bg-primary hover:opacity-95 font-semibold text-white text-sm transition-all cursor-pointer shadow-sm animate-fade-in"
-        >
-          <Pencil size={16} />
-          Edit Profile
-        </Link>
+        <Can permission={PERMISSIONS.VENDORS_UPDATE}>
+          <Link
+            to={`/vendors/edit/${vendor.id}`}
+            className="flex h-10 px-5 items-center justify-center gap-2 rounded-md bg-primary hover:opacity-95 font-semibold text-white text-sm transition-all cursor-pointer shadow-sm animate-fade-in"
+          >
+            <Pencil size={16} />
+            Edit Profile
+          </Link>
+        </Can>
       </div>
 
       <hr className="border-border-main" />

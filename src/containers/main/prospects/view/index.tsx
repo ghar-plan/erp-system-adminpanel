@@ -14,6 +14,8 @@ import {
 import { IoArrowBackOutline } from "react-icons/io5";
 import useProspects from "../useHooks";
 import useStore from "@/hooks/useStore";
+import { Can } from "@/components/auth/Can";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
 interface Prospect {
   id: string;
@@ -116,13 +118,15 @@ export default function ProspectView() {
             Prospect Overview
           </h1>
         </div>
-        <Link
-          to={`/prospects/edit/${prospect.id}`}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
-        >
-          <Pencil size={16} />
-          Edit Prospect
-        </Link>
+        <Can permission={PERMISSIONS.PROSPECT_UPDATE}>
+          <Link
+            to={`/prospects/edit/${prospect.id}`}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
+          >
+            <Pencil size={16} />
+            Edit Prospect
+          </Link>
+        </Can>
       </div>
 
       <hr className="border-border-main" />
@@ -260,7 +264,7 @@ export default function ProspectView() {
           </div>
         </div>
 
-        {/* Right Column: Update Status */}
+        <Can permission={PERMISSIONS.PROSPECT_UPDATE}>
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-card border border-border-main rounded-xl p-6 shadow-xs space-y-6">
             <div className="flex items-center gap-3 border-b border-border-main pb-4">
@@ -308,6 +312,7 @@ export default function ProspectView() {
             </div>
           </div>
         </div>
+        </Can>
       </div>
     </div>
   );

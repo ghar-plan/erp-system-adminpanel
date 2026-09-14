@@ -1,4 +1,4 @@
-import { postRequest } from "../../utils/helpers/common/http-methods";
+import { postRequest, getRequest } from "../../utils/helpers/common/http-methods";
 import { LoginDTO } from "@/utils/helpers/models/auth/login.dto";
 import { VerifyOtpDTO } from "@/utils/helpers/models/auth/verify-otp.dto";
 import { ResendOtpDTO } from "@/utils/helpers/models/auth/resend-otp.dto";
@@ -7,6 +7,7 @@ import { UpdatePasswordDTO } from "@/utils/helpers/models/auth/update-password.d
 
 export const Auth_APIS = {
   login: (body: LoginDTO) => postRequest("/v1/auth/login", body),
+  getMe: () => getRequest("/v1/auth/me"),
   verifyOtp: (body: VerifyOtpDTO) => postRequest("/v1/auth/verify-otp", body),
   resendOtp: (body: ResendOtpDTO) => postRequest("/v1/auth/resend-otp", body),
   resetPassword: (body: ResetPasswordDTO) => postRequest("/v1/auth/reset-password", body),
