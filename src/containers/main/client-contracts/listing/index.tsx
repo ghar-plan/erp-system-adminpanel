@@ -1,55 +1,45 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  Plus,
-  Search,
-  Pencil,
-  Trash2,
-} from "lucide-react";
-import useContracts from "../useHooks";
+import { Link } from "react-router-dom";
+import { Plus, Search, Pencil, Trash2, FileText } from "lucide-react";
+import useClientContracts from "../useHooks";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
 import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
-import ActivityTimelineBadge from "../ActivityTimelineBadge";
-import { durationDays, formatDurationLabel } from "../activity-timeline";
 import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 
-interface ContractFilters {
+interface ClientContractFilters {
   search: string;
   page: number;
   limit: number;
 }
 
-export default function ContractsListing() {
-  const navigate = useNavigate();
+export default function ClientContractsListing() {
   const { hasPermission } = usePermissions();
-  const { getContracts, deleteContract } = useContracts();
+  const { getClientContracts, deleteClientContract } = useClientContracts();
   const canUpdate = hasPermission(PERMISSIONS.CONTRACTS_UPDATE);
   const canDelete = hasPermission(PERMISSIONS.CONTRACTS_DELETE);
   const showActions = canUpdate || canDelete;
   const [contracts, setContracts] = useState<any[]>([]);
   const [totalElements, setTotalElements] = useState(0);
-
   const [searchVal, setSearchVal] = useState("");
 
-  const [filters, setFilters] = useState<ContractFilters>({
+  const [filters, setFilters] = useState<ClientContractFilters>({
     search: "",
     page: 1,
     limit: 10,
   });
 
-  const fetchContracts = (currentFilters: ContractFilters) => {
+  const fetchContracts = (currentFilters: ClientContractFilters) => {
     const queryParams: any = {
       limit: currentFilters.limit,
       offset: (currentFilters.page - 1) * currentFilters.limit,
     };
     if (currentFilters.search) queryParams.search = currentFilters.search;
-    queryParams.type = "vendor";
-
-    getContracts(setContracts, queryParams, setTotalElements);
+    getClientContracts(setContracts, queryParams, setTotalElements);
   };
 
   useEffect(() => {
@@ -88,7 +78,7 @@ export default function ContractsListing() {
   };
 
   const handleDelete = async (id: string) => {
-    await deleteContract(id, () => fetchContracts(filters));
+    await deleteClientContract(id, () => fetchContracts(filters));
   };
 
   const formatDate = (dateString: string | Date) => {
@@ -106,15 +96,8 @@ export default function ContractsListing() {
 
   const columns = [
     "Sr No.",
-    "Vendor",
     "Project",
-    "Activity",
-    "Description",
-    "Amount",
-    "Start Date",
-    "End Date",
-    "Duration",
-    "Activity Timeline",
+    "Contract PDF",
     "Date",
     ...(showActions ? ["Actions"] : []),
   ];
@@ -125,7 +108,7 @@ export default function ContractsListing() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl text-foreground font-bold">
-              Vendor Contracts
+              Client Contracts
             </h1>
           </div>
         </div>
@@ -133,11 +116,11 @@ export default function ContractsListing() {
         <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
           <Can permission={PERMISSIONS.CONTRACTS_CREATE}>
             <Link
-              to="/contracts/create"
+              to={siteRoutes.clientContractsCreate}
               className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
             >
               <Plus size={18} />
-              Create Vendor Contract
+              Create Client Contract
             </Link>
           </Can>
         </div>
@@ -159,7 +142,7 @@ export default function ContractsListing() {
             <input
               type="search"
               name="search"
-              placeholder="Search by description..."
+              placeholder="Search by project..."
               value={searchVal}
               onChange={(e) => setSearchVal(e.target.value)}
               className="common-input pl-10 pr-4 text-sm h-10 w-full"
@@ -204,95 +187,64 @@ export default function ContractsListing() {
                 </thead>
 
                 <tbody className="divide-y divide-border-main bg-card text-foreground">
-                  {contracts.map((contract, index) => (
-                    <tr
-                      key={contract.id}
-                      className="hover:bg-muted-foreground/5 transition-colors"
-                    >
-                      <td className="table-td">
-                        {(filters.page - 1) * filters.limit + index + 1}
-                      </td>
-                      <td className="table-td font-semibold text-foreground">
-                        {contract.vendor?.vendorName || "—"}
-                      </td>
-                      <td className="table-td font-semibold text-foreground">
-                        {contract.project?.siteName || "—"}
-                      </td>
-                      <td className="table-td font-semibold text-foreground">
-                        {contract.activity?.name || "—"}
-                      </td>
-                      <td className="table-td max-w-[240px]">
-                        <div className="flex items-center gap-3 min-w-0">
-                          {contract.media?.url ? (
+                  {contracts.map((contract, index) => {
+                    const pdfUrl = contract.media?.url
+                      ? getFilePathWithBackendUrl(contract.media.url)
+                      : "";
+                    return (
+                      <tr
+                        key={contract.id}
+                        className="hover:bg-muted-foreground/5 transition-colors"
+                      >
+                        <td className="table-td">
+                          {(filters.page - 1) * filters.limit + index + 1}
+                        </td>
+                        <td className="table-td font-semibold text-foreground">
+                          {contract.project?.siteName || "—"}
+                        </td>
+                        <td className="table-td">
+                          {pdfUrl ? (
                             <a
-                              href={getFilePathWithBackendUrl(contract.media.url)}
+                              href={pdfUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="shrink-0"
-                              title="View image"
+                              className="inline-flex items-center gap-1.5 text-primary font-semibold hover:underline"
                             >
-                              <img
-                                src={getFilePathWithBackendUrl(contract.media.url)}
-                                alt=""
-                                className="w-10 h-10 rounded-lg object-cover border border-border-main"
-                              />
+                              <FileText size={15} />
+                              View PDF
                             </a>
-                          ) : null}
-                          <span
-                            className="truncate"
-                            title={contract.description}
-                          >
-                            {contract.description || "—"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="table-td font-mono font-medium text-primary">
-                        PKR {Number(contract.amount).toLocaleString()}
-                      </td>
-                      <td className="table-td">
-                        {contract.startDate ? formatDate(contract.startDate) : "—"}
-                      </td>
-                      <td className="table-td">
-                        {contract.endDate ? formatDate(contract.endDate) : "—"}
-                      </td>
-                      <td className="table-td">
-                        {formatDurationLabel(
-                          durationDays(contract.startDate, contract.endDate),
-                        )}
-                      </td>
-                      <td className="table-td">
-                        <ActivityTimelineBadge
-                          startDate={contract.startDate}
-                          endDate={contract.endDate}
-                        />
-                      </td>
-                      <td className="table-td">{formatDate(contract.created_at)}</td>
-                      {showActions ? (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex gap-2">
-                          {canUpdate ? (
-                            <Link
-                              to={`/contracts/edit/${contract.id}`}
-                              className="btn-action-edit"
-                              title="Edit Contract"
-                            >
-                              <Pencil size={16} />
-                            </Link>
-                          ) : null}
-                          {canDelete ? (
-                            <button
-                              onClick={() => handleDelete(contract.id)}
-                              className="btn-action-delete"
-                              title="Delete"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          ) : null}
-                        </div>
-                      </td>
-                      ) : null}
-                    </tr>
-                  ))}
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="table-td">{formatDate(contract.created_at)}</td>
+                        {showActions ? (
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex gap-2">
+                              {canUpdate ? (
+                                <Link
+                                  to={`/client-contracts/edit/${contract.id}`}
+                                  className="btn-action-edit"
+                                  title="Edit Client Contract"
+                                >
+                                  <Pencil size={16} />
+                                </Link>
+                              ) : null}
+                              {canDelete ? (
+                                <button
+                                  onClick={() => handleDelete(contract.id)}
+                                  className="btn-action-delete"
+                                  title="Delete"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              ) : null}
+                            </div>
+                          </td>
+                        ) : null}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

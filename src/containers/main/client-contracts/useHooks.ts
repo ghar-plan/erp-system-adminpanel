@@ -5,16 +5,20 @@ import {
   errorToaster,
   confirmationPopup,
 } from "@/utils/helpers/common/alert-service";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 
-const useContracts = () => {
+const useClientContracts = () => {
   const navigate = useNavigate();
 
-  const getContracts = async (
+  const getClientContracts = async (
     setData: Function,
     queryParams: any = {},
     setTotalElements?: Function,
   ) => {
-    const response = await Contracts_APIS.getAll(queryParams);
+    const response = await Contracts_APIS.getAll({
+      ...queryParams,
+      type: "client",
+    });
     const { status = false, data = [] } = response || {};
     if (status && data) {
       setData(data);
@@ -25,7 +29,7 @@ const useContracts = () => {
     }
   };
 
-  const getContractById = async (id: string, setData: Function) => {
+  const getClientContractById = async (id: string, setData: Function) => {
     const response = await Contracts_APIS.getById(id);
     const { status = false, data = null } = response || {};
     if (status && data) {
@@ -33,33 +37,33 @@ const useContracts = () => {
     }
   };
 
-  const createContract = async (body: any) => {
-    const response = await Contracts_APIS.create(body);
+  const createClientContract = async (body: any) => {
+    const response = await Contracts_APIS.create({
+      ...body,
+      type: "client",
+    });
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "Contract created successfully");
-      navigate("/contracts");
+      successToaster(message || "Client contract created successfully");
+      navigate(siteRoutes.clientContracts);
       return response;
     }
   };
 
-  const updateContract = async (id: string, body: any) => {
+  const updateClientContract = async (id: string, body: any) => {
     const response = await Contracts_APIS.update(id, body);
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "Contract updated successfully");
-      navigate("/contracts");
+      successToaster(message || "Client contract updated successfully");
+      navigate(siteRoutes.clientContracts);
       return response;
     }
   };
 
-  const deleteContract = async (
-    id: string,
-    callback?: Function,
-  ) => {
+  const deleteClientContract = async (id: string, callback?: Function) => {
     const result = await confirmationPopup(
-      `Delete Contract`,
-      "Are you sure you want to delete this contract? This action cannot be undone.",
+      `Delete Client Contract`,
+      "Are you sure you want to delete this client contract? This action cannot be undone.",
     );
     if (result.isConfirmed) {
       const response = await Contracts_APIS.delete(id);
@@ -73,29 +77,29 @@ const useContracts = () => {
     }
   };
 
-  const uploadContractImage = async (file: File) => {
+  const uploadContractPdf = async (file: File) => {
     const formData = new FormData();
     formData.append("files", file);
 
-    const response = await Contracts_APIS.uploadImage(formData);
+    const response = await Contracts_APIS.uploadPdf(formData);
     const data = response?.data || response || [];
     if (Array.isArray(data) && data.length > 0) {
       return data[0];
     }
     if (!response?.error) {
-      errorToaster("Failed to upload image");
+      errorToaster("Failed to upload contract PDF");
     }
     return null;
   };
 
   return {
-    getContracts,
-    getContractById,
-    createContract,
-    updateContract,
-    deleteContract,
-    uploadContractImage,
+    getClientContracts,
+    getClientContractById,
+    createClientContract,
+    updateClientContract,
+    deleteClientContract,
+    uploadContractPdf,
   };
 };
 
-export default useContracts;
+export default useClientContracts;

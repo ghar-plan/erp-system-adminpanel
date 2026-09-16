@@ -18,6 +18,7 @@ const useProjects = () => {
     constructionType: string;
     paymentPlan: string;
     markupPercentage?: number | string | null;
+    amount?: number | string | null;
     mediaId?: string | null;
     clientFullName?: string;
     clientEmail?: string;
@@ -41,6 +42,12 @@ const useProjects = () => {
     data.markupPercentage !== ""
       ? { markupPercentage: Number(data.markupPercentage) }
       : {}),
+    ...((data.paymentPlan === PaymentPlan.LUMP_SUM &&
+    data.amount !== null &&
+    data.amount !== undefined &&
+    data.amount !== "")
+      ? { amount: Number(data.amount) }
+      : {}),
     ...(data.mediaId ? { mediaId: data.mediaId } : {}),
     ...(data.clientFullName ? { clientFullName: data.clientFullName.trim() } : {}),
     ...(data.clientEmail ? { clientEmail: data.clientEmail.trim() } : {}),
@@ -63,6 +70,7 @@ const useProjects = () => {
     constructionType: string;
     paymentPlan: string;
     markupPercentage?: number | string | null;
+    amount?: number | string | null;
     mediaId: string | null;
     clientFullName: string;
     clientEmail: string;

@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronRight,
   FileSignature,
+  FileText,
   Shield,
   ClipboardList,
   Store,
@@ -57,6 +58,8 @@ const CHILD_ICONS: Record<string, React.ReactNode> = {
   users: <Users size={16} />,
   clients: <Building2 size={16} />,
   employees: <Users size={16} />,
+  "vendor-contract": <FileSignature size={16} />,
+  "client-contract": <FileText size={16} />,
 };
 
 const MainLayout: React.FC<LayoutProps> = ({ children }) => {
@@ -84,6 +87,7 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({
     Reports: false,
     "Roles & Users": false,
+    Contracts: false,
   });
 
   const toggleDropdown = (text: string) => {

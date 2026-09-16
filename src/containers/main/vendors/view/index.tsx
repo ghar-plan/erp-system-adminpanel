@@ -16,6 +16,12 @@ import useVendors from "../useHooks";
 import { Vendor } from "@/utils/helpers/models/vendors/vendor.dto";
 import { Can } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import ActivityTimelineBadge from "@/containers/main/contracts/ActivityTimelineBadge";
+import {
+  durationDays,
+  formatDurationLabel,
+} from "@/containers/main/contracts/activity-timeline";
+import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
 
 export default function VendorView() {
   const { id } = useParams<{ id: string }>();
@@ -168,7 +174,7 @@ export default function VendorView() {
                   {vendor?.vendorType === "vendorMaterial"
                     ? "Raw Material"
                     : vendor?.vendorType === "vendorLabour"
-                      ? "Sub Contractor"
+                      ? "Labour"
                       : vendor?.vendorType || "--"}
                 </span>
               </div>
@@ -283,7 +289,23 @@ export default function VendorView() {
 
                 return (
                   <div key={contract.id || index} className="p-4 rounded-xl border border-border-main bg-panel-bg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all hover:border-primary/30">
-                    <div className="space-y-1">
+                    <div className="flex items-start gap-3 min-w-0">
+                      {contract.media?.url ? (
+                        <a
+                          href={getFilePathWithBackendUrl(contract.media.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0"
+                          title="View image"
+                        >
+                          <img
+                            src={getFilePathWithBackendUrl(contract.media.url)}
+                            alt=""
+                            className="w-12 h-12 rounded-lg object-cover border border-border-main"
+                          />
+                        </a>
+                      ) : null}
+                      <div className="space-y-1 min-w-0">
                       <h4 className="font-bold text-foreground text-sm flex items-center gap-2">
                         <Briefcase size={16} className="text-primary" />
                         {contract.project?.siteName || "Unknown Project"} - {contract.activity?.name || "Unknown Activity"}
@@ -291,6 +313,20 @@ export default function VendorView() {
                       <p className="text-xs text-muted-foreground line-clamp-2 max-w-md">
                         {contract.description || "No description provided."}
                       </p>
+                      {contract.startDate || contract.endDate ? (
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <ActivityTimelineBadge
+                            startDate={contract.startDate}
+                            endDate={contract.endDate}
+                          />
+                          <span className="text-[11px] text-muted-foreground">
+                            {formatDurationLabel(
+                              durationDays(contract.startDate, contract.endDate),
+                            )}
+                          </span>
+                        </div>
+                      ) : null}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-6">

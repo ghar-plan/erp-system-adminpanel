@@ -10,6 +10,7 @@ import {
   ConstructionType,
   PaymentPlan,
   sanitizePercentageInput,
+  sanitizeAmountInput,
 } from "@/utils/helpers/models/projects/project.dto";
 
 interface ProjectFormInputs {
@@ -29,6 +30,7 @@ interface ProjectFormInputs {
   constructionType: string;
   paymentPlan: string;
   markupPercentage: string;
+  amount: string;
   mediaId: string | null;
 }
 
@@ -60,10 +62,12 @@ export default function Projects() {
       constructionType: "",
       paymentPlan: "",
       markupPercentage: "",
+      amount: "",
     },
   });
 
   const paymentPlan = watch("paymentPlan");
+  const showAmountField = paymentPlan === PaymentPlan.LUMP_SUM;
   const { onChange: onMarkupChange, ...markupPercentageField } = register(
     "markupPercentage",
     {
@@ -87,6 +91,24 @@ export default function Projects() {
       },
     },
   );
+
+  const { onChange: onAmountChange, ...amountField } = register("amount", {
+    required: showAmountField ? "Amount is required" : false,
+    validate: (value) => {
+      if (!showAmountField) return true;
+      if (value === "" || value === undefined) {
+        return "Amount is required";
+      }
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) {
+        return "Only numbers are allowed";
+      }
+      if (numericValue < 0) {
+        return "Amount cannot be below 0";
+      }
+      return true;
+    },
+  });
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -129,6 +151,9 @@ export default function Projects() {
     if (data.paymentPlan === PaymentPlan.MARKUP) {
       payload.markupPercentage = Number(data.markupPercentage);
     }
+    if (data.paymentPlan === PaymentPlan.LUMP_SUM) {
+      payload.amount = Number(data.amount);
+    }
     if (data.mediaId) {
       payload.mediaId = data.mediaId;
     }
@@ -164,10 +189,7 @@ export default function Projects() {
         onSubmit={handleSubmit(onSubmitForm)}
         className="mt-8 w-full animate-slide-up space-y-6"
       >
-        <input
-          type="hidden"
-          {...register("mediaId", { required: "Cover image is required" })}
-        />
+        <input type="hidden" {...register("mediaId")} />
         <hr className="border-border-main" />
 
         {/* Form Fields Grid */}
@@ -497,6 +519,9 @@ export default function Projects() {
                       if (e.target.value !== PaymentPlan.MARKUP) {
                         setValue("markupPercentage", "");
                       }
+                      if (e.target.value !== PaymentPlan.LUMP_SUM) {
+                        setValue("amount", "");
+                      }
                     },
                   })}
                 >
@@ -517,6 +542,33 @@ export default function Projects() {
                 )}
               </div>
             </div>
+
+            {showAmountField && (
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  {paymentPlan === PaymentPlan.LUMP_SUM
+                    ? "Lump Sum Amount"
+                    : "Amount"}{" "}
+                  (PKR) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="e.g. 2500000"
+                  className={`common-input ${errors.amount ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...amountField}
+                  onChange={(e) => {
+                    e.target.value = sanitizeAmountInput(e.target.value);
+                    onAmountChange(e);
+                  }}
+                />
+                {errors.amount && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.amount.message}
+                  </p>
+                )}
+              </div>
+            )}
 
             {paymentPlan === PaymentPlan.MARKUP && (
               <div>
@@ -597,10 +649,7 @@ export default function Projects() {
                       Upload Image
                     </span>
                     <span className="text-[10px] text-muted-foreground mt-1">
-                      PNG, JPG up to 10MB
-                    </span>
-                    <span className="text-[10px] text-red-500 font-semibold mt-1">
-                      * Required
+                      PNG, JPG up to 10MB (optional)
                     </span>
                   </div>
                 )}

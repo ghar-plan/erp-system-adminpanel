@@ -26,6 +26,9 @@ import ProjectLedger from "@/containers/main/reports/projectList/listing";
 import ContractsListing from "@/containers/main/contracts/listing";
 import ContractCreate from "@/containers/main/contracts/create";
 import ContractEdit from "@/containers/main/contracts/edit";
+import ClientContractsListing from "@/containers/main/client-contracts/listing";
+import ClientContractCreate from "@/containers/main/client-contracts/create";
+import ClientContractEdit from "@/containers/main/client-contracts/edit";
 import RolesListing from "@/containers/main/roles/listing";
 import RoleEdit from "@/containers/main/roles/edit";
 import UsersListing from "@/containers/main/users/listing";
@@ -174,6 +177,18 @@ const DashboardRoutes = () => {
         <Route
           path={siteRoutes.contractsEdit}
           element={guard(<ContractEdit />, PERMISSIONS.CONTRACTS_UPDATE)}
+        />
+        <Route
+          path={siteRoutes.clientContracts}
+          element={guard(<ClientContractsListing />, PERMISSIONS.CONTRACTS_READ)}
+        />
+        <Route
+          path={siteRoutes.clientContractsCreate}
+          element={guard(<ClientContractCreate />, PERMISSIONS.CONTRACTS_CREATE)}
+        />
+        <Route
+          path={siteRoutes.clientContractsEdit}
+          element={guard(<ClientContractEdit />, PERMISSIONS.CONTRACTS_UPDATE)}
         />
         <Route
           path={siteRoutes.roles}

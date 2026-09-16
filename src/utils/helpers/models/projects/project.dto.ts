@@ -14,6 +14,23 @@ export const sanitizePercentageInput = (value: string): string => {
   return decimals.length > 0 ? `${whole}.${decimals.join("")}` : whole;
 };
 
+export const sanitizeAmountInput = (value: string): string => {
+  const cleaned = value.replace(/[^0-9.]/g, "");
+  const [whole, ...decimals] = cleaned.split(".");
+  const decimal = decimals.join("").slice(0, 2);
+  return decimals.length > 0 ? `${whole}.${decimal}` : whole;
+};
+
+export const formatProjectAmount = (value?: number | string | null): string => {
+  if (value === null || value === undefined || value === "") return "--";
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "--";
+  return `PKR ${amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+};
+
 export interface Project {
   id: string;
   siteName: string;
@@ -23,6 +40,7 @@ export interface Project {
   constructionType?: ConstructionType | string | null;
   paymentPlan?: PaymentPlan | string | null;
   markupPercentage?: number | string | null;
+  amount?: number | string | null;
   mediaId?: string | null;
   media?: {
     id: string;
@@ -43,6 +61,18 @@ export interface Project {
     email?: string;
     phone?: string;
   } | null;
+  contracts?: {
+    id: string;
+    type?: string;
+    amount?: number | string;
+    description?: string | null;
+    created_at?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    vendor?: { vendorName?: string } | null;
+    activity?: { name?: string } | null;
+    media?: { id: string; url: string } | null;
+  }[];
   created_at: string;
 }
 
@@ -55,6 +85,7 @@ export class ProjectDTO {
   constructionType?: ConstructionType | string | null = null;
   paymentPlan?: PaymentPlan | string | null = null;
   markupPercentage?: number | string | null = null;
+  amount?: number | string | null = null;
   mediaId?: string | null = null;
   media?: {
     id: string;

@@ -130,7 +130,7 @@ export default function VendorEdit() {
               >
                 <option value="Both">Both</option>
                 <option value="vendorMaterial">Raw Material</option>
-                <option value="vendorLabour">Sub Contractor</option>
+                <option value="vendorLabour">Labour</option>
               </select>
               {errors.vendorType && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">

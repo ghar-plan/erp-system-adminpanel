@@ -123,7 +123,7 @@ export default function VendorListing() {
       case "vendorMaterial":
         return "Raw Material";
       case "vendorLabour":
-        return "Sub Contractor";
+        return "Labour";
       default:
         return type || "--";
     }
@@ -203,7 +203,7 @@ export default function VendorListing() {
             <option value="">Status / Type</option>
             <option value="Both">Both</option>
             <option value="vendorMaterial">Raw Material</option>
-            <option value="vendorLabour">Sub Contractor</option>
+            <option value="vendorLabour">Labour</option>
           </select>
         </div>
 

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Plus, Search, Trash2, Eye, Building2, Pencil } from "lucide-react";
 import useProjects from "../useHooks";
-import { Project, PaymentPlan } from "@/utils/helpers/models/projects/project.dto";
+import { Project } from "@/utils/helpers/models/projects/project.dto";
 import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
@@ -10,6 +10,32 @@ import Button from "@/components/ui/Button";
 import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+
+function ProjectListImage({ url, alt }: { url?: string | null; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const src = url ? getFilePathWithBackendUrl(url) : "";
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  if (!src || failed) {
+    return (
+      <div className="w-12 h-12 rounded-xl border border-border-main bg-bg-input flex items-center justify-center text-muted-foreground/60 shadow-xs">
+        <Building2 size={18} className="stroke-[1.5]" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+      className="w-12 h-12 rounded-xl object-cover border border-border-main shadow-xs"
+    />
+  );
+}
 
 interface ProjectFilters {
   search: string;
@@ -110,13 +136,9 @@ export default function ProjectListing() {
     "Sr No.",
     "Image",
     "Site Name",
-    "Client",
     "Region",
     "Subregion",
-    "Construction Type",
-    "Payment Plan",
     "Start Date",
-    "Date of Entry",
     ...(showActions ? ["Actions"] : []),
   ];
 
@@ -256,51 +278,19 @@ export default function ProjectListing() {
                         {(filters.page - 1) * filters.limit + index + 1}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {project?.media?.url ? (
-                          <img
-                            src={getFilePathWithBackendUrl(project.media.url)}
-                            alt={project?.siteName || "Project"}
-                            className="w-12 h-12 rounded-xl object-cover border border-border-main shadow-xs"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-xl border border-border-main bg-bg-input flex items-center justify-center text-muted-foreground/60 shadow-xs">
-                            <Building2 size={18} className="stroke-[1.5]" />
-                          </div>
-                        )}
+                        <ProjectListImage
+                          url={project?.media?.url}
+                          alt={project?.siteName || "Project"}
+                        />
                       </td>
                       <td className="table-td font-semibold text-foreground">
                         {project?.siteName || "--"}
                       </td>
-                      <td className="table-td">
-                        {project?.client?.fullName || "--"}
-                      </td>
                       <td className="table-td">{project?.region || "--"}</td>
                       <td className="table-td">{project?.subregion || "--"}</td>
                       <td className="table-td">
-                        {project?.constructionType || "--"}
-                      </td>
-                      <td className="table-td">
-                        {project?.paymentPlan === PaymentPlan.MARKUP &&
-                        project.markupPercentage !== null &&
-                        project.markupPercentage !== undefined
-                          ? `${project.paymentPlan} (${Number(project.markupPercentage)}%)`
-                          : project?.paymentPlan || "--"}
-                      </td>
-                      <td className="table-td">
                         {project?.startDate
                           ? new Date(project.startDate).toLocaleDateString(
-                              "en-US",
-                              {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              },
-                            )
-                          : "--"}
-                      </td>
-                      <td className="table-td">
-                        {project?.created_at
-                          ? new Date(project.created_at).toLocaleDateString(
                               "en-US",
                               {
                                 year: "numeric",

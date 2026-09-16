@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Check, Loader2, MessageSquare, MoreHorizontal, Pencil, Send, Trash2, X } from "lucide-react";
 import useComments from "./useHooks";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -26,6 +27,7 @@ type CommentItem = {
 
 export default function Comments() {
   const { session, hasPermission } = usePermissions();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { getProjects, fetchCommentsPage, addComment, updateComment, deleteComment } =
     useComments();
   const canCreate =
@@ -51,9 +53,12 @@ export default function Comments() {
   );
 
   useEffect(() => {
+    const requestedProjectId = searchParams.get("projectId") || "";
     getProjects((items: ProjectOption[]) => {
       setProjects(items);
-      if (items.length === 1) {
+      if (requestedProjectId && items.some((item) => item.id === requestedProjectId)) {
+        setProjectId(requestedProjectId);
+      } else if (items.length === 1) {
         setProjectId(items[0].id);
       }
     });
@@ -273,7 +278,13 @@ export default function Comments() {
             className="common-input bg-card"
             value={projectId}
             onChange={(event) => {
-              setProjectId(event.target.value);
+              const nextId = event.target.value;
+              setProjectId(nextId);
+              if (nextId) {
+                setSearchParams({ projectId: nextId }, { replace: true });
+              } else {
+                setSearchParams({}, { replace: true });
+              }
             }}
           >
             <option value="">Select a project</option>

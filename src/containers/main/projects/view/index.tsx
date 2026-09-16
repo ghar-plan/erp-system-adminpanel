@@ -1,13 +1,58 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Pencil, Building2, Calendar, MapPin, TrendingUp, Hammer, Percent, UserRound, MessageSquare } from "lucide-react";
+import { Pencil, Building2, Calendar, MapPin, TrendingUp, Hammer, Percent, UserRound, MessageSquare, FileText, FileSignature, Mail, Phone, Shield } from "lucide-react";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import { IoArrowBackOutline } from "react-icons/io5";
 import useProjects from "../useHooks";
-import { Project, PaymentPlan } from "@/utils/helpers/models/projects/project.dto";
+import { Project, PaymentPlan, formatProjectAmount } from "@/utils/helpers/models/projects/project.dto";
 import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
 import { Can, CanIf } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import ProjectTimeline from "./ProjectTimeline";
+import ActivityTimelineBadge from "@/containers/main/contracts/ActivityTimelineBadge";
+
+function InfoField({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value?: string | null;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+          {label}
+        </span>
+        <span className="text-sm font-semibold text-foreground mt-0.5 block break-words">
+          {value || "--"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function InfoSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-bold text-foreground">{title}</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export default function ProjectsView() {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +70,24 @@ export default function ProjectsView() {
   if (!project) {
     return null;
   }
+
+  const clientContracts = (project.contracts || []).filter(
+    (contract) => contract.type === "client",
+  );
+  const vendorContracts = (project.contracts || []).filter(
+    (contract) => contract.type !== "client",
+  );
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    const dateObj = new Date(dateString);
+    if (Number.isNaN(dateObj.getTime())) return "N/A";
+    return dateObj.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -54,7 +117,7 @@ export default function ProjectsView() {
             ]}
           >
             <Link
-              to={siteRoutes.comments}
+              to={`${siteRoutes.comments}?projectId=${project.id}`}
               className="flex h-10 px-5 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-muted-foreground/5 font-semibold text-foreground text-sm transition-all cursor-pointer shadow-sm"
             >
               <MessageSquare size={16} />
@@ -109,85 +172,72 @@ export default function ProjectsView() {
               </div>
               <hr className="border-border-main" />
 
+              <InfoSection title="Client Information">
+                <InfoField
+                  icon={<UserRound size={20} />}
+                  label="Client Name"
+                  value={project.client?.fullName}
+                />
+                <InfoField
+                  icon={<Mail size={20} />}
+                  label="Client Email Address"
+                  value={project.client?.email}
+                />
+                <InfoField
+                  icon={<Phone size={20} />}
+                  label="Client Mobile Number"
+                  value={project.client?.phone}
+                />
+              </InfoSection>
+
+              <hr className="border-border-main" />
+
+              <InfoSection title="Guard Information">
+                <InfoField
+                  icon={<Shield size={20} />}
+                  label="Guard Name"
+                  value={project.guardName}
+                />
+                <InfoField
+                  icon={<Phone size={20} />}
+                  label="Guard Mobile Number"
+                  value={project.guardContactNumber}
+                />
+              </InfoSection>
+
+              <hr className="border-border-main" />
+
+              <InfoSection title="Supervisor Information">
+                <InfoField
+                  icon={<UserRound size={20} />}
+                  label="Supervisor Name"
+                  value={project.supervisorName}
+                />
+                <InfoField
+                  icon={<Phone size={20} />}
+                  label="Supervisor Mobile Number"
+                  value={project.supervisorContactNumber}
+                />
+              </InfoSection>
+
+              <hr className="border-border-main" />
+
+              <InfoSection title="Manager Information">
+                <InfoField
+                  icon={<UserRound size={20} />}
+                  label="Manager Name"
+                  value={project.managerName}
+                />
+                <InfoField
+                  icon={<Phone size={20} />}
+                  label="Manager Mobile Number"
+                  value={project.managerContactNumber}
+                />
+              </InfoSection>
+
+              <hr className="border-border-main" />
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
-                    <UserRound size={20} />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                      Client
-                    </span>
-                    <span className="text-sm font-semibold text-foreground mt-0.5 block">
-                      {project.client?.fullName || "--"}
-                    </span>
-                    {project.client?.email || project.client?.phone ? (
-                      <span className="text-xs text-muted-foreground mt-0.5 block">
-                        {[project.client?.email, project.client?.phone]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
-                    <UserRound size={20} />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                      Guard Name
-                    </span>
-                    <span className="text-sm font-semibold text-foreground mt-0.5 block">
-                      {project.guardName || "--"}
-                    </span>
-                    {project.guardContactNumber ? (
-                      <span className="text-xs text-muted-foreground mt-0.5 block">
-                        {project.guardContactNumber}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
-                    <UserRound size={20} />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                      Supervisor Name
-                    </span>
-                    <span className="text-sm font-semibold text-foreground mt-0.5 block">
-                      {project.supervisorName || "--"}
-                    </span>
-                    {project.supervisorContactNumber ? (
-                      <span className="text-xs text-muted-foreground mt-0.5 block">
-                        {project.supervisorContactNumber}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
-                    <UserRound size={20} />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                      Manager Name
-                    </span>
-                    <span className="text-sm font-semibold text-foreground mt-0.5 block">
-                      {project.managerName || "--"}
-                    </span>
-                    {project.managerContactNumber ? (
-                      <span className="text-xs text-muted-foreground mt-0.5 block">
-                        {project.managerContactNumber}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-
                 <div className="flex items-start gap-3">
                   <div className="p-2.5 rounded-lg bg-info-bg text-info-text">
                     <Building2 size={20} />
@@ -281,7 +331,9 @@ export default function ProjectsView() {
                       project.markupPercentage !== null &&
                       project.markupPercentage !== undefined
                         ? `${project.paymentPlan} (${Number(project.markupPercentage)}%)`
-                        : project.paymentPlan || "--"}
+                        : project.paymentPlan === PaymentPlan.LUMP_SUM
+                          ? `${project.paymentPlan} (${formatProjectAmount(project.amount)})`
+                          : project.paymentPlan || "--"}
                     </span>
                   </div>
                 </div>
@@ -324,6 +376,128 @@ export default function ProjectsView() {
               </div>
             </div>
           </div>
+
+          <div className="bg-card border border-border-main rounded-xl p-6 shadow-xs">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Client Contract</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Contract PDF linked to this project.
+              </p>
+            </div>
+            <hr className="border-border-main my-5" />
+
+            {clientContracts.length > 0 ? (
+              <div className="space-y-3">
+                {clientContracts.map((contract) => {
+                  const pdfUrl = contract.media?.url
+                    ? getFilePathWithBackendUrl(contract.media.url)
+                    : "";
+                  return (
+                    <div
+                      key={contract.id}
+                      className="p-4 rounded-xl border border-border-main bg-panel-bg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                          <FileText size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground">
+                            Contract PDF
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Added {formatDate(contract.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                      {pdfUrl ? (
+                        <a
+                          href={pdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-md bg-primary text-white text-sm font-semibold hover:opacity-95 shrink-0"
+                        >
+                          <FileText size={15} />
+                          View PDF
+                        </a>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No file</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No client contract has been uploaded for this project yet.
+              </p>
+            )}
+          </div>
+
+          {vendorContracts.length > 0 ? (
+            <div className="bg-card border border-border-main rounded-xl p-6 shadow-xs">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Vendor Contracts</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Vendor contracts assigned to this project.
+                </p>
+              </div>
+              <hr className="border-border-main my-5" />
+              <div className="space-y-3">
+                {vendorContracts.map((contract) => (
+                  <div
+                    key={contract.id}
+                    className="p-4 rounded-xl border border-border-main bg-panel-bg flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      {contract.media?.url ? (
+                        <a
+                          href={getFilePathWithBackendUrl(contract.media.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0"
+                          title="View image"
+                        >
+                          <img
+                            src={getFilePathWithBackendUrl(contract.media.url)}
+                            alt=""
+                            className="w-10 h-10 rounded-lg object-cover border border-border-main"
+                          />
+                        </a>
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                          <FileSignature size={18} />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground">
+                          {contract.vendor?.vendorName || "Unknown Vendor"}
+                          {contract.activity?.name ? ` — ${contract.activity.name}` : ""}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          {contract.description || "No description provided."}
+                        </p>
+                        <div className="mt-2">
+                          <ActivityTimelineBadge
+                            startDate={contract.startDate}
+                            endDate={contract.endDate}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-left md:text-right shrink-0">
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">
+                        Amount
+                      </span>
+                      <span className="font-semibold text-primary text-sm">
+                        PKR {Number(contract.amount || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Right Column: Financial Overview */}
@@ -380,6 +554,12 @@ export default function ProjectsView() {
           </div>
         </div> */}
       </div>
+
+      <ProjectTimeline
+        projectId={project.id}
+        cashflowsIn={project.cashflowsIn}
+        cashflowsOut={project.cashflowsOut}
+      />
     </div>
   );
 }
