@@ -14,6 +14,7 @@ const useUsers = () => {
     fullName: string;
     title?: string;
     email: string;
+    phone: string;
     roleIds: string[];
   }) => {
     const response = await Users_APIS.createUser(body);

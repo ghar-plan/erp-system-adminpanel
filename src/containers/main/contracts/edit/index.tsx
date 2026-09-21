@@ -8,6 +8,11 @@ import useActivities from "../../activities/useHooks";
 import useVendors from "../../vendors/useHooks";
 import useProjects from "../../projects/useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
+import VendorContractDateFields from "../VendorContractDateFields";
+import VendorContractImageField from "../VendorContractImageField";
+import { toDateInputValue } from "../activity-timeline";
+import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
+import { errorToaster } from "@/utils/helpers/common/alert-service";
 
 interface ContractFormInputs {
   vendorId: string;
@@ -15,12 +20,15 @@ interface ContractFormInputs {
   activityId: string;
   description: string;
   amount: number;
+  startDate: string;
+  endDate: string;
+  mediaId: string | null;
 }
 
 export default function ContractEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getContractById, updateContract } = useContracts();
+  const { getContractById, updateContract, uploadContractImage } = useContracts();
   const { getAllActivities } = useActivities();
   const { getAllVendors } = useVendors();
   const { getAllProjects } = useProjects();
@@ -30,11 +38,15 @@ export default function ContractEdit() {
   const [vendors, setVendors] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [initialDataLoading, setInitialDataLoading] = useState(true);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<ContractFormInputs>();
 
@@ -52,13 +64,58 @@ export default function ContractEdit() {
             activityId: data.activityId || data.activity?.id,
             description: data.description,
             amount: data.amount,
+            startDate: toDateInputValue(data.startDate),
+            endDate: toDateInputValue(data.endDate),
+            mediaId: data.mediaId || data.media?.id || null,
           });
+          if (data.media?.url) {
+            setPreviewImageUrl(getFilePathWithBackendUrl(data.media.url));
+          }
           setInitialDataLoading(false);
         });
       }
     };
     fetchInitialData();
   }, [id]);
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isPdf = file.type === "application/pdf";
+    const isImage = file.type.startsWith("image/");
+    if (!isPdf && !isImage) {
+      errorToaster("Please upload a PDF or image file");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      errorToaster("File must not be greater than 10 MB");
+      e.target.value = "";
+      return;
+    }
+
+    if (isImage) {
+      setPreviewImageUrl(URL.createObjectURL(file));
+    } else {
+      setPreviewImageUrl(file.name);
+    }
+    setUploadingImage(true);
+    const mediaObj = await uploadContractImage(file);
+    if (mediaObj) {
+      setValue("mediaId", mediaObj.id);
+      if (isPdf) {
+        setPreviewImageUrl(mediaObj.url || file.name);
+      } else if (mediaObj.url) {
+        setPreviewImageUrl(getFilePathWithBackendUrl(mediaObj.url));
+      }
+    } else {
+      e.target.value = "";
+    }
+    setUploadingImage(false);
+    e.target.value = "";
+  };
 
   const onSubmitForm = async (data: ContractFormInputs) => {
     if (id) {
@@ -68,6 +125,9 @@ export default function ContractEdit() {
         activityId: data.activityId,
         description: data.description?.trim(),
         amount: Number(data.amount),
+        startDate: data.startDate,
+        endDate: data.endDate,
+        ...(data.mediaId ? { mediaId: data.mediaId } : {}),
       });
     }
   };
@@ -97,7 +157,7 @@ export default function ContractEdit() {
             <IoArrowBackOutline size={20} className="stroke-[2.5]" />
           </button>
           <h1 className="text-2xl text-foreground font-bold">
-            Edit Contract
+            Edit Vendor Contract
           </h1>
         </div>
       </div>
@@ -191,19 +251,33 @@ export default function ContractEdit() {
               </div>
             </div>
 
-            <div className="md:col-span-2 lg:col-span-3">
-              <label className="mb-2 block text-sm font-semibold text-foreground">Description</label>
-              <textarea
-                placeholder="Enter contract description..."
-                rows={4}
-                className={`common-input w-full resize-none ${errors.description ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("description", { maxLength: { value: 500, message: "Description cannot exceed 500 characters" } })}
-              ></textarea>
-              {errors.description && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  {errors.description.message}
-                </p>
-              )}
+            <VendorContractDateFields
+              register={register}
+              watch={watch}
+              errors={errors}
+            />
+
+            <div className="md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-foreground">Description</label>
+                <textarea
+                  placeholder="Enter contract description..."
+                  rows={4}
+                  className={`common-input w-full resize-none ${errors.description ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("description", { maxLength: { value: 500, message: "Description cannot exceed 500 characters" } })}
+                ></textarea>
+                {errors.description && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.description.message}
+                  </p>
+                )}
+              </div>
+
+              <VendorContractImageField
+                previewUrl={previewImageUrl}
+                uploading={uploadingImage}
+                onFileChange={handleImageChange}
+              />
             </div>
 
           </div>
@@ -212,7 +286,7 @@ export default function ContractEdit() {
         <div className="flex justify-end pt-4 border-t border-border-main/60">
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || uploadingImage}
             className="flex h-10 px-6 items-center justify-center gap-2 rounded-md bg-primary hover:opacity-95 font-semibold text-white text-sm transition-all cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed animate-fade-in"
           >
             {isLoading ? (

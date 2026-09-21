@@ -76,7 +76,20 @@ export const menuConfig: MenuGroup[] = [
     key: "contracts",
     text: "Contracts",
     path: siteRoutes.contracts,
-    permission: PERMISSIONS.CONTRACTS_READ,
+    children: [
+      {
+        title: "Vendor Contract",
+        path: siteRoutes.contracts,
+        icon: "vendor-contract",
+        permission: PERMISSIONS.CONTRACTS_READ,
+      },
+      {
+        title: "Client Contract",
+        path: siteRoutes.clientContracts,
+        icon: "client-contract",
+        permission: PERMISSIONS.CONTRACTS_READ,
+      },
+    ],
   },
   {
     key: "reports",

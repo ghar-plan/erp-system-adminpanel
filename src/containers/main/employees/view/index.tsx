@@ -105,7 +105,22 @@ export default function EmployeesView() {
     { label: "Name", value: employee.name },
     { label: "Email", value: employee.email },
     { label: "Mobile Number", value: employee.mobileNumber },
+    { label: "Employee Type", value: employee.employeeType || "Permanent" },
     { label: "Designation", value: employee.designation },
+    {
+      label: "Project",
+      value:
+        employee.employeeType === "Temporary"
+          ? employee.project?.siteName || "--"
+          : "N/A (company salary)",
+    },
+    {
+      label: "Salary Status",
+      value:
+        employee.employeeType === "Temporary"
+          ? `${employee.salaryStatus || "Active"} — charged to project`
+          : "On salary",
+    },
     { label: "Address", value: employee.address },
     { label: "Attendance Latitude", value: String(employee.lat) },
     { label: "Attendance Longitude", value: String(employee.lng) },

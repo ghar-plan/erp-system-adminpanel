@@ -23,7 +23,14 @@ export default function EmployeesListing() {
   const [totalElements, setTotalElements] = useState(0);
   const [searchVal, setSearchVal] = useState("");
   const [statusVal, setStatusVal] = useState("");
-  const [filters, setFilters] = useState({ search: "", status: "", page: 1, limit: 10 });
+  const [typeVal, setTypeVal] = useState("");
+  const [filters, setFilters] = useState({
+    search: "",
+    status: "",
+    employeeType: "",
+    page: 1,
+    limit: 10,
+  });
 
   const fetchEmployees = (current = filters) => {
     getEmployees(
@@ -33,6 +40,7 @@ export default function EmployeesListing() {
         offset: (current.page - 1) * current.limit,
         ...(current.search ? { search: current.search } : {}),
         ...(current.status ? { status: current.status } : {}),
+        ...(current.employeeType ? { employeeType: current.employeeType } : {}),
       },
       setTotalElements,
     );
@@ -43,7 +51,13 @@ export default function EmployeesListing() {
   }, []);
 
   const handleApplyFilters = () => {
-    const next = { ...filters, search: searchVal, status: statusVal, page: 1 };
+    const next = {
+      ...filters,
+      search: searchVal,
+      status: statusVal,
+      employeeType: typeVal,
+      page: 1,
+    };
     setFilters(next);
     fetchEmployees(next);
   };
@@ -51,7 +65,8 @@ export default function EmployeesListing() {
   const handleResetFilters = () => {
     setSearchVal("");
     setStatusVal("");
-    const next = { search: "", status: "", page: 1, limit: filters.limit };
+    setTypeVal("");
+    const next = { search: "", status: "", employeeType: "", page: 1, limit: filters.limit };
     setFilters(next);
     fetchEmployees(next);
   };
@@ -65,10 +80,10 @@ export default function EmployeesListing() {
   const columns = [
     "Sr No.",
     "Name",
-    "Email",
+    "Type",
     "Designation",
+    "Project / Salary",
     "Mobile",
-    "Radius",
     "Status",
     ...(showActions ? ["Actions"] : []),
   ];
@@ -79,7 +94,7 @@ export default function EmployeesListing() {
         <div>
           <h1 className="text-2xl sm:text-3xl text-foreground font-bold">Employees</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Register staff and configure their attendance geofence.
+            Permanent office/supervision staff and temporary Chaukidar staff charged to projects.
           </p>
         </div>
         <Can permission={PERMISSIONS.EMPLOYEE_CREATE}>
@@ -109,6 +124,18 @@ export default function EmployeesListing() {
               className="common-input pl-10 pr-4 text-sm h-10 w-full"
             />
           </div>
+        </div>
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label className="text-xs text-foreground font-medium">Type</label>
+          <select
+            value={typeVal}
+            onChange={(e) => setTypeVal(e.target.value)}
+            className="common-input text-sm h-10 w-full sm:w-44"
+          >
+            <option value="">All</option>
+            <option value="Permanent">Permanent</option>
+            <option value="Temporary">Temporary</option>
+          </select>
         </div>
         <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
           <label className="text-xs text-foreground font-medium">Status</label>
@@ -156,10 +183,33 @@ export default function EmployeesListing() {
                         {(filters.page - 1) * filters.limit + index + 1}
                       </td>
                       <td className="table-td font-semibold">{employee.name || "--"}</td>
-                      <td className="table-td">{employee.email || "--"}</td>
+                      <td className="table-td">
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                            employee.employeeType === "Temporary"
+                              ? "border-warning-text/20 bg-warning-bg text-warning-text"
+                              : "border-info-text/20 bg-info-bg text-info-text"
+                          }`}
+                        >
+                          {employee.employeeType || "Permanent"}
+                        </span>
+                      </td>
                       <td className="table-td">{employee.designation || "--"}</td>
+                      <td className="table-td">
+                        {employee.employeeType === "Temporary" ? (
+                          <div>
+                            <div className="font-semibold text-foreground">
+                              {employee.project?.siteName || "--"}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Salary: {employee.salaryStatus || "Active"} (charged to project)
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Company salary</span>
+                        )}
+                      </td>
                       <td className="table-td">{employee.mobileNumber || "--"}</td>
-                      <td className="table-td">{employee.radius} m</td>
                       <td className="table-td">
                         <span
                           className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${

@@ -1,8 +1,8 @@
 import { Activities_APIS } from "@/libs/apis/activities.api";
+import { Jobs_APIS } from "@/libs/apis/jobs.api";
 import { useNavigate } from "react-router-dom";
 import {
   successToaster,
-  errorToaster,
   confirmationPopup,
 } from "@/utils/helpers/common/alert-service";
 import axios from "@/utils/helpers/common/axios.config";
@@ -43,6 +43,51 @@ const useActivities = () => {
     if (status && data) {
       setData(data);
     }
+  };
+
+  const getJobs = async (setData: Function) => {
+    const response = await Jobs_APIS.getAll();
+    const { status = false, data = [] } = response || {};
+    if (status && data) {
+      setData(data);
+    } else {
+      setData([]);
+    }
+  };
+
+  const createJob = async (name: string) => {
+    const response = await Jobs_APIS.create({ name: name.trim() });
+    const { status = false, message = "", data } = response || {};
+    if (status) {
+      successToaster(message || "Job created successfully");
+      return data;
+    }
+    return null;
+  };
+
+  const updateJob = async (id: string, name: string) => {
+    const response = await Jobs_APIS.update(id, { name: name.trim() });
+    const { status = false, message = "", data } = response || {};
+    if (status) {
+      successToaster(message || "Job updated successfully");
+      return data;
+    }
+    return null;
+  };
+
+  const deleteJob = async (id: string, name: string) => {
+    const result = await confirmationPopup(
+      `Delete ${name}`,
+      "Are you sure you want to delete this job?",
+    );
+    if (!result.isConfirmed) return false;
+    const response = await Jobs_APIS.delete(id);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message || "Job deleted successfully");
+      return true;
+    }
+    return false;
   };
 
   const createActivity = async (body: {
@@ -126,7 +171,7 @@ const useActivities = () => {
         },
         responseType: "blob",
       });
-      
+
       const blob = new Blob([response.data], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
@@ -147,6 +192,10 @@ const useActivities = () => {
     getActivities,
     getAllActivities,
     getActivityById,
+    getJobs,
+    createJob,
+    updateJob,
+    deleteJob,
     createActivity,
     createActivitiesBulk,
     uploadActivitiesCsv,

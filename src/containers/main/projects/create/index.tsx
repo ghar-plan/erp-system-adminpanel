@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Upload, PlusSquare, Loader2, ArrowLeft, Plus } from "lucide-react";
+import { Upload, Loader2, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import useProjects from "../useHooks";
 import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
@@ -10,7 +10,14 @@ import {
   ConstructionType,
   PaymentPlan,
   sanitizePercentageInput,
+  sanitizeAmountInput,
 } from "@/utils/helpers/models/projects/project.dto";
+import {
+  PAKISTAN_MOBILE_FORMAT_MESSAGE,
+  PAKISTAN_MOBILE_PLACEHOLDER,
+  validatePakistanMobile,
+} from "@/utils/helpers/common/phone";
+import PaymentStagesTable from "../PaymentStagesTable";
 
 interface ProjectFormInputs {
   clientFullName: string;
@@ -29,21 +36,31 @@ interface ProjectFormInputs {
   constructionType: string;
   paymentPlan: string;
   markupPercentage: string;
+  amount: string;
+  paymentStages: Array<{
+    stage: string;
+    amount: string;
+    expectedDate: string;
+  }>;
   mediaId: string | null;
 }
 
 export default function Projects() {
   const navigate = useNavigate();
-  const { createProject, uploadImage } = useProjects();
+  const { createProject, uploadImage, getManagerOptions } = useProjects();
   const { isLoading } = useStore();
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [managerOptions, setManagerOptions] = useState<
+    Array<{ id: string; fullName: string; phone: string; source: string }>
+  >([]);
 
   const {
     register,
     handleSubmit,
     setValue,
+    control,
     watch,
     formState: { errors },
   } = useForm<ProjectFormInputs>({
@@ -60,10 +77,23 @@ export default function Projects() {
       constructionType: "",
       paymentPlan: "",
       markupPercentage: "",
+      amount: "",
+      paymentStages: [],
     },
   });
 
+  const {
+    fields: paymentStageFields,
+    append: appendPaymentStage,
+    remove: removePaymentStage,
+    replace: replacePaymentStages,
+  } = useFieldArray({
+    control,
+    name: "paymentStages",
+  });
+
   const paymentPlan = watch("paymentPlan");
+  const showAmountField = paymentPlan === PaymentPlan.LUMP_SUM;
   const { onChange: onMarkupChange, ...markupPercentageField } = register(
     "markupPercentage",
     {
@@ -88,6 +118,54 @@ export default function Projects() {
     },
   );
 
+  const { onChange: onAmountChange, ...amountField } = register("amount", {
+    required: showAmountField ? "Amount is required" : false,
+    validate: (value) => {
+      if (!showAmountField) return true;
+      if (value === "" || value === undefined) {
+        return "Amount is required";
+      }
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) {
+        return "Only numbers are allowed";
+      }
+      if (numericValue < 0) {
+        return "Amount cannot be below 0";
+      }
+      return true;
+    },
+  });
+
+  useEffect(() => {
+    getManagerOptions(setManagerOptions);
+  }, []);
+
+  const handleManagerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = managerOptions.find((manager) => manager.id === e.target.value);
+    if (selected) {
+      setValue("managerName", selected.fullName, { shouldValidate: true });
+      setValue("managerContactNumber", selected.phone || "", {
+        shouldValidate: true,
+      });
+    } else {
+      setValue("managerName", "", { shouldValidate: true });
+      setValue("managerContactNumber", "", { shouldValidate: true });
+    }
+  };
+
+  const handleSupervisorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = managerOptions.find((person) => person.id === e.target.value);
+    if (selected) {
+      setValue("supervisorName", selected.fullName, { shouldValidate: true });
+      setValue("supervisorContactNumber", selected.phone || "", {
+        shouldValidate: true,
+      });
+    } else {
+      setValue("supervisorName", "", { shouldValidate: true });
+      setValue("supervisorContactNumber", "", { shouldValidate: true });
+    }
+  };
+
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -111,10 +189,7 @@ export default function Projects() {
   const onSubmitForm = async (data: ProjectFormInputs) => {
     const payload: any = {
       clientFullName: data.clientFullName.trim(),
-      clientEmail: data.clientEmail.trim(),
       clientPhone: data.clientPhone.trim(),
-      guardName: data.guardName.trim(),
-      guardContactNumber: data.guardContactNumber.trim(),
       supervisorName: data.supervisorName.trim(),
       supervisorContactNumber: data.supervisorContactNumber.trim(),
       managerName: data.managerName.trim(),
@@ -126,8 +201,25 @@ export default function Projects() {
       constructionType: data.constructionType,
       paymentPlan: data.paymentPlan,
     };
+    if (data.clientEmail.trim()) {
+      payload.clientEmail = data.clientEmail.trim();
+    }
+    if (data.guardName.trim()) {
+      payload.guardName = data.guardName.trim();
+    }
+    if (data.guardContactNumber.trim()) {
+      payload.guardContactNumber = data.guardContactNumber.trim();
+    }
     if (data.paymentPlan === PaymentPlan.MARKUP) {
       payload.markupPercentage = Number(data.markupPercentage);
+    }
+    if (data.paymentPlan === PaymentPlan.LUMP_SUM) {
+      payload.amount = Number(data.amount);
+      payload.paymentStages = (data.paymentStages || []).map((stage) => ({
+        stage: stage.stage.trim(),
+        amount: Number(stage.amount),
+        expectedDate: stage.expectedDate,
+      }));
     }
     if (data.mediaId) {
       payload.mediaId = data.mediaId;
@@ -164,21 +256,15 @@ export default function Projects() {
         onSubmit={handleSubmit(onSubmitForm)}
         className="mt-8 w-full animate-slide-up space-y-6"
       >
-        <input
-          type="hidden"
-          {...register("mediaId", { required: "Cover image is required" })}
-        />
+        <input type="hidden" {...register("mediaId")} />
         <hr className="border-border-main" />
 
-        {/* Form Fields Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-8">
-          {/* LEFT COLUMN: Input Fields */}
-          <div className="space-y-5">
+        {/* Form Fields */}
+        <div className="space-y-5">
             <div>
               <h2 className="text-sm font-bold text-foreground">Client details</h2>
               <p className="text-xs text-muted-foreground mt-1">
-                A client account is created with the Client role. Login credentials
-                are emailed after the project is saved.
+                Login credentials are emailed only when a client email is provided.
               </p>
             </div>
 
@@ -205,18 +291,18 @@ export default function Projects() {
 
             <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block ui-form-label">
-                  Email Address <span className="text-red-500">*</span>
-                </label>
+                <label className="mb-2 block ui-form-label">Email Address</label>
                 <input
                   type="email"
-                  placeholder="e.g., ali@example.com"
+                  placeholder="e.g., ali@example.com (optional)"
                   className={`common-input ${errors.clientEmail ? "border-red-500 focus:border-red-500" : ""}`}
                   {...register("clientEmail", {
-                    required: "Email address is required",
-                    pattern: {
-                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                      message: "Enter a valid email address",
+                    validate: (value) => {
+                      if (!value?.trim()) return true;
+                      return (
+                        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ||
+                        "Enter a valid email address"
+                      );
                     },
                   })}
                 />
@@ -233,12 +319,11 @@ export default function Projects() {
                 </label>
                 <input
                   type="tel"
-                  placeholder="e.g., 03001234567"
+                  placeholder={PAKISTAN_MOBILE_PLACEHOLDER}
                   className={`common-input ${errors.clientPhone ? "border-red-500 focus:border-red-500" : ""}`}
                   {...register("clientPhone", {
                     required: "Mobile number is required",
-                    validate: (value) =>
-                      value.trim().length >= 7 || "Enter a valid mobile number",
+                    validate: (value) => validatePakistanMobile(value),
                   })}
                 />
                 {errors.clientPhone && (
@@ -252,43 +337,29 @@ export default function Projects() {
             <div>
               <h2 className="text-sm font-bold text-foreground">Site contacts</h2>
               <p className="text-xs text-muted-foreground mt-1">
-                Guard, supervisor, and manager details for this project.
+                Guard is optional. Manager is selected from Employees.
               </p>
             </div>
 
             <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block ui-form-label">
-                  Guard Name <span className="text-red-500">*</span>
-                </label>
+                <label className="mb-2 block ui-form-label">Guard Name</label>
                 <input
                   type="text"
-                  placeholder="e.g., Ahmed Ali"
+                  placeholder="e.g., Ahmed Ali (optional)"
                   className={`common-input ${errors.guardName ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("guardName", {
-                    required: "Guard name is required",
-                    validate: (value) =>
-                      value.trim().length > 0 || "Guard name is required",
-                  })}
+                  {...register("guardName")}
                 />
-                {errors.guardName && (
-                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                    {errors.guardName.message}
-                  </p>
-                )}
               </div>
               <div>
-                <label className="mb-2 block ui-form-label">
-                  Guard Contact Number <span className="text-red-500">*</span>
-                </label>
+                <label className="mb-2 block ui-form-label">Guard Contact Number</label>
                 <input
                   type="tel"
-                  placeholder="e.g., 03001234567"
+                  placeholder={`${PAKISTAN_MOBILE_PLACEHOLDER} (optional)`}
                   className={`common-input ${errors.guardContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
                   {...register("guardContactNumber", {
-                    required: "Guard contact number is required",
                     validate: (value) =>
-                      value.trim().length >= 7 || "Enter a valid contact number",
+                      validatePakistanMobile(value, { optional: true }),
                   })}
                 />
                 {errors.guardContactNumber && (
@@ -304,16 +375,21 @@ export default function Projects() {
                 <label className="mb-2 block ui-form-label">
                   Supervisor Name <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Imran Khan"
-                  className={`common-input ${errors.supervisorName ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("supervisorName", {
-                    required: "Supervisor name is required",
-                    validate: (value) =>
-                      value.trim().length > 0 || "Supervisor name is required",
-                  })}
-                />
+                <input type="hidden" {...register("supervisorName", {
+                  required: "Supervisor is required",
+                })} />
+                <select
+                  className={`common-input bg-card ${errors.supervisorName ? "border-red-500 focus:border-red-500" : ""}`}
+                  defaultValue=""
+                  onChange={handleSupervisorChange}
+                >
+                  <option value="">Select supervisor</option>
+                  {managerOptions.map((person) => (
+                    <option key={`supervisor-${person.source}-${person.id}`} value={person.id}>
+                      {person.fullName}
+                    </option>
+                  ))}
+                </select>
                 {errors.supervisorName && (
                   <p className="mt-1.5 text-xs text-red-500 font-semibold">
                     {errors.supervisorName.message}
@@ -326,12 +402,20 @@ export default function Projects() {
                 </label>
                 <input
                   type="tel"
-                  placeholder="e.g., 03001234567"
-                  className={`common-input ${errors.supervisorContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
+                  placeholder="Auto-filled from selected supervisor"
+                  readOnly
+                  className={`common-input bg-muted-foreground/5 ${errors.supervisorContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
                   {...register("supervisorContactNumber", {
                     required: "Supervisor contact number is required",
-                    validate: (value) =>
-                      value.trim().length >= 7 || "Enter a valid contact number",
+                    validate: (value) => {
+                      if (!value?.trim()) {
+                        return "Selected supervisor has no phone number";
+                      }
+                      return (
+                        validatePakistanMobile(value) === true ||
+                        PAKISTAN_MOBILE_FORMAT_MESSAGE
+                      );
+                    },
                   })}
                 />
                 {errors.supervisorContactNumber && (
@@ -347,16 +431,21 @@ export default function Projects() {
                 <label className="mb-2 block ui-form-label">
                   Manager Name <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Sara Malik"
-                  className={`common-input ${errors.managerName ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("managerName", {
-                    required: "Manager name is required",
-                    validate: (value) =>
-                      value.trim().length > 0 || "Manager name is required",
-                  })}
-                />
+                <input type="hidden" {...register("managerName", {
+                  required: "Manager is required",
+                })} />
+                <select
+                  className={`common-input bg-card ${errors.managerName ? "border-red-500 focus:border-red-500" : ""}`}
+                  defaultValue=""
+                  onChange={handleManagerChange}
+                >
+                  <option value="">Select manager</option>
+                  {managerOptions.map((manager) => (
+                    <option key={`${manager.source}-${manager.id}`} value={manager.id}>
+                      {manager.fullName}
+                    </option>
+                  ))}
+                </select>
                 {errors.managerName && (
                   <p className="mt-1.5 text-xs text-red-500 font-semibold">
                     {errors.managerName.message}
@@ -369,12 +458,20 @@ export default function Projects() {
                 </label>
                 <input
                   type="tel"
-                  placeholder="e.g., 03001234567"
-                  className={`common-input ${errors.managerContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
+                  placeholder="Auto-filled from selected manager"
+                  readOnly
+                  className={`common-input bg-muted-foreground/5 ${errors.managerContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
                   {...register("managerContactNumber", {
                     required: "Manager contact number is required",
-                    validate: (value) =>
-                      value.trim().length >= 7 || "Enter a valid contact number",
+                    validate: (value) => {
+                      if (!value?.trim()) {
+                        return "Selected manager has no phone number";
+                      }
+                      return (
+                        validatePakistanMobile(value) === true ||
+                        PAKISTAN_MOBILE_FORMAT_MESSAGE
+                      );
+                    },
                   })}
                 />
                 {errors.managerContactNumber && (
@@ -385,21 +482,42 @@ export default function Projects() {
               </div>
             </div>
 
-            <div>
-              <label className="mb-2 block ui-form-label">Site Name</label>
-              <input
-                type="text"
-                placeholder="e.g., Al-Hafiz Heights"
-                className={`common-input ${errors.siteName ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("siteName", {
-                  required: "Site Name is required",
-                })}
-              />
-              {errors.siteName && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  {errors.siteName.message}
-                </p>
-              )}
+            <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Site Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Al-Hafiz Heights"
+                  className={`common-input ${errors.siteName ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("siteName", {
+                    required: "Site Name is required",
+                  })}
+                />
+                {errors.siteName && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.siteName.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Start Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  className={`common-input ${errors.startDate ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("startDate", {
+                    required: "Start Date is required",
+                  })}
+                />
+                {errors.startDate && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.startDate.message}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
@@ -440,22 +558,6 @@ export default function Projects() {
               </div>
             </div>
 
-            <div>
-              <label className="mb-2 block ui-form-label">Start Date</label>
-              <input
-                type="date"
-                className={`common-input ${errors.startDate ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("startDate", {
-                  required: "Start Date is required",
-                })}
-              />
-              {errors.startDate && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  {errors.startDate.message}
-                </p>
-              )}
-            </div>
-
             <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block ui-form-label">
@@ -477,6 +579,9 @@ export default function Projects() {
                   <option value={ConstructionType.FINISHING}>
                     {ConstructionType.FINISHING}
                   </option>
+                  <option value={ConstructionType.RENOVATION}>
+                    {ConstructionType.RENOVATION}
+                  </option>
                 </select>
                 {errors.constructionType && (
                   <p className="mt-1.5 text-xs text-red-500 font-semibold">
@@ -497,6 +602,10 @@ export default function Projects() {
                       if (e.target.value !== PaymentPlan.MARKUP) {
                         setValue("markupPercentage", "");
                       }
+                      if (e.target.value !== PaymentPlan.LUMP_SUM) {
+                        setValue("amount", "");
+                        replacePaymentStages([]);
+                      }
                     },
                   })}
                 >
@@ -507,7 +616,7 @@ export default function Projects() {
                     {PaymentPlan.LUMP_SUM}
                   </option>
                   <option value={PaymentPlan.MARKUP}>
-                    {PaymentPlan.MARKUP}
+                    Cost Plus
                   </option>
                 </select>
                 {errors.paymentPlan && (
@@ -517,6 +626,43 @@ export default function Projects() {
                 )}
               </div>
             </div>
+
+            {showAmountField && (
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  {paymentPlan === PaymentPlan.LUMP_SUM
+                    ? "Lump Sum Amount"
+                    : "Amount"}{" "}
+                  (PKR) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="e.g. 2500000"
+                  className={`common-input ${errors.amount ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...amountField}
+                  onChange={(e) => {
+                    e.target.value = sanitizeAmountInput(e.target.value);
+                    onAmountChange(e);
+                  }}
+                />
+                {errors.amount && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.amount.message}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {paymentPlan === PaymentPlan.LUMP_SUM && (
+              <PaymentStagesTable
+                register={register}
+                errors={errors}
+                fields={paymentStageFields}
+                append={appendPaymentStage}
+                remove={removePaymentStage}
+              />
+            )}
 
             {paymentPlan === PaymentPlan.MARKUP && (
               <div>
@@ -546,13 +692,15 @@ export default function Projects() {
                 )}
               </div>
             )}
-          </div>
 
-          {/* RIGHT COLUMN: Cover Image Upload Field inside the same card */}
-          <div className="flex flex-col">
-            <label className="mb-2 block ui-form-label">Site Cover Image</label>
+            <div>
+              <h2 className="text-sm font-bold text-foreground">Site Cover Image</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Optional. Upload a cover photo for this construction site.
+              </p>
+            </div>
 
-            <label className="flex-1 flex flex-col justify-center items-center cursor-pointer group">
+            <label className="block cursor-pointer group">
               <input
                 type="file"
                 accept="image/*"
@@ -560,9 +708,8 @@ export default function Projects() {
                 className="hidden"
                 disabled={uploadingImage}
               />
-
               <div
-                className={`relative w-full h-48 md:h-full min-h-[192px] rounded-xl border-2 border-dashed flex flex-col items-center justify-center text-center p-4 transition-all duration-200 overflow-hidden bg-bg-input/50 ${
+                className={`relative w-full h-44 sm:h-52 rounded-xl border-2 border-dashed flex flex-col items-center justify-center text-center p-4 transition-all duration-200 overflow-hidden bg-bg-input/50 ${
                   errors.mediaId
                     ? "border-red-500/60 hover:border-red-500"
                     : "border-border-input hover:border-primary/50"
@@ -588,20 +735,21 @@ export default function Projects() {
                     </div>
                   </>
                 ) : (
-                  <div className="flex flex-col items-center p-2">
-                    <Upload
-                      size={26}
-                      className="text-muted-foreground group-hover:text-primary transition-colors duration-200 mb-2 stroke-[1.5]"
-                    />
-                    <span className="text-xs font-bold text-foreground">
-                      Upload Image
-                    </span>
-                    <span className="text-[10px] text-muted-foreground mt-1">
-                      PNG, JPG up to 10MB
-                    </span>
-                    <span className="text-[10px] text-red-500 font-semibold mt-1">
-                      * Required
-                    </span>
+                  <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 p-2">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Upload
+                        size={22}
+                        className="text-primary stroke-[1.5]"
+                      />
+                    </div>
+                    <div className="text-center sm:text-left">
+                      <span className="block text-sm font-bold text-foreground">
+                        Click to upload cover image
+                      </span>
+                      <span className="block text-xs text-muted-foreground mt-0.5">
+                        PNG or JPG, up to 10MB (optional)
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -612,7 +760,6 @@ export default function Projects() {
                 {errors.mediaId.message}
               </p>
             )}
-          </div>
         </div>
 
         {/* Action Button inside the form card */}

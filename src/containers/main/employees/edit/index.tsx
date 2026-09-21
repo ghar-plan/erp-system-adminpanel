@@ -1,9 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { ArrowLeft, Save } from "lucide-react";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import useEmployees from "../useHooks";
+import useProjects from "../../projects/useHooks";
+import {
+  PAKISTAN_MOBILE_PLACEHOLDER,
+  validatePakistanMobile,
+} from "@/utils/helpers/common/phone";
+import type { EmployeeType } from "@/utils/helpers/models/employees/employee.dto";
 
 type EmployeeForm = {
   name: string;
@@ -14,6 +20,8 @@ type EmployeeForm = {
   radius: number;
   mobileNumber: string;
   designation: string;
+  employeeType: EmployeeType;
+  projectId: string;
 };
 
 const RADIUS_PRESETS = [10, 50, 100];
@@ -22,6 +30,9 @@ export default function EmployeesEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getEmployeeById, updateEmployee } = useEmployees();
+  const { getAllProjects } = useProjects();
+  const [projects, setProjects] = useState<any[]>([]);
+
   const {
     register,
     handleSubmit,
@@ -32,6 +43,11 @@ export default function EmployeesEdit() {
   } = useForm<EmployeeForm>();
 
   const radius = Number(watch("radius"));
+  const employeeType = watch("employeeType");
+
+  useEffect(() => {
+    getAllProjects(setProjects);
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -45,6 +61,8 @@ export default function EmployeesEdit() {
         radius: employee.radius,
         mobileNumber: employee.mobileNumber || "",
         designation: employee.designation || "",
+        employeeType: employee.employeeType || "Permanent",
+        projectId: employee.projectId || employee.project?.id || "",
       });
     });
   }, [id]);
@@ -60,6 +78,10 @@ export default function EmployeesEdit() {
       radius: Number(form.radius),
       mobileNumber: form.mobileNumber.trim(),
       designation: form.designation.trim(),
+      employeeType: form.employeeType,
+      ...(form.employeeType === "Temporary"
+        ? { projectId: form.projectId }
+        : { projectId: null }),
     });
   };
 
@@ -84,6 +106,56 @@ export default function EmployeesEdit() {
         <div className="space-y-5">
           <div className="grid gap-5 grid-cols-1 md:grid-cols-2">
             <div>
+              <label className="mb-2 block ui-form-label">
+                Employee Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                className={`common-input ${errors.employeeType ? "border-red-500" : ""}`}
+                {...register("employeeType", { required: "Employee type is required" })}
+              >
+                <option value="Permanent">Permanent (Office / Supervision)</option>
+                <option value="Temporary">Temporary (Chaukidar)</option>
+              </select>
+              {errors.employeeType && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">{errors.employeeType.message}</p>
+              )}
+            </div>
+
+            {employeeType === "Temporary" ? (
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Project (salary charged to) <span className="text-red-500">*</span>
+                </label>
+                <select
+                  className={`common-input ${errors.projectId ? "border-red-500" : ""}`}
+                  {...register("projectId", {
+                    required: "Project is required for temporary employees",
+                  })}
+                >
+                  <option value="">Select project</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.siteName}
+                      {project.status ? ` (${project.status})` : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  Salary ends when this project is completed or closed.
+                </p>
+                {errors.projectId && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">{errors.projectId.message}</p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-end">
+                <p className="text-sm text-muted-foreground pb-2">
+                  Permanent employees remain on company salary (office &amp; supervision staff).
+                </p>
+              </div>
+            )}
+
+            <div>
               <label className="mb-2 block ui-form-label">Name <span className="text-red-500">*</span></label>
               <input className={`common-input ${errors.name ? "border-red-500" : ""}`} {...register("name", { required: "Name is required" })} />
               {errors.name && <p className="mt-1.5 text-xs text-red-500 font-semibold">{errors.name.message}</p>}
@@ -95,12 +167,23 @@ export default function EmployeesEdit() {
             </div>
             <div>
               <label className="mb-2 block ui-form-label">Mobile Number <span className="text-red-500">*</span></label>
-              <input className={`common-input ${errors.mobileNumber ? "border-red-500" : ""}`} {...register("mobileNumber", { required: "Mobile number is required" })} />
+              <input
+                className={`common-input ${errors.mobileNumber ? "border-red-500" : ""}`}
+                placeholder={PAKISTAN_MOBILE_PLACEHOLDER}
+                {...register("mobileNumber", {
+                  required: "Mobile number is required",
+                  validate: (v) => validatePakistanMobile(v),
+                })}
+              />
               {errors.mobileNumber && <p className="mt-1.5 text-xs text-red-500 font-semibold">{errors.mobileNumber.message}</p>}
             </div>
             <div>
               <label className="mb-2 block ui-form-label">Designation <span className="text-red-500">*</span></label>
-              <input className={`common-input ${errors.designation ? "border-red-500" : ""}`} {...register("designation", { required: "Designation is required" })} />
+              <input
+                className={`common-input ${errors.designation ? "border-red-500" : ""}`}
+                placeholder={employeeType === "Temporary" ? "e.g., Chaukidar" : "e.g., Site Engineer"}
+                {...register("designation", { required: "Designation is required" })}
+              />
               {errors.designation && <p className="mt-1.5 text-xs text-red-500 font-semibold">{errors.designation.message}</p>}
             </div>
           </div>
