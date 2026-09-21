@@ -1,9 +1,13 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import useVendors from "../useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
+import {
+  PAKISTAN_MOBILE_PLACEHOLDER,
+  validatePakistanMobile,
+} from "@/utils/helpers/common/phone";
 
 interface VendorFormInputs {
   vendorName: string;
@@ -12,16 +16,18 @@ interface VendorFormInputs {
   address: string;
   phone: string;
   city: string;
-  registrationNo?: string;
 }
 
 export default function VendorCreate() {
   const navigate = useNavigate();
-  const { createVendor } = useVendors();
+  const { createVendor, getMaterials } = useVendors();
+  const [materials, setMaterials] = useState<{ id: string; name: string }[]>([]);
+  const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<VendorFormInputs>({
     defaultValues: {
@@ -29,15 +35,29 @@ export default function VendorCreate() {
     },
   });
 
+  const vendorType = watch("vendorType");
+  const showMaterials =
+    vendorType === "vendorMaterial" || vendorType === "Both";
+
+  useEffect(() => {
+    getMaterials(setMaterials);
+  }, []);
+
+  const toggleMaterial = (id: string) => {
+    setSelectedMaterialIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
+
   const onSubmitForm = async (data: VendorFormInputs) => {
     const payload = {
       vendorName: data.vendorName,
       jobDescription: data.jobDescription,
       vendorType: data.vendorType,
+      phone: data.phone.trim(),
       ...(data.address ? { address: data.address } : {}),
-      ...(data.phone ? { phone: data.phone } : {}),
       ...(data.city ? { city: data.city } : {}),
-      ...(data.registrationNo ? { registrationNo: data.registrationNo } : {}),
+      materialIds: showMaterials ? selectedMaterialIds : [],
     };
     await createVendor(payload);
   };
@@ -113,8 +133,8 @@ export default function VendorCreate() {
                 })}
               >
                 <option value="Both">Both</option>
-                <option value="vendorMaterial">Raw Material</option>
-                <option value="vendorLabour">Labour</option>
+                <option value="vendorMaterial">Material</option>
+                <option value="vendorLabour">Labor</option>
               </select>
               {errors.vendorType && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">
@@ -124,33 +144,23 @@ export default function VendorCreate() {
             </div>
 
             <div>
-              <label className="mb-2 block ui-form-label">Registration No (NTN/FTN)</label>
+              <label className="mb-2 block ui-form-label">
+                Phone Number <span className="text-red-500">*</span>
+              </label>
               <input
-                type="text"
-                placeholder="e.g., 1234567-8"
-                className={`common-input ${errors.registrationNo ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("registrationNo", {
-                  pattern: {
-                    value: /^(\d{7}-\d{1}|\d{5}-\d{7}-\d{1})$/,
-                    message: "Registration No must be in NTN (XXXXXXX-X) or CNIC (XXXXX-XXXXXXX-X) format",
-                  }
+                type="tel"
+                placeholder={PAKISTAN_MOBILE_PLACEHOLDER}
+                className={`common-input ${errors.phone ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("phone", {
+                  required: "Phone number is required",
+                  validate: (value) => validatePakistanMobile(value),
                 })}
               />
-              {errors.registrationNo && (
+              {errors.phone && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  {errors.registrationNo.message}
+                  {errors.phone.message}
                 </p>
               )}
-            </div>
-
-            <div>
-              <label className="mb-2 block ui-form-label">Phone Number</label>
-              <input
-                type="text"
-                placeholder="e.g., +923001234567"
-                className="common-input"
-                {...register("phone")}
-              />
             </div>
 
             <div>
@@ -163,6 +173,36 @@ export default function VendorCreate() {
               />
             </div>
           </div>
+
+          {showMaterials ? (
+            <div>
+              <label className="mb-2 block ui-form-label">Materials Supplied</label>
+              <div className="rounded-xl border border-border-main p-4 bg-muted-foreground/5 max-h-56 overflow-y-auto">
+                {materials.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No materials yet. Use Create Material on the vendors page to add some.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {materials.map((material) => (
+                      <label
+                        key={material.id}
+                        className="flex items-center gap-2 text-sm text-foreground cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedMaterialIds.includes(material.id)}
+                          onChange={() => toggleMaterial(material.id)}
+                          className="rounded border-border-main"
+                        />
+                        {material.name}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
 
           <div>
             <label className="mb-2 block ui-form-label">Job Description</label>

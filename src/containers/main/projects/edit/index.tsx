@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Upload, Save, Loader2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import useProjects from "../useHooks";
 import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
@@ -12,6 +12,12 @@ import {
   sanitizePercentageInput,
   sanitizeAmountInput,
 } from "@/utils/helpers/models/projects/project.dto";
+import {
+  PAKISTAN_MOBILE_FORMAT_MESSAGE,
+  PAKISTAN_MOBILE_PLACEHOLDER,
+  validatePakistanMobile,
+} from "@/utils/helpers/common/phone";
+import PaymentStagesTable from "../PaymentStagesTable";
 
 interface ProjectFormInputs {
   clientFullName: string;
@@ -31,27 +37,52 @@ interface ProjectFormInputs {
   paymentPlan: string;
   markupPercentage: string;
   amount: string;
+  paymentStages: Array<{
+    stage: string;
+    amount: string;
+    expectedDate: string;
+  }>;
   mediaId: string | null;
 }
 
 export default function ProjectsEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getProjectById, updateProject, uploadImage } = useProjects();
+  const { getProjectById, updateProject, uploadImage, getManagerOptions } = useProjects();
   const { isLoading } = useStore();
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [hasClient, setHasClient] = useState(false);
+  const [selectedManagerId, setSelectedManagerId] = useState("");
+  const [selectedSupervisorId, setSelectedSupervisorId] = useState("");
+  const [managerOptions, setManagerOptions] = useState<
+    Array<{ id: string; fullName: string; phone: string; source: string }>
+  >([]);
 
   const {
     register,
     handleSubmit,
     setValue,
     reset,
+    control,
     watch,
     formState: { errors },
-  } = useForm<ProjectFormInputs>();
+  } = useForm<ProjectFormInputs>({
+    defaultValues: {
+      paymentStages: [],
+    },
+  });
+
+  const {
+    fields: paymentStageFields,
+    append: appendPaymentStage,
+    remove: removePaymentStage,
+    replace: replacePaymentStages,
+  } = useFieldArray({
+    control,
+    name: "paymentStages",
+  });
 
   const paymentPlan = watch("paymentPlan");
   const showAmountField = paymentPlan === PaymentPlan.LUMP_SUM;
@@ -98,6 +129,10 @@ export default function ProjectsEdit() {
   });
 
   useEffect(() => {
+    getManagerOptions(setManagerOptions);
+  }, []);
+
+  useEffect(() => {
     if (id) {
       getProjectById(id, (project: any) => {
         setHasClient(Boolean(project.clientUserId || project.client?.id));
@@ -128,6 +163,22 @@ export default function ProjectsEdit() {
             project.amount !== null && project.amount !== undefined
               ? String(Number(project.amount))
               : "",
+          paymentStages: (project.paymentStages || [])
+            .slice()
+            .sort(
+              (a: any, b: any) =>
+                Number(a.sortOrder || 0) - Number(b.sortOrder || 0),
+            )
+            .map((stage: any) => ({
+              stage: stage.stage || "",
+              amount:
+                stage.amount !== null && stage.amount !== undefined
+                  ? String(Number(stage.amount))
+                  : "",
+              expectedDate: stage.expectedDate
+                ? String(stage.expectedDate).slice(0, 10)
+                : "",
+            })),
           mediaId: project.mediaId || project.media?.id || null,
         });
         if (project.media?.url) {
@@ -136,6 +187,58 @@ export default function ProjectsEdit() {
       });
     }
   }, [id]);
+
+  useEffect(() => {
+    const managerName = watch("managerName");
+    if (!managerName || !managerOptions.length) return;
+    const matched = managerOptions.find(
+      (manager) => manager.fullName === managerName,
+    );
+    if (matched) {
+      setSelectedManagerId(matched.id);
+    }
+  }, [managerOptions]);
+
+  useEffect(() => {
+    const supervisorName = watch("supervisorName");
+    if (!supervisorName || !managerOptions.length) return;
+    const matched = managerOptions.find(
+      (person) => person.fullName === supervisorName,
+    );
+    if (matched) {
+      setSelectedSupervisorId(matched.id);
+    }
+  }, [managerOptions]);
+
+  const handleManagerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setSelectedManagerId(value);
+    const selected = managerOptions.find((manager) => manager.id === value);
+    if (selected) {
+      setValue("managerName", selected.fullName, { shouldValidate: true });
+      setValue("managerContactNumber", selected.phone || "", {
+        shouldValidate: true,
+      });
+    } else {
+      setValue("managerName", "", { shouldValidate: true });
+      setValue("managerContactNumber", "", { shouldValidate: true });
+    }
+  };
+
+  const handleSupervisorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setSelectedSupervisorId(value);
+    const selected = managerOptions.find((person) => person.id === value);
+    if (selected) {
+      setValue("supervisorName", selected.fullName, { shouldValidate: true });
+      setValue("supervisorContactNumber", selected.phone || "", {
+        shouldValidate: true,
+      });
+    } else {
+      setValue("supervisorName", "", { shouldValidate: true });
+      setValue("supervisorContactNumber", "", { shouldValidate: true });
+    }
+  };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -161,10 +264,7 @@ export default function ProjectsEdit() {
     if (id) {
       const payload: any = {
         clientFullName: data.clientFullName.trim(),
-        clientEmail: data.clientEmail.trim(),
         clientPhone: data.clientPhone.trim(),
-        guardName: data.guardName.trim(),
-        guardContactNumber: data.guardContactNumber.trim(),
         supervisorName: data.supervisorName.trim(),
         supervisorContactNumber: data.supervisorContactNumber.trim(),
         managerName: data.managerName.trim(),
@@ -175,12 +275,24 @@ export default function ProjectsEdit() {
         startDate: data.startDate,
         constructionType: data.constructionType,
         paymentPlan: data.paymentPlan,
+        guardName: data.guardName.trim() || null,
+        guardContactNumber: data.guardContactNumber.trim() || null,
       };
+      if (data.clientEmail.trim()) {
+        payload.clientEmail = data.clientEmail.trim();
+      }
       if (data.paymentPlan === PaymentPlan.MARKUP) {
         payload.markupPercentage = Number(data.markupPercentage);
       }
       if (data.paymentPlan === PaymentPlan.LUMP_SUM) {
         payload.amount = Number(data.amount);
+        payload.paymentStages = (data.paymentStages || []).map((stage) => ({
+          stage: stage.stage.trim(),
+          amount: Number(stage.amount),
+          expectedDate: stage.expectedDate,
+        }));
+      } else {
+        payload.paymentStages = [];
       }
       if (data.mediaId) {
         payload.mediaId = data.mediaId;
@@ -221,16 +333,14 @@ export default function ProjectsEdit() {
         <input type="hidden" {...register("mediaId")} />
         <hr className="border-border-main" />
 
-        {/* Form Fields Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-8">
-          {/* LEFT COLUMN: Input Fields */}
-          <div className="space-y-5">
+        {/* Form Fields */}
+        <div className="space-y-5">
             <div>
               <h2 className="text-sm font-bold text-foreground">Client details</h2>
               <p className="text-xs text-muted-foreground mt-1">
                 {hasClient
-                  ? "This project already has a client. Saving updates their details. A login email is not sent again."
-                  : "This project has no client yet. Saving creates the client account and emails login credentials."}
+                  ? "This project already has a client. Saving updates their details."
+                  : "Login credentials are emailed only when a client email is provided."}
               </p>
             </div>
 
@@ -257,28 +367,30 @@ export default function ProjectsEdit() {
 
             <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block ui-form-label">
-                  Email Address <span className="text-red-500">*</span>
-                </label>
+                <label className="mb-2 block ui-form-label">Email Address</label>
                 <input
                   type="email"
-                  placeholder="e.g., ali@example.com"
-                  readOnly={hasClient}
-                  disabled={hasClient}
+                  placeholder="e.g., ali@example.com (optional)"
+                  readOnly={hasClient && Boolean(watch("clientEmail"))}
+                  disabled={hasClient && Boolean(watch("clientEmail"))}
                   className={`common-input ${errors.clientEmail ? "border-red-500 focus:border-red-500" : ""} ${
-                    hasClient ? "bg-muted-foreground/10 cursor-not-allowed" : ""
+                    hasClient && watch("clientEmail")
+                      ? "bg-muted-foreground/10 cursor-not-allowed"
+                      : ""
                   }`}
                   {...register("clientEmail", {
-                    required: "Email address is required",
-                    pattern: {
-                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                      message: "Enter a valid email address",
+                    validate: (value) => {
+                      if (!value?.trim()) return true;
+                      return (
+                        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ||
+                        "Enter a valid email address"
+                      );
                     },
                   })}
                 />
-                {hasClient ? (
+                {hasClient && watch("clientEmail") ? (
                   <p className="mt-1.5 text-xs text-muted-foreground">
-                    Email cannot be changed after the client is created.
+                    Email cannot be changed after it is set.
                   </p>
                 ) : null}
                 {errors.clientEmail && (
@@ -294,12 +406,11 @@ export default function ProjectsEdit() {
                 </label>
                 <input
                   type="tel"
-                  placeholder="e.g., 03001234567"
+                  placeholder={PAKISTAN_MOBILE_PLACEHOLDER}
                   className={`common-input ${errors.clientPhone ? "border-red-500 focus:border-red-500" : ""}`}
                   {...register("clientPhone", {
                     required: "Mobile number is required",
-                    validate: (value) =>
-                      value.trim().length >= 7 || "Enter a valid mobile number",
+                    validate: (value) => validatePakistanMobile(value),
                   })}
                 />
                 {errors.clientPhone && (
@@ -313,43 +424,29 @@ export default function ProjectsEdit() {
             <div>
               <h2 className="text-sm font-bold text-foreground">Site contacts</h2>
               <p className="text-xs text-muted-foreground mt-1">
-                Guard, supervisor, and manager details for this project.
+                Guard is optional. Manager is selected from Employees.
               </p>
             </div>
 
             <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block ui-form-label">
-                  Guard Name <span className="text-red-500">*</span>
-                </label>
+                <label className="mb-2 block ui-form-label">Guard Name</label>
                 <input
                   type="text"
-                  placeholder="e.g., Ahmed Ali"
-                  className={`common-input ${errors.guardName ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("guardName", {
-                    required: "Guard name is required",
-                    validate: (value) =>
-                      value.trim().length > 0 || "Guard name is required",
-                  })}
+                  placeholder="e.g., Ahmed Ali (optional)"
+                  className="common-input"
+                  {...register("guardName")}
                 />
-                {errors.guardName && (
-                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                    {errors.guardName.message}
-                  </p>
-                )}
               </div>
               <div>
-                <label className="mb-2 block ui-form-label">
-                  Guard Contact Number <span className="text-red-500">*</span>
-                </label>
+                <label className="mb-2 block ui-form-label">Guard Contact Number</label>
                 <input
                   type="tel"
-                  placeholder="e.g., 03001234567"
+                  placeholder={`${PAKISTAN_MOBILE_PLACEHOLDER} (optional)`}
                   className={`common-input ${errors.guardContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
                   {...register("guardContactNumber", {
-                    required: "Guard contact number is required",
                     validate: (value) =>
-                      value.trim().length >= 7 || "Enter a valid contact number",
+                      validatePakistanMobile(value, { optional: true }),
                   })}
                 />
                 {errors.guardContactNumber && (
@@ -365,16 +462,21 @@ export default function ProjectsEdit() {
                 <label className="mb-2 block ui-form-label">
                   Supervisor Name <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Imran Khan"
-                  className={`common-input ${errors.supervisorName ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("supervisorName", {
-                    required: "Supervisor name is required",
-                    validate: (value) =>
-                      value.trim().length > 0 || "Supervisor name is required",
-                  })}
-                />
+                <input type="hidden" {...register("supervisorName", {
+                  required: "Supervisor is required",
+                })} />
+                <select
+                  className={`common-input bg-card ${errors.supervisorName ? "border-red-500 focus:border-red-500" : ""}`}
+                  value={selectedSupervisorId}
+                  onChange={handleSupervisorChange}
+                >
+                  <option value="">Select supervisor</option>
+                  {managerOptions.map((person) => (
+                    <option key={`supervisor-${person.source}-${person.id}`} value={person.id}>
+                      {person.fullName}
+                    </option>
+                  ))}
+                </select>
                 {errors.supervisorName && (
                   <p className="mt-1.5 text-xs text-red-500 font-semibold">
                     {errors.supervisorName.message}
@@ -387,12 +489,20 @@ export default function ProjectsEdit() {
                 </label>
                 <input
                   type="tel"
-                  placeholder="e.g., 03001234567"
-                  className={`common-input ${errors.supervisorContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
+                  placeholder="Auto-filled from selected supervisor"
+                  readOnly
+                  className={`common-input bg-muted-foreground/5 ${errors.supervisorContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
                   {...register("supervisorContactNumber", {
                     required: "Supervisor contact number is required",
-                    validate: (value) =>
-                      value.trim().length >= 7 || "Enter a valid contact number",
+                    validate: (value) => {
+                      if (!value?.trim()) {
+                        return "Selected supervisor has no phone number";
+                      }
+                      return (
+                        validatePakistanMobile(value) === true ||
+                        PAKISTAN_MOBILE_FORMAT_MESSAGE
+                      );
+                    },
                   })}
                 />
                 {errors.supervisorContactNumber && (
@@ -408,16 +518,21 @@ export default function ProjectsEdit() {
                 <label className="mb-2 block ui-form-label">
                   Manager Name <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Sara Malik"
-                  className={`common-input ${errors.managerName ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("managerName", {
-                    required: "Manager name is required",
-                    validate: (value) =>
-                      value.trim().length > 0 || "Manager name is required",
-                  })}
-                />
+                <input type="hidden" {...register("managerName", {
+                  required: "Manager is required",
+                })} />
+                <select
+                  className={`common-input bg-card ${errors.managerName ? "border-red-500 focus:border-red-500" : ""}`}
+                  value={selectedManagerId}
+                  onChange={handleManagerChange}
+                >
+                  <option value="">Select manager</option>
+                  {managerOptions.map((manager) => (
+                    <option key={`${manager.source}-${manager.id}`} value={manager.id}>
+                      {manager.fullName}
+                    </option>
+                  ))}
+                </select>
                 {errors.managerName && (
                   <p className="mt-1.5 text-xs text-red-500 font-semibold">
                     {errors.managerName.message}
@@ -430,12 +545,20 @@ export default function ProjectsEdit() {
                 </label>
                 <input
                   type="tel"
-                  placeholder="e.g., 03001234567"
-                  className={`common-input ${errors.managerContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
+                  placeholder="Auto-filled from selected manager"
+                  readOnly
+                  className={`common-input bg-muted-foreground/5 ${errors.managerContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
                   {...register("managerContactNumber", {
                     required: "Manager contact number is required",
-                    validate: (value) =>
-                      value.trim().length >= 7 || "Enter a valid contact number",
+                    validate: (value) => {
+                      if (!value?.trim()) {
+                        return "Selected manager has no phone number";
+                      }
+                      return (
+                        validatePakistanMobile(value) === true ||
+                        PAKISTAN_MOBILE_FORMAT_MESSAGE
+                      );
+                    },
                   })}
                 />
                 {errors.managerContactNumber && (
@@ -446,21 +569,42 @@ export default function ProjectsEdit() {
               </div>
             </div>
 
-            <div>
-              <label className="mb-2 block ui-form-label">Site Name</label>
-              <input
-                type="text"
-                placeholder="e.g., Al-Hafiz Heights"
-                className={`common-input ${errors.siteName ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("siteName", {
-                  required: "Site Name is required",
-                })}
-              />
-              {errors.siteName && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  {errors.siteName.message}
-                </p>
-              )}
+            <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Site Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Al-Hafiz Heights"
+                  className={`common-input ${errors.siteName ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("siteName", {
+                    required: "Site Name is required",
+                  })}
+                />
+                {errors.siteName && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.siteName.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Start Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  className={`common-input ${errors.startDate ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("startDate", {
+                    required: "Start Date is required",
+                  })}
+                />
+                {errors.startDate && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.startDate.message}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
@@ -501,22 +645,6 @@ export default function ProjectsEdit() {
               </div>
             </div>
 
-            <div>
-              <label className="mb-2 block ui-form-label">Start Date</label>
-              <input
-                type="date"
-                className={`common-input ${errors.startDate ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("startDate", {
-                  required: "Start Date is required",
-                })}
-              />
-              {errors.startDate && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  {errors.startDate.message}
-                </p>
-              )}
-            </div>
-
             <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block ui-form-label">
@@ -537,6 +665,9 @@ export default function ProjectsEdit() {
                   </option>
                   <option value={ConstructionType.FINISHING}>
                     {ConstructionType.FINISHING}
+                  </option>
+                  <option value={ConstructionType.RENOVATION}>
+                    {ConstructionType.RENOVATION}
                   </option>
                 </select>
                 {errors.constructionType && (
@@ -560,6 +691,7 @@ export default function ProjectsEdit() {
                       }
                       if (e.target.value !== PaymentPlan.LUMP_SUM) {
                         setValue("amount", "");
+                        replacePaymentStages([]);
                       }
                     },
                   })}
@@ -571,7 +703,7 @@ export default function ProjectsEdit() {
                     {PaymentPlan.LUMP_SUM}
                   </option>
                   <option value={PaymentPlan.MARKUP}>
-                    {PaymentPlan.MARKUP}
+                    Cost Plus
                   </option>
                 </select>
                 {errors.paymentPlan && (
@@ -609,6 +741,16 @@ export default function ProjectsEdit() {
               </div>
             )}
 
+            {paymentPlan === PaymentPlan.LUMP_SUM && (
+              <PaymentStagesTable
+                register={register}
+                errors={errors}
+                fields={paymentStageFields}
+                append={appendPaymentStage}
+                remove={removePaymentStage}
+              />
+            )}
+
             {paymentPlan === PaymentPlan.MARKUP && (
               <div>
                 <label className="mb-2 block ui-form-label">
@@ -637,13 +779,15 @@ export default function ProjectsEdit() {
                 )}
               </div>
             )}
-          </div>
 
-          {/* RIGHT COLUMN: Cover Image Upload Field inside the same card */}
-          <div className="flex flex-col">
-            <label className="mb-2 block ui-form-label">Site Cover Image</label>
+            <div>
+              <h2 className="text-sm font-bold text-foreground">Site Cover Image</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Optional. Upload a cover photo for this construction site.
+              </p>
+            </div>
 
-            <label className="flex-1 flex flex-col justify-center items-center cursor-pointer group">
+            <label className="block cursor-pointer group">
               <input
                 type="file"
                 accept="image/*"
@@ -651,9 +795,8 @@ export default function ProjectsEdit() {
                 className="hidden"
                 disabled={uploadingImage}
               />
-
               <div
-                className={`relative w-full h-48 md:h-full min-h-[192px] rounded-xl border-2 border-dashed flex flex-col items-center justify-center text-center p-4 transition-all duration-200 overflow-hidden bg-bg-input/50 ${
+                className={`relative w-full h-44 sm:h-52 rounded-xl border-2 border-dashed flex flex-col items-center justify-center text-center p-4 transition-all duration-200 overflow-hidden bg-bg-input/50 ${
                   errors.mediaId
                     ? "border-red-500/60 hover:border-red-500"
                     : "border-border-input hover:border-primary/50"
@@ -679,17 +822,21 @@ export default function ProjectsEdit() {
                     </div>
                   </>
                 ) : (
-                  <div className="flex flex-col items-center p-2">
-                    <Upload
-                      size={26}
-                      className="text-muted-foreground group-hover:text-primary transition-colors duration-200 mb-2 stroke-[1.5]"
-                    />
-                    <span className="text-xs font-bold text-foreground">
-                      Upload Image
-                    </span>
-                    <span className="text-[10px] text-muted-foreground mt-1">
-                      PNG, JPG up to 10MB (optional)
-                    </span>
+                  <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 p-2">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Upload
+                        size={22}
+                        className="text-primary stroke-[1.5]"
+                      />
+                    </div>
+                    <div className="text-center sm:text-left">
+                      <span className="block text-sm font-bold text-foreground">
+                        Click to upload cover image
+                      </span>
+                      <span className="block text-xs text-muted-foreground mt-0.5">
+                        PNG or JPG, up to 10MB (optional)
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -700,7 +847,6 @@ export default function ProjectsEdit() {
                 {errors.mediaId.message}
               </p>
             )}
-          </div>
         </div>
 
         {/* Action Button inside the form card */}

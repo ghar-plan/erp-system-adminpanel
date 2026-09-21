@@ -16,9 +16,10 @@ interface ActivityFormInputs {
 export default function ActivityEdit() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { getActivityById, updateActivity } = useActivities();
+  const { getActivityById, updateActivity, getJobs } = useActivities();
   const { isLoading } = useStore();
   const [initialData, setInitialData] = useState<any>(null);
+  const [jobs, setJobs] = useState<{ id: string; name: string }[]>([]);
 
   const {
     register,
@@ -28,6 +29,7 @@ export default function ActivityEdit() {
   } = useForm<ActivityFormInputs>();
 
   useEffect(() => {
+    getJobs(setJobs);
     if (id) {
       getActivityById(id, (data: any) => {
         setInitialData(data);
@@ -50,6 +52,12 @@ export default function ActivityEdit() {
   const goToBack = () => {
     navigate(-1);
   };
+
+  const jobOptions =
+    initialData?.category &&
+    !jobs.some((job) => job.name === initialData.category)
+      ? [{ id: "legacy", name: initialData.category }, ...jobs]
+      : jobs;
 
   if (!initialData) {
     return (
@@ -90,12 +98,12 @@ export default function ActivityEdit() {
         <div className="space-y-5">
           <div className="grid gap-5 grid-cols-1 md:grid-cols-2">
             <div>
-              <label className="mb-2 block ui-form-label">Activity Name</label>
+              <label className="mb-2 block ui-form-label">Comments</label>
               <input
                 type="text"
                 placeholder="e.g. Masonry Work"
                 className={`common-input py-3 ${errors.name ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("name", { required: "Activity Name is required" })}
+                {...register("name", { required: "Comments is required" })}
               />
               {errors.name && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">
@@ -105,24 +113,17 @@ export default function ActivityEdit() {
             </div>
 
             <div>
-              <label className="mb-2 block ui-form-label">Category</label>
+              <label className="mb-2 block ui-form-label">Job</label>
               <select
                 className={`common-input py-3 ${errors.category ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("category", { required: "Category is required" })}
+                {...register("category", { required: "Job is required" })}
               >
-                <option value="">Select Category</option>
-                <option value="Plasters coating">Plasters coating</option>
-                <option value="Paint job">Paint job</option>
-                <option value="Ceiling">Ceiling</option>
-                <option value="Grey Structure">Grey Structure</option>
-                <option value="Excavation">Excavation</option>
-                <option value="Foundation Work">Foundation Work</option>
-                <option value="Brickwork">Brickwork</option>
-                <option value="Plumbing">Plumbing</option>
-                <option value="Electrical Installation">Electrical Installation</option>
-                <option value="Flooring & Tiling">Flooring & Tiling</option>
-                <option value="Woodwork & Carpentry">Woodwork & Carpentry</option>
-                <option value="Metal Work">Metal Work</option>
+                <option value="">Select Job</option>
+                {jobOptions.map((job) => (
+                  <option key={job.id} value={job.name}>
+                    {job.name}
+                  </option>
+                ))}
               </select>
               {errors.category && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">

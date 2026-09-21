@@ -28,7 +28,7 @@ interface ActivityFilters {
 export default function ActivitiesListing() {
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
-  const { getActivities, uploadActivitiesCsv, deleteActivity, downloadSampleExcel } = useActivities();
+  const { getActivities, uploadActivitiesCsv, deleteActivity, downloadSampleExcel, createJob, updateJob, deleteJob, getJobs } = useActivities();
   const canUpdate = hasPermission(PERMISSIONS.ACTIVITY_UPDATE);
   const canDelete = hasPermission(PERMISSIONS.ACTIVITY_DELETE);
   const showActions = canUpdate || canDelete;
@@ -39,6 +39,14 @@ export default function ActivitiesListing() {
   // Modal / Import State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Create / Edit Job Modal
+  const [isJobModalOpen, setIsJobModalOpen] = useState(false);
+  const [jobName, setJobName] = useState("");
+  const [jobSaving, setJobSaving] = useState(false);
+  const [jobError, setJobError] = useState("");
+  const [jobsList, setJobsList] = useState<{ id: string; name: string }[]>([]);
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
 
   const [searchVal, setSearchVal] = useState("");
 
@@ -118,6 +126,61 @@ export default function ActivitiesListing() {
     await deleteActivity(id, name, () => fetchActivities(filters));
   };
 
+  const resetJobModal = () => {
+    setIsJobModalOpen(false);
+    setJobName("");
+    setJobError("");
+    setEditingJobId(null);
+  };
+
+  const openJobModal = () => {
+    setJobName("");
+    setJobError("");
+    setEditingJobId(null);
+    setIsJobModalOpen(true);
+    getJobs(setJobsList);
+  };
+
+  const startEditJob = (job: { id: string; name: string }) => {
+    setEditingJobId(job.id);
+    setJobName(job.name);
+    setJobError("");
+  };
+
+  const handleDeleteJob = async (job: { id: string; name: string }) => {
+    const deleted = await deleteJob(job.id, job.name);
+    if (deleted) {
+      if (editingJobId === job.id) {
+        setEditingJobId(null);
+        setJobName("");
+        setJobError("");
+      }
+      getJobs(setJobsList);
+    }
+  };
+
+  const handleSaveJob = async () => {
+    const trimmed = jobName.trim();
+    if (!trimmed) {
+      setJobError("Job name is required");
+      return;
+    }
+    setJobSaving(true);
+    setJobError("");
+    const saved = editingJobId
+      ? await updateJob(editingJobId, trimmed)
+      : await createJob(trimmed);
+    setJobSaving(false);
+    if (saved) {
+      setJobName("");
+      setEditingJobId(null);
+      getJobs(setJobsList);
+      if (editingJobId) {
+        fetchActivities(filters);
+      }
+    }
+  };
+
   const formatDate = (dateString: string | Date) => {
     try {
       const dateObj = new Date(dateString);
@@ -134,8 +197,8 @@ export default function ActivitiesListing() {
   const columns = [
     "Sr No.",
     "Activity ID",
-    "Activity Name",
-    "Category",
+    "Comments",
+    "Job",
     "Work Stages",
     "Date of Entry",
     ...(showActions ? ["Actions"] : []),
@@ -161,6 +224,16 @@ export default function ActivitiesListing() {
             >
               <Upload size={16} />
               Import CSV
+            </button>
+          </Can>
+
+          <Can permission={PERMISSIONS.ACTIVITY_CREATE}>
+            <button
+              onClick={openJobModal}
+              className="flex h-10 px-4 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs"
+            >
+              <Plus size={16} />
+              Create Job
             </button>
           </Can>
 
@@ -305,6 +378,146 @@ export default function ActivitiesListing() {
           />
         )}
       </div>
+
+      {/* Create / Edit Job Modal */}
+      {isJobModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => {
+              if (!jobSaving) resetJobModal();
+            }}
+          />
+
+          <div className="bg-card border border-border-main w-full max-w-md rounded-2xl shadow-xl overflow-hidden z-10 animate-scale-up relative">
+            <div className="px-6 py-4 border-b border-border-main flex items-center justify-between">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                {editingJobId ? (
+                  <Pencil size={20} className="text-primary" />
+                ) : (
+                  <Plus size={20} className="text-primary" />
+                )}
+                {editingJobId ? "Edit Job" : "Create Job"}
+              </h3>
+              <button
+                onClick={() => {
+                  if (!jobSaving) resetJobModal();
+                }}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted-foreground/5 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {editingJobId
+                  ? "Fix the spelling and save. Activities using this job will be updated too."
+                  : "Add a job that can be selected when creating an activity. Only one job value is used per activity."}
+              </p>
+              <div>
+                <label className="mb-2 block ui-form-label">Job Name</label>
+                <input
+                  type="text"
+                  value={jobName}
+                  onChange={(e) => {
+                    setJobName(e.target.value);
+                    if (jobError) setJobError("");
+                  }}
+                  placeholder="e.g. Plumbing"
+                  className={`common-input ${jobError ? "border-red-500 focus:border-red-500" : ""}`}
+                  disabled={jobSaving}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSaveJob();
+                    }
+                  }}
+                />
+                {jobError ? (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">{jobError}</p>
+                ) : null}
+              </div>
+
+              {!editingJobId && jobsList.length > 0 ? (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Existing Jobs
+                  </label>
+                  <div className="max-h-48 overflow-y-auto rounded-xl border border-border-main divide-y divide-border-main">
+                    {jobsList.map((job) => (
+                      <div
+                        key={job.id}
+                        className="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-muted-foreground/5"
+                      >
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {job.name}
+                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => startEditJob(job)}
+                            className="btn-action-edit"
+                            title="Edit job"
+                            disabled={jobSaving}
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteJob(job)}
+                            className="btn-action-delete"
+                            title="Delete job"
+                            disabled={jobSaving}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="px-6 py-4 bg-muted-foreground/5 border-t border-border-main flex gap-3 justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  if (editingJobId) {
+                    setEditingJobId(null);
+                    setJobName("");
+                    setJobError("");
+                  } else {
+                    resetJobModal();
+                  }
+                }}
+                disabled={jobSaving}
+                className="h-10 text-xs px-6 font-semibold"
+              >
+                {editingJobId ? "Back" : "Cancel"}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSaveJob}
+                disabled={jobSaving}
+                className="h-10 text-xs px-6 font-semibold flex items-center justify-center gap-2"
+              >
+                {jobSaving ? (
+                  <>
+                    <Loader2 className="animate-spin" size={16} />
+                    Saving...
+                  </>
+                ) : editingJobId ? (
+                  "Save Changes"
+                ) : (
+                  "Create Job"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Import CSV Modal */}
       {isImportModalOpen && (

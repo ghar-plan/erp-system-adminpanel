@@ -97,7 +97,7 @@ export default function ClientContractsListing() {
   const columns = [
     "Sr No.",
     "Project",
-    "Contract PDF",
+    "Attachments",
     "Date",
     ...(showActions ? ["Actions"] : []),
   ];
@@ -191,6 +191,9 @@ export default function ClientContractsListing() {
                     const pdfUrl = contract.media?.url
                       ? getFilePathWithBackendUrl(contract.media.url)
                       : "";
+                    const drawingUrl = contract.drawingMedia?.url
+                      ? getFilePathWithBackendUrl(contract.drawingMedia.url)
+                      : "";
                     return (
                       <tr
                         key={contract.id}
@@ -203,19 +206,31 @@ export default function ClientContractsListing() {
                           {contract.project?.siteName || "—"}
                         </td>
                         <td className="table-td">
-                          {pdfUrl ? (
-                            <a
-                              href={pdfUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-primary font-semibold hover:underline"
-                            >
-                              <FileText size={15} />
-                              View PDF
-                            </a>
-                          ) : (
-                            "—"
-                          )}
+                          <div className="flex flex-wrap items-center gap-3">
+                            {drawingUrl ? (
+                              <a
+                                href={drawingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-primary font-semibold hover:underline"
+                              >
+                                <FileText size={15} />
+                                Drawing PDF
+                              </a>
+                            ) : null}
+                            {pdfUrl ? (
+                              <a
+                                href={pdfUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-primary font-semibold hover:underline"
+                              >
+                                <FileText size={15} />
+                                Contract PDF
+                              </a>
+                            ) : null}
+                            {!drawingUrl && !pdfUrl ? "—" : null}
+                          </div>
                         </td>
                         <td className="table-td">{formatDate(contract.created_at)}</td>
                         {showActions ? (

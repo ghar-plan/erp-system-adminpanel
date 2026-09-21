@@ -4,6 +4,10 @@ import { useForm } from "react-hook-form";
 import { ArrowLeft, Plus } from "lucide-react";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import { errorToaster } from "@/utils/helpers/common/alert-service";
+import {
+  PAKISTAN_MOBILE_PLACEHOLDER,
+  validatePakistanMobile,
+} from "@/utils/helpers/common/phone";
 import useRoles from "../../roles/useHooks";
 import useUsers from "../useHooks";
 import type { RbacRole } from "../../roles/types";
@@ -12,6 +16,7 @@ type UserForm = {
   fullName: string;
   title: string;
   email: string;
+  phone: string;
 };
 
 export default function UsersCreate() {
@@ -26,7 +31,7 @@ export default function UsersCreate() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<UserForm>({
-    defaultValues: { fullName: "", title: "", email: "" },
+    defaultValues: { fullName: "", title: "", email: "", phone: "" },
   });
 
   useEffect(() => {
@@ -47,6 +52,7 @@ export default function UsersCreate() {
     await createUser({
       fullName: form.fullName.trim(),
       email: form.email.trim(),
+      phone: form.phone.trim(),
       roleIds,
       ...(form.title.trim() ? { title: form.title.trim() } : {}),
     });
@@ -135,6 +141,26 @@ export default function UsersCreate() {
               {errors.email && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">
                   {errors.email.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-2 block ui-form-label">
+                Mobile Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                placeholder={PAKISTAN_MOBILE_PLACEHOLDER}
+                className={`common-input ${errors.phone ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("phone", {
+                  required: "Mobile number is required",
+                  validate: (value) => validatePakistanMobile(value),
+                })}
+              />
+              {errors.phone && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.phone.message}
                 </p>
               )}
             </div>

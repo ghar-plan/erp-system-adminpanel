@@ -1,12 +1,31 @@
 export enum ConstructionType {
   GREY_STRUCTURE = "Grey Structure Projects",
   FINISHING = "Finishing Projects",
+  RENOVATION = "Renovation Projects",
 }
 
 export enum PaymentPlan {
   LUMP_SUM = "Lump Sum",
   MARKUP = "Markup",
 }
+
+export enum ProjectStatus {
+  ACTIVE = "Active",
+  COMPLETED = "Completed",
+  CLOSED = "Closed",
+}
+
+export const paymentPlanLabel = (plan?: string | null) => {
+  if (plan === PaymentPlan.MARKUP) return "Cost Plus";
+  return plan || "--";
+};
+
+export const constructionTypeLabel = (type?: string | null) => {
+  if (type === ConstructionType.GREY_STRUCTURE) return "Grey Structure";
+  if (type === ConstructionType.FINISHING) return "Finishing";
+  if (type === ConstructionType.RENOVATION) return "Renovation";
+  return type || "--";
+};
 
 export const sanitizePercentageInput = (value: string): string => {
   const cleaned = value.replace(/[^0-9.]/g, "");
@@ -31,6 +50,14 @@ export const formatProjectAmount = (value?: number | string | null): string => {
   })}`;
 };
 
+export interface ProjectPaymentStage {
+  id?: string;
+  stage: string;
+  amount: number | string;
+  expectedDate: string;
+  sortOrder?: number;
+}
+
 export interface Project {
   id: string;
   siteName: string;
@@ -41,6 +68,7 @@ export interface Project {
   paymentPlan?: PaymentPlan | string | null;
   markupPercentage?: number | string | null;
   amount?: number | string | null;
+  paymentStages?: ProjectPaymentStage[];
   mediaId?: string | null;
   media?: {
     id: string;
@@ -54,6 +82,7 @@ export interface Project {
   supervisorContactNumber?: string | null;
   managerName?: string | null;
   managerContactNumber?: string | null;
+  status?: ProjectStatus | string | null;
   clientUserId?: string | null;
   client?: {
     id: string;
@@ -72,6 +101,16 @@ export interface Project {
     vendor?: { vendorName?: string } | null;
     activity?: { name?: string } | null;
     media?: { id: string; url: string } | null;
+    drawingMedia?: { id: string; url: string } | null;
+  }[];
+  materialPulls?: {
+    id: string;
+    quantity?: number | string | null;
+    uom?: string | null;
+    notes?: string | null;
+    created_at?: string;
+    vendor?: { id?: string; vendorName?: string } | null;
+    material?: { id?: string; name?: string } | null;
   }[];
   created_at: string;
 }

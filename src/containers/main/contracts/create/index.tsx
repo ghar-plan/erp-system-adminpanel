@@ -68,24 +68,32 @@ export default function ContractCreate() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      errorToaster("Please upload an image file");
+    const isPdf = file.type === "application/pdf";
+    const isImage = file.type.startsWith("image/");
+    if (!isPdf && !isImage) {
+      errorToaster("Please upload a PDF or image file");
       e.target.value = "";
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      errorToaster("Image must not be greater than 10 MB");
+      errorToaster("File must not be greater than 10 MB");
       e.target.value = "";
       return;
     }
 
-    setPreviewImageUrl(URL.createObjectURL(file));
+    if (isImage) {
+      setPreviewImageUrl(URL.createObjectURL(file));
+    } else {
+      setPreviewImageUrl(file.name);
+    }
     setUploadingImage(true);
     const mediaObj = await uploadContractImage(file);
     if (mediaObj) {
       setValue("mediaId", mediaObj.id);
-      if (mediaObj.url) {
+      if (isPdf) {
+        setPreviewImageUrl(mediaObj.url || file.name);
+      } else if (mediaObj.url) {
         setPreviewImageUrl(getFilePathWithBackendUrl(mediaObj.url));
       }
     } else {

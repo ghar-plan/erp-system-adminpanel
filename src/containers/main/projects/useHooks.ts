@@ -5,7 +5,7 @@ import {
   confirmationPopup,
 } from "@/utils/helpers/common/alert-service";
 import { useNavigate } from "react-router-dom";
-import { PaymentPlan } from "@/utils/helpers/models/projects/project.dto";
+import { PaymentPlan, ProjectStatus } from "@/utils/helpers/models/projects/project.dto";
 
 const useProjects = () => {
   const navigate = useNavigate();
@@ -23,12 +23,17 @@ const useProjects = () => {
     clientFullName?: string;
     clientEmail?: string;
     clientPhone?: string;
-    guardName?: string;
-    guardContactNumber?: string;
+    guardName?: string | null;
+    guardContactNumber?: string | null;
     supervisorName?: string;
     supervisorContactNumber?: string;
     managerName?: string;
     managerContactNumber?: string;
+    paymentStages?: Array<{
+      stage: string;
+      amount: number | string;
+      expectedDate: string;
+    }> | null;
   }) => ({
     siteName: data.siteName,
     region: data.region,
@@ -48,12 +53,29 @@ const useProjects = () => {
     data.amount !== "")
       ? { amount: Number(data.amount) }
       : {}),
+    ...(data.paymentPlan === PaymentPlan.LUMP_SUM
+      ? {
+          paymentStages: Array.isArray(data.paymentStages)
+            ? data.paymentStages.map((stage) => ({
+                stage: String(stage.stage || "").trim(),
+                amount: Number(stage.amount),
+                expectedDate: stage.expectedDate,
+              }))
+            : [],
+        }
+      : Object.prototype.hasOwnProperty.call(data, "paymentStages")
+        ? { paymentStages: [] }
+        : {}),
     ...(data.mediaId ? { mediaId: data.mediaId } : {}),
     ...(data.clientFullName ? { clientFullName: data.clientFullName.trim() } : {}),
     ...(data.clientEmail ? { clientEmail: data.clientEmail.trim() } : {}),
     ...(data.clientPhone ? { clientPhone: data.clientPhone.trim() } : {}),
-    ...(data.guardName ? { guardName: data.guardName.trim() } : {}),
-    ...(data.guardContactNumber ? { guardContactNumber: data.guardContactNumber.trim() } : {}),
+    ...(data.guardName !== undefined
+      ? { guardName: data.guardName?.trim() || null }
+      : {}),
+    ...(data.guardContactNumber !== undefined
+      ? { guardContactNumber: data.guardContactNumber?.trim() || null }
+      : {}),
     ...(data.supervisorName ? { supervisorName: data.supervisorName.trim() } : {}),
     ...(data.supervisorContactNumber
       ? { supervisorContactNumber: data.supervisorContactNumber.trim() }
@@ -114,6 +136,30 @@ const useProjects = () => {
     }
   };
 
+  const getProjectFilterOptions = async (setData: Function) => {
+    const response = await Projects_APIS.getFilterOptions();
+    const { status = false, data = null } = response || {};
+    if (status && data) {
+      setData({
+        cities: data.cities || [],
+        areas: data.areas || [],
+        managers: data.managers || [],
+      });
+    } else {
+      setData({ cities: [], areas: [], managers: [] });
+    }
+  };
+
+  const getManagerOptions = async (setData: Function) => {
+    const response = await Projects_APIS.getManagerOptions();
+    const { status = false, data = [] } = response || {};
+    if (status && Array.isArray(data)) {
+      setData(data);
+    } else {
+      setData([]);
+    }
+  };
+
   const deleteProject = async (
     id: string,
     name: string,
@@ -156,6 +202,36 @@ const useProjects = () => {
     }
   };
 
+  const getPullableMaterials = async (id: string, setData: Function) => {
+    const response = await Projects_APIS.getPullableMaterials(id);
+    const { status = false, data = null } = response || {};
+    if (status && data) {
+      setData(data.vendors || []);
+      return data;
+    }
+    setData([]);
+    return null;
+  };
+
+  const pullMaterials = async (
+    id: string,
+    items: Array<{
+      vendorId: string;
+      materialId: string;
+      quantity?: number;
+      uom?: string;
+      notes?: string;
+    }>,
+  ) => {
+    const response = await Projects_APIS.pullMaterials(id, { items });
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message || "Materials pulled successfully");
+      return response;
+    }
+    return null;
+  };
+
   const updateProject = async (id: string, queryParams: any = {}) => {
     const payload = buildProjectPayload(queryParams);
     const response = await Projects_APIS.update(id, payload);
@@ -164,6 +240,29 @@ const useProjects = () => {
       successToaster(message);
       navigate("/projects");
       return response;
+    }
+  };
+
+  const updateProjectStatus = async (
+    id: string,
+    name: string,
+    status: ProjectStatus,
+    callback?: Function,
+  ) => {
+    const result = await confirmationPopup(
+      `${status} ${name}`,
+      `Are you sure you want to mark this project as ${status.toLowerCase()}? It will no longer appear on the projects home page.`,
+    );
+    if (result.isConfirmed) {
+      const response = await Projects_APIS.update(id, { status });
+      const { status: ok = false, message = "" } = response || {};
+      if (ok) {
+        successToaster(message || `Project marked as ${status.toLowerCase()}`);
+        callback?.();
+        return response;
+      } else {
+        errorToaster(message || "Failed to update project status");
+      }
     }
   };
 
@@ -182,7 +281,12 @@ const useProjects = () => {
     deleteProject,
     uploadImage,
     getProjectById,
+    getPullableMaterials,
+    pullMaterials,
     updateProject,
+    updateProjectStatus,
+    getProjectFilterOptions,
+    getManagerOptions,
     getFinancialStatus,
   };
 };

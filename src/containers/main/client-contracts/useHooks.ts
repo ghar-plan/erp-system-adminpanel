@@ -87,7 +87,7 @@ const useClientContracts = () => {
       return data[0];
     }
     if (!response?.error) {
-      errorToaster("Failed to upload contract PDF");
+      errorToaster("Failed to upload PDF");
     }
     return null;
   };

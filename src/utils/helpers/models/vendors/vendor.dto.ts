@@ -6,7 +6,7 @@ export interface Vendor {
   address?: string;
   phone?: string;
   city?: string;
-  registrationNo?: string;
+  materials?: { id: string; name: string }[];
   created_at: string;
   contracts?: any[];
   cashflowsOut?: any[];

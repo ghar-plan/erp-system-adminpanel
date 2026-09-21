@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Plus, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -15,8 +15,9 @@ interface ActivityFormInputs {
 
 export default function ActivityCreate() {
   const navigate = useNavigate();
-  const { createActivity } = useActivities();
+  const { createActivity, getJobs } = useActivities();
   const { isLoading } = useStore();
+  const [jobs, setJobs] = useState<{ id: string; name: string }[]>([]);
 
   const {
     register,
@@ -28,6 +29,10 @@ export default function ActivityCreate() {
       workStage: "",
     },
   });
+
+  useEffect(() => {
+    getJobs(setJobs);
+  }, []);
 
   const onSubmitForm = async (data: ActivityFormInputs) => {
     if (!data.name.trim()) return;
@@ -73,12 +78,12 @@ export default function ActivityCreate() {
         <div className="space-y-5">
           <div className="grid gap-5 grid-cols-1 md:grid-cols-2">
             <div>
-              <label className="mb-2 block ui-form-label">Activity Name</label>
+              <label className="mb-2 block ui-form-label">Comments</label>
               <input
                 type="text"
                 placeholder="e.g. Painting"
                 className={`common-input ${errors.name ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("name", { required: "Activity Name is required" })}
+                {...register("name", { required: "Comments is required" })}
               />
               {errors.name && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">
@@ -88,24 +93,17 @@ export default function ActivityCreate() {
             </div>
 
             <div>
-              <label className="mb-2 block ui-form-label">Category</label>
+              <label className="mb-2 block ui-form-label">Job</label>
               <select
                 className={`common-input ${errors.category ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("category", { required: "Category is required" })}
+                {...register("category", { required: "Job is required" })}
               >
-                <option value="">Select Category</option>
-                <option value="Plasters coating">Plasters coating</option>
-                <option value="Paint job">Paint job</option>
-                <option value="Ceiling">Ceiling</option>
-                <option value="Grey Structure">Grey Structure</option>
-                <option value="Excavation">Excavation</option>
-                <option value="Foundation Work">Foundation Work</option>
-                <option value="Brickwork">Brickwork</option>
-                <option value="Plumbing">Plumbing</option>
-                <option value="Electrical Installation">Electrical Installation</option>
-                <option value="Flooring & Tiling">Flooring & Tiling</option>
-                <option value="Woodwork & Carpentry">Woodwork & Carpentry</option>
-                <option value="Metal Work">Metal Work</option>
+                <option value="">Select Job</option>
+                {jobs.map((job) => (
+                  <option key={job.id} value={job.name}>
+                    {job.name}
+                  </option>
+                ))}
               </select>
               {errors.category && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">
