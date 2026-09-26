@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { Plus, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -16,7 +16,8 @@ import { errorToaster } from "@/utils/helpers/common/alert-service";
 interface ContractFormInputs {
   vendorId: string;
   projectId: string;
-  activityId: string;
+  jobId: string;
+  workStageId: string;
   description: string;
   amount: number;
   startDate: string;
@@ -27,12 +28,13 @@ interface ContractFormInputs {
 export default function ContractCreate() {
   const navigate = useNavigate();
   const { createContract, uploadContractImage } = useContracts();
-  const { getAllActivities } = useActivities();
+  const { getJobs, getWorkStages } = useActivities();
   const { getAllVendors } = useVendors();
   const { getAllProjects } = useProjects();
   const { isLoading } = useStore();
 
-  const [activities, setActivities] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [workStages, setWorkStages] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -48,7 +50,8 @@ export default function ContractCreate() {
     defaultValues: {
       vendorId: "",
       projectId: "",
-      activityId: "",
+      jobId: "",
+      workStageId: "",
       description: "",
       amount: 0,
       startDate: "",
@@ -59,7 +62,8 @@ export default function ContractCreate() {
 
   useEffect(() => {
     // Fetch all for dropdowns
-    getAllActivities(setActivities);
+    getJobs(setJobs);
+    getWorkStages(setWorkStages);
     getAllVendors(setVendors);
     getAllProjects(setProjects);
   }, []);
@@ -109,7 +113,8 @@ export default function ContractCreate() {
       type: "vendor",
       vendorId: data.vendorId,
       projectId: data.projectId,
-      activityId: data.activityId,
+      jobId: data.jobId,
+      workStageId: data.workStageId,
       description: data.description?.trim(),
       amount: Number(data.amount),
       startDate: data.startDate,
@@ -188,21 +193,41 @@ export default function ContractCreate() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-foreground">Activity</label>
+              <label className="mb-2 block text-sm font-semibold text-foreground">Job</label>
               <select
-                className={`common-input w-full ${errors.activityId ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("activityId", { required: "Activity is required" })}
+                className={`common-input w-full ${errors.jobId ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("jobId", { required: "Job is required" })}
               >
-                <option value="">Select Activity</option>
-                {activities.map((activity) => (
-                  <option key={activity.id} value={activity.id}>
-                    {activity.name}
+                <option value="">Select Job</option>
+                {jobs.map((job) => (
+                  <option key={job.id} value={job.id}>
+                    {job.name}
                   </option>
                 ))}
               </select>
-              {errors.activityId && (
+              {errors.jobId && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  {errors.activityId.message}
+                  {errors.jobId.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-foreground">Work Stage</label>
+              <select
+                className={`common-input w-full ${errors.workStageId ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("workStageId", { required: "Work Stage is required" })}
+              >
+                <option value="">Select Work Stage</option>
+                {workStages.map((stage) => (
+                  <option key={stage.id} value={stage.id}>
+                    {stage.name}
+                  </option>
+                ))}
+              </select>
+              {errors.workStageId && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.workStageId.message}
                 </p>
               )}
             </div>
@@ -281,3 +306,4 @@ export default function ContractCreate() {
     </div>
   );
 }
+

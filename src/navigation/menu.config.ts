@@ -47,7 +47,7 @@ export const menuConfig: MenuGroup[] = [
   },
   {
     key: "activities",
-    text: "Activities",
+    text: "Jobs, Stages & Units",
     path: siteRoutes.activity,
     permission: PERMISSIONS.ACTIVITY_READ,
   },
@@ -112,7 +112,7 @@ export const menuConfig: MenuGroup[] = [
   },
   {
     key: "roles-permissions",
-    text: "Roles & Users",
+    text: "Stake Holders",
     path: siteRoutes.roles,
     children: [
       {

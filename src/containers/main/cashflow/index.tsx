@@ -9,6 +9,8 @@ import { CanIf } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { FileText } from "lucide-react";
+import useEmployees from "@/containers/main/employees/useHooks";
+import useActivities from "@/containers/main/activities/useHooks";
 
 export default function Cashflow() {
   const { hasPermission } = usePermissions();
@@ -18,13 +20,9 @@ export default function Cashflow() {
     hasPermission(PERMISSIONS.VENDORS_READ) ||
     hasPermission(PERMISSIONS.REPORTS_VENDOR_FILTER) ||
     hasPermission(PERMISSIONS.CASH_FLOW_OUT);
-  const canLoadActivityOptions =
-    hasPermission(PERMISSIONS.ACTIVITY_READ) ||
-    hasPermission(PERMISSIONS.CASH_FLOW_OUT);
   const {
     getProjects,
     getVendors,
-    getActivities,
     getCashflowCombinedList,
     recordCashIn,
     recordCashOut,
@@ -33,6 +31,12 @@ export default function Cashflow() {
     exportCashflowPdf,
     downloadReceipt,
   } = useCashflow();
+  const { getAllEmployees } = useEmployees();
+  const {
+    getJobs,
+    getWorkStages,
+    getUnits,
+  } = useActivities();
 
   const formsSectionRef = useRef<HTMLDivElement>(null);
   const cashInFormRef = useRef<HTMLDivElement>(null);
@@ -41,7 +45,10 @@ export default function Cashflow() {
   // Dropdown states
   const [projects, setProjects] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
-  const [activities, setActivities] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [workStages, setWorkStages] = useState<any[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
 
   // List states
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -96,9 +103,13 @@ export default function Cashflow() {
     await Promise.all([
       getProjects(setProjects),
       canLoadVendorOptions ? getVendors(setVendors) : Promise.resolve(),
-      canLoadActivityOptions ? getActivities(setActivities) : Promise.resolve(),
+      getJobs(setJobs),
+      getWorkStages(setWorkStages),
+      getUnits(setUnits),
+      getAllEmployees(setEmployees),
     ]);
   };
+
 
   // Fetch transactions from backend with active filters
   const fetchTransactions = async (currentFilters: {
@@ -190,11 +201,12 @@ export default function Cashflow() {
   const handleRecordExpense = async (data: any) => {
     setSubmittingOut(true);
 
-    // DB stores unit price in `amount`; total shown in UI is quantity × price
+    // DB stores unit price in `amount`; total shown in UI is quantity Ã— price
     const payload = {
       projectId: data.projectId,
       vendorId: data.vendorId,
-      activityId: data.activityId,
+      jobId: data.jobId,
+      workStageId: data.workStageId,
       items: data.items,
       category: data.category,
       quantity: Number(data.quantity),
@@ -293,6 +305,7 @@ export default function Cashflow() {
           <div ref={cashInFormRef} className="scroll-mt-4">
             <CashInForm
               projects={projects}
+              employees={employees}
               onSubmit={handleRecordPayment}
               submitting={submittingIn}
               editData={editDataIn}
@@ -306,7 +319,10 @@ export default function Cashflow() {
             <CashOutForm
               projects={projects}
               vendors={vendors}
-              activities={activities}
+              jobs={jobs}
+              workStages={workStages}
+              units={units}
+              employees={employees}
               onSubmit={handleRecordExpense}
               submitting={submittingOut}
               editData={editDataOut}
@@ -322,6 +338,7 @@ export default function Cashflow() {
         <TransactionsTable
           transactions={transactions}
           projects={projects}
+          employees={employees}
           filterProject={filterProject}
           setFilterProject={setFilterProject}
           filterType={filterType}
@@ -337,6 +354,7 @@ export default function Cashflow() {
           onDelete={handleDelete}
           onDownloadReceipt={handleDownloadReceipt}
           onEdit={handleEdit}
+          onRefresh={refreshTransactions}
           totals={totals}
         />
 
@@ -365,3 +383,4 @@ export default function Cashflow() {
     </div>
   );
 }
+

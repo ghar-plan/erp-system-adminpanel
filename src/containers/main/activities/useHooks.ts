@@ -1,5 +1,7 @@
 import { Activities_APIS } from "@/libs/apis/activities.api";
 import { Jobs_APIS } from "@/libs/apis/jobs.api";
+import { WorkStages_APIS } from "@/libs/apis/work-stages.api";
+import { Units_APIS } from "@/libs/apis/units.api";
 import { useNavigate } from "react-router-dom";
 import {
   successToaster,
@@ -85,6 +87,96 @@ const useActivities = () => {
     const { status = false, message = "" } = response || {};
     if (status) {
       successToaster(message || "Job deleted successfully");
+      return true;
+    }
+    return false;
+  };
+
+  const getWorkStages = async (setData: Function) => {
+    const response = await WorkStages_APIS.getAll();
+    const { status = false, data = [] } = response || {};
+    if (status && data) {
+      setData(data);
+    } else {
+      setData([]);
+    }
+  };
+
+  const createWorkStage = async (name: string) => {
+    const response = await WorkStages_APIS.create({ name: name.trim() });
+    const { status = false, message = "", data } = response || {};
+    if (status) {
+      successToaster(message || "Work stage created successfully");
+      return data;
+    }
+    return null;
+  };
+
+  const updateWorkStage = async (id: string, name: string) => {
+    const response = await WorkStages_APIS.update(id, { name: name.trim() });
+    const { status = false, message = "", data } = response || {};
+    if (status) {
+      successToaster(message || "Work stage updated successfully");
+      return data;
+    }
+    return null;
+  };
+
+  const deleteWorkStage = async (id: string, name: string) => {
+    const result = await confirmationPopup(
+      `Delete ${name}`,
+      "Are you sure you want to delete this work stage?",
+    );
+    if (!result.isConfirmed) return false;
+    const response = await WorkStages_APIS.delete(id);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message || "Work stage deleted successfully");
+      return true;
+    }
+    return false;
+  };
+
+  const getUnits = async (setData: Function) => {
+    const response = await Units_APIS.getAll();
+    const { status = false, data = [] } = response || {};
+    if (status && data) {
+      setData(data);
+    } else {
+      setData([]);
+    }
+  };
+
+  const createUnit = async (name: string) => {
+    const response = await Units_APIS.create({ name: name.trim() });
+    const { status = false, message = "", data } = response || {};
+    if (status) {
+      successToaster(message || "Unit created successfully");
+      return data;
+    }
+    return null;
+  };
+
+  const updateUnit = async (id: string, name: string) => {
+    const response = await Units_APIS.update(id, { name: name.trim() });
+    const { status = false, message = "", data } = response || {};
+    if (status) {
+      successToaster(message || "Unit updated successfully");
+      return data;
+    }
+    return null;
+  };
+
+  const deleteUnit = async (id: string, name: string) => {
+    const result = await confirmationPopup(
+      `Delete ${name}`,
+      "Are you sure you want to delete this unit?",
+    );
+    if (!result.isConfirmed) return false;
+    const response = await Units_APIS.delete(id);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message || "Unit deleted successfully");
       return true;
     }
     return false;
@@ -196,6 +288,14 @@ const useActivities = () => {
     createJob,
     updateJob,
     deleteJob,
+    getWorkStages,
+    createWorkStage,
+    updateWorkStage,
+    deleteWorkStage,
+    getUnits,
+    createUnit,
+    updateUnit,
+    deleteUnit,
     createActivity,
     createActivitiesBulk,
     uploadActivitiesCsv,

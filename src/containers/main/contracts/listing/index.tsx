@@ -219,7 +219,7 @@ export default function ContractsListing() {
                         {contract.project?.siteName || "—"}
                       </td>
                       <td className="table-td font-semibold text-foreground">
-                        {contract.activity?.name || "—"}
+                        {contract.job?.name || contract.activity?.name || "—"}{contract.workStage?.name ? ` / ${contract.workStage.name}` : ""}
                       </td>
                       <td className="table-td max-w-[240px]">
                         <div className="flex items-center gap-3 min-w-0">

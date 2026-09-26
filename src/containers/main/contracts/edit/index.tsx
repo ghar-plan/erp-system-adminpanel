@@ -17,7 +17,8 @@ import { errorToaster } from "@/utils/helpers/common/alert-service";
 interface ContractFormInputs {
   vendorId: string;
   projectId: string;
-  activityId: string;
+  jobId: string;
+  workStageId: string;
   description: string;
   amount: number;
   startDate: string;
@@ -29,12 +30,13 @@ export default function ContractEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getContractById, updateContract, uploadContractImage } = useContracts();
-  const { getAllActivities } = useActivities();
+  const { getJobs, getWorkStages } = useActivities();
   const { getAllVendors } = useVendors();
   const { getAllProjects } = useProjects();
   const { isLoading } = useStore();
 
-  const [activities, setActivities] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [workStages, setWorkStages] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [initialDataLoading, setInitialDataLoading] = useState(true);
@@ -52,7 +54,8 @@ export default function ContractEdit() {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      getAllActivities(setActivities);
+      getJobs(setJobs);
+    getWorkStages(setWorkStages);
       getAllVendors(setVendors);
       getAllProjects(setProjects);
 
@@ -61,7 +64,8 @@ export default function ContractEdit() {
           reset({
             vendorId: data.vendorId || data.vendor?.id,
             projectId: data.projectId || data.project?.id,
-            activityId: data.activityId || data.activity?.id,
+            jobId: data.jobId || data.job?.id || "",
+            workStageId: data.workStageId || data.workStage?.id || "",
             description: data.description,
             amount: data.amount,
             startDate: toDateInputValue(data.startDate),
@@ -122,7 +126,8 @@ export default function ContractEdit() {
       await updateContract(id, {
         vendorId: data.vendorId,
         projectId: data.projectId,
-        activityId: data.activityId,
+        jobId: data.jobId,
+        workStageId: data.workStageId,
         description: data.description?.trim(),
         amount: Number(data.amount),
         startDate: data.startDate,
@@ -210,21 +215,41 @@ export default function ContractEdit() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-foreground">Activity</label>
+              <label className="mb-2 block text-sm font-semibold text-foreground">Job</label>
               <select
-                className={`common-input w-full ${errors.activityId ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("activityId", { required: "Activity is required" })}
+                className={`common-input w-full ${errors.jobId ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("jobId", { required: "Job is required" })}
               >
-                <option value="">Select Activity</option>
-                {activities.map((activity) => (
-                  <option key={activity.id} value={activity.id}>
-                    {activity.name}
+                <option value="">Select Job</option>
+                {jobs.map((job) => (
+                  <option key={job.id} value={job.id}>
+                    {job.name}
                   </option>
                 ))}
               </select>
-              {errors.activityId && (
+              {errors.jobId && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  {errors.activityId.message}
+                  {errors.jobId.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-foreground">Work Stage</label>
+              <select
+                className={`common-input w-full ${errors.workStageId ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("workStageId", { required: "Work Stage is required" })}
+              >
+                <option value="">Select Work Stage</option>
+                {workStages.map((stage) => (
+                  <option key={stage.id} value={stage.id}>
+                    {stage.name}
+                  </option>
+                ))}
+              </select>
+              {errors.workStageId && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.workStageId.message}
                 </p>
               )}
             </div>
