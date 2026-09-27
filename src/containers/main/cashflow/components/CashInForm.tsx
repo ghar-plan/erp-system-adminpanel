@@ -5,6 +5,7 @@ import PaymentDetailsFields, {
   emptyPaymentDetails,
   mapPaymentDetailsFromEdit,
 } from "./PaymentDetailsFields";
+import { TransactionStatus } from "@/utils/helpers/models/cashflow/cashflow.dto";
 
 interface CashInFormInputs {
   projectId: string;
@@ -13,6 +14,9 @@ interface CashInFormInputs {
   entryDate: string;
   enteredBy: string;
   paymentSource: string;
+  status: string;
+  paidAmount?: string;
+  remainingAmount?: string;
   chequeNo: string;
   transactionId: string;
   mediaId: string;
@@ -21,6 +25,7 @@ interface CashInFormInputs {
 
 interface CashInFormProps {
   projects: any[];
+  employees: Array<{ id: string; name: string }>;
   onSubmit: (data: CashInFormInputs) => Promise<void>;
   submitting: boolean;
   editData?: any;
@@ -29,6 +34,7 @@ interface CashInFormProps {
 
 export default function CashInForm({
   projects,
+  employees,
   onSubmit,
   submitting,
   editData,
@@ -47,6 +53,7 @@ export default function CashInForm({
       installment: "",
       amount: "",
       ...emptyPaymentDetails,
+      status: TransactionStatus.RESOLVED,
     },
   });
 
@@ -57,6 +64,7 @@ export default function CashInForm({
         installment: editData.installment || "",
         amount: editData.amount ? String(editData.amount) : "",
         ...mapPaymentDetailsFromEdit(editData),
+        status: editData?.status || TransactionStatus.RESOLVED,
       });
     } else {
       reset({
@@ -64,6 +72,7 @@ export default function CashInForm({
         installment: "",
         amount: "",
         ...emptyPaymentDetails,
+        status: TransactionStatus.RESOLVED,
       });
     }
   }, [editData, reset]);
@@ -75,6 +84,7 @@ export default function CashInForm({
       installment: "",
       amount: "",
       ...emptyPaymentDetails,
+      status: TransactionStatus.RESOLVED,
     });
   };
 
@@ -151,6 +161,7 @@ export default function CashInForm({
           errors={errors}
           watch={watch}
           setValue={setValue}
+          employees={employees}
           narrow
         />
 

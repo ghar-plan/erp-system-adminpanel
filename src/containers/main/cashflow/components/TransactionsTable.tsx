@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
-import { Download, Eye, FileText, Search, Trash2 } from "lucide-react";
+import { Download, Eye, FileText, Search, Trash2, Coins } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import ResolvePaymentModal from "./ResolvePaymentModal";
 
 interface Transaction {
   id: string;
@@ -17,15 +18,20 @@ interface Transaction {
   amount: number;
   enteredBy?: string;
   paymentSource?: string;
+  status?: string;
+  paidAmount?: number;
+  remainingAmount?: number;
   chequeNo?: string;
   transactionId?: string;
   mediaId?: string;
   receiptUrl?: string | null;
+  installments?: any[];
 }
 
 interface TransactionsTableProps {
   transactions: Transaction[];
   projects: any[];
+  employees?: any[];
   filterProject: string;
   setFilterProject: (val: string) => void;
   filterType: string;
@@ -41,12 +47,14 @@ interface TransactionsTableProps {
   onDelete: (id: string, type: "CASH IN" | "CASH OUT", label: string) => void;
   onDownloadReceipt: (id: string, type: "CASH IN" | "CASH OUT") => void;
   onEdit: (tx: any) => void;
+  onRefresh?: () => void;
   totals?: { totalIn: number; totalOut: number };
 }
 
 export default function TransactionsTable({
   transactions,
   projects,
+  employees = [],
   filterProject,
   setFilterProject,
   filterType,
@@ -62,6 +70,7 @@ export default function TransactionsTable({
   onDelete,
   onDownloadReceipt,
   onEdit,
+  onRefresh,
   totals,
 }: TransactionsTableProps) {
   const { hasPermission } = usePermissions();
@@ -70,6 +79,9 @@ export default function TransactionsTable({
   const canDelete = hasPermission(PERMISSIONS.CASH_FLOW_DELETE);
   const canPrint = hasPermission(PERMISSIONS.CASH_FLOW_PRINT);
   const showActions = canView || canUpdate || canDelete || canPrint;
+
+  const [selectedResolveTx, setSelectedResolveTx] = useState<any>(null);
+  const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
   // Local draft states to allow Apply/Reset behavior
   const [draftProject, setDraftProject] = useState(filterProject);
   const [draftType, setDraftType] = useState(filterType);
@@ -202,7 +214,7 @@ export default function TransactionsTable({
           >
             <option value="">All Types</option>
             <option value="CASH IN">Cash In</option>
-            <option value="CASH OUT">Cash Out</option>
+            <option value="CASH OUT">Cash Out / Material In</option>
           </select>
         </div>
 
@@ -270,7 +282,7 @@ export default function TransactionsTable({
           </div>
           <div className="p-5 rounded-xl border border-warning-text/20 bg-warning-bg/10 flex items-center justify-between shadow-sm">
             <div>
-              <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Total Cash Out</p>
+              <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Total Cash Out / Material In</p>
               <p className="text-2xl font-bold text-warning-text mt-1">PKR {totals.totalOut.toLocaleString()}</p>
             </div>
           </div>
@@ -292,6 +304,9 @@ export default function TransactionsTable({
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                   TYPE
+                </th>
+                <th className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                  STATUS
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                   DESCRIPTION
@@ -336,8 +351,28 @@ export default function TransactionsTable({
                             : "bg-warning-bg text-warning-text border-warning-text/10"
                         }`}
                       >
-                        {tx.type === "CASH IN" ? "↓" : "↑"} {tx.type}
+                        {tx.type === "CASH IN" ? "↓" : "↑"}{" "}
+                        {tx.type === "CASH IN"
+                          ? "CASH IN"
+                          : "Cash Out / Material In"}
                       </span>
+                    </td>
+                    <td className="table-td whitespace-nowrap">
+                      {tx?.status === "Resolved" ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          Resolved
+                        </span>
+                      ) : tx?.status === "Pending" ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          Pending
+                        </span>
+                      ) : (
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          {tx?.status || "--"}
+                        </span>
+                      )}
                     </td>
                     <td className="table-td text-muted-foreground max-w-[200px] truncate">
                       {tx?.description || "--"}
@@ -345,14 +380,37 @@ export default function TransactionsTable({
                     <td className="table-td">{tx?.vendorClient || "--"}</td>
                     <td className="table-td">{tx?.enteredBy || "--"}</td>
                     <td className="table-td">
-                      {tx?.paymentSource === "Cheque" && tx.chequeNo
-                        ? `Cheque (${tx.chequeNo})`
-                        : tx?.paymentSource === "Online Transfer" &&
-                            tx.transactionId
-                          ? `Online Transfer (${tx.transactionId})`
-                          : tx?.paymentSource || "--"}
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-foreground">
+                          {tx?.paymentSource === "Partial"
+                            ? "Partial"
+                            : tx?.paymentSource === "Credit"
+                              ? "Credit"
+                              : tx?.paymentSource === "Cheque" && tx.chequeNo
+                                ? `Cheque (${tx.chequeNo})`
+                                : tx?.paymentSource === "Online Transfer" &&
+                                    tx.transactionId
+                                  ? `Online Transfer (${tx.transactionId})`
+                                  : tx?.paymentSource || "--"}
+                        </span>
+                        {tx?.paymentSource === "Partial" && tx.paidAmount !== undefined && (
+                          <span className="text-[10px] text-muted-foreground mt-0.5">
+                            Paid: PKR {Number(tx.paidAmount).toLocaleString()}
+                            {tx.remainingAmount !== undefined && (
+                              <span className="text-amber-600 dark:text-amber-400 ml-1 font-semibold">
+                                (Rem: PKR {Number(tx.remainingAmount).toLocaleString()})
+                              </span>
+                            )}
+                          </span>
+                        )}
+                        {tx?.paymentSource === "Credit" && tx.remainingAmount !== undefined && (
+                          <span className="text-[10px] text-muted-foreground mt-0.5">
+                            Due: PKR {Number(tx.remainingAmount).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td className="table-td font-bold text-foreground text-right">
+                    <td className="table-td font-bold text-foreground text-right whitespace-nowrap">
                       {tx?.amount !== undefined
                         ? `PKR ${tx.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
                         : "--"}
@@ -360,6 +418,26 @@ export default function TransactionsTable({
                     {showActions ? (
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex justify-center gap-2">
+                        {canUpdate && tx.type === "CASH OUT" ? (
+                          <button
+                            onClick={() => {
+                              setSelectedResolveTx(tx);
+                              setIsResolveModalOpen(true);
+                            }}
+                            className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer shadow-xs ${
+                              tx.status === "Resolved"
+                                ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                                : "bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold"
+                            }`}
+                            title={
+                              tx.status === "Resolved"
+                                ? "Payment Resolved (View / Add Installments)"
+                                : "Resolve Payment / Add Installment"
+                            }
+                          >
+                            <Coins size={16} />
+                          </button>
+                        ) : null}
                         {canView ? (
                           <Link
                             to={`/cashflow/view/${tx.type === "CASH IN" ? "in" : "out"}/${tx.id}`}
@@ -417,6 +495,22 @@ export default function TransactionsTable({
           </table>
         </div>
       </div>
+
+      {/* Resolve Payment Modal */}
+      {isResolveModalOpen && selectedResolveTx && (
+        <ResolvePaymentModal
+          isOpen={isResolveModalOpen}
+          onClose={() => {
+            setIsResolveModalOpen(false);
+            setSelectedResolveTx(null);
+          }}
+          transaction={selectedResolveTx}
+          employees={employees}
+          onSuccess={() => {
+            onRefresh?.();
+          }}
+        />
+      )}
     </div>
   );
 }

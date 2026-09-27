@@ -1,635 +1,605 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
 import {
   Plus,
-  Search,
-  Upload,
-  FileSpreadsheet,
-  Loader2,
-  List,
-  X,
   Pencil,
   Trash2,
+  X,
+  Briefcase,
+  Layers,
+  Ruler,
+  Search,
+  CheckCircle2,
+  Sparkles,
+  Inbox,
+  Loader2,
 } from "lucide-react";
 import useActivities from "../useHooks";
-import Pagination from "@/components/particles/table/pagination";
-import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
 import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
-interface ActivityFilters {
-  search: string;
-  page: number;
-  limit: number;
+type NamedItem = { id: string; name: string };
+type SectionType = "job" | "workStage" | "unit";
+
+interface SectionMeta {
+  key: SectionType;
+  label: string;
+  singular: string;
+  createLabel: string;
+  description: string;
+  badgeText: string;
+  icon: React.ComponentType<{ className?: string; size?: number }>;
+  placeholder: string;
 }
 
+const SECTIONS: SectionMeta[] = [
+  {
+    key: "job",
+    label: "Jobs",
+    singular: "Job",
+    createLabel: "Add Job",
+    description: "Contractor roles, craft trades, & labour titles",
+    badgeText: "Roles & Labor",
+    icon: Briefcase,
+    placeholder: "e.g. Mason, Plumber, Painter, Site Supervisor",
+  },
+  {
+    key: "workStage",
+    label: "Work Stages",
+    singular: "Work Stage",
+    createLabel: "Add Work Stage",
+    description: "Construction milestones & project progress phases",
+    badgeText: "Milestones",
+    icon: Layers,
+    placeholder: "e.g. Excavation, Foundation, Grey Structure, Finishing",
+  },
+  {
+    key: "unit",
+    label: "Units",
+    singular: "Unit",
+    createLabel: "Add Unit",
+    description: "Standard units of measurement for materials & work",
+    badgeText: "Measurements",
+    icon: Ruler,
+    placeholder: "e.g. Sq Ft, Rft, Nos, Bags, Ton, Hours, Days",
+  },
+];
+
 export default function ActivitiesListing() {
-  const navigate = useNavigate();
   const { hasPermission } = usePermissions();
-  const { getActivities, uploadActivitiesCsv, deleteActivity, downloadSampleExcel, createJob, updateJob, deleteJob, getJobs } = useActivities();
+  const {
+    getJobs,
+    createJob,
+    updateJob,
+    deleteJob,
+    getWorkStages,
+    createWorkStage,
+    updateWorkStage,
+    deleteWorkStage,
+    getUnits,
+    createUnit,
+    updateUnit,
+    deleteUnit,
+  } = useActivities();
+
+  const canCreate = hasPermission(PERMISSIONS.ACTIVITY_CREATE);
   const canUpdate = hasPermission(PERMISSIONS.ACTIVITY_UPDATE);
   const canDelete = hasPermission(PERMISSIONS.ACTIVITY_DELETE);
-  const showActions = canUpdate || canDelete;
-  const [activities, setActivities] = useState<any[]>([]);
-  const [totalElements, setTotalElements] = useState(0);
-  const [csvUploading, setCsvUploading] = useState(false);
 
-  // Modal / Import State
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [jobs, setJobs] = useState<NamedItem[]>([]);
+  const [workStages, setWorkStages] = useState<NamedItem[]>([]);
+  const [units, setUnits] = useState<NamedItem[]>([]);
+  const [activeTab, setActiveTab] = useState<SectionType>("job");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Create / Edit Job Modal
-  const [isJobModalOpen, setIsJobModalOpen] = useState(false);
-  const [jobName, setJobName] = useState("");
-  const [jobSaving, setJobSaving] = useState(false);
-  const [jobError, setJobError] = useState("");
-  const [jobsList, setJobsList] = useState<{ id: string; name: string }[]>([]);
-  const [editingJobId, setEditingJobId] = useState<string | null>(null);
+  const [modalType, setModalType] = useState<SectionType | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [itemName, setItemName] = useState("");
+  const [itemError, setItemError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const [searchVal, setSearchVal] = useState("");
-
-  // Filters State
-  const [filters, setFilters] = useState<ActivityFilters>({
-    search: "",
-    page: 1,
-    limit: 10,
-  });
-
-  const fetchActivities = (currentFilters: ActivityFilters) => {
-    const queryParams: any = {
-      limit: currentFilters.limit,
-      offset: (currentFilters.page - 1) * currentFilters.limit,
-    };
-    if (currentFilters.search) queryParams.search = currentFilters.search;
-
-    getActivities(setActivities, queryParams, setTotalElements);
+  const refresh = async () => {
+    await Promise.all([
+      getJobs(setJobs),
+      getWorkStages(setWorkStages),
+      getUnits(setUnits),
+    ]);
   };
 
-  // Triggers search on mount
   useEffect(() => {
-    fetchActivities({ ...filters, page: 1 });
+    refresh();
   }, []);
 
-  const handleChangeFilter = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFilters((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const openCreate = (type: SectionType) => {
+    setModalType(type);
+    setEditingId(null);
+    setItemName("");
+    setItemError("");
   };
 
-  const handleApplyFilters = () => {
-    const updatedFilters = { ...filters, search: searchVal, page: 1 };
-    setFilters(updatedFilters);
-    fetchActivities(updatedFilters);
+  const openEdit = (type: SectionType, item: NamedItem) => {
+    setModalType(type);
+    setEditingId(item.id);
+    setItemName(item.name);
+    setItemError("");
   };
 
-  const handleResetFilters = () => {
-    setSearchVal("");
-    const cleared = {
-      search: "",
-      page: 1,
-      limit: 10,
-    };
-    setFilters(cleared);
-    fetchActivities(cleared);
+  const closeModal = () => {
+    if (saving) return;
+    setModalType(null);
+    setEditingId(null);
+    setItemName("");
+    setItemError("");
   };
 
-  const onPageChange = (pageInfo: { selected: number; limit: number }) => {
-    const nextPage = pageInfo.selected + 1;
-    setFilters((prev) => ({
-      ...prev,
-      page: nextPage,
-      limit: pageInfo.limit,
-    }));
-    fetchActivities({
-      ...filters,
-      page: nextPage,
-      limit: pageInfo.limit,
-    });
-  };
+  const currentSection = SECTIONS.find((s) => s.key === activeTab)!;
+  const CurrentIcon = currentSection.icon;
 
-  const handleUpload = async () => {
-    if (!selectedFile) return;
+  const modalSection = modalType
+    ? SECTIONS.find((s) => s.key === modalType)!
+    : currentSection;
 
-    setCsvUploading(true);
-    await uploadActivitiesCsv(selectedFile);
-    fetchActivities({ ...filters, page: 1 });
-    setCsvUploading(false);
-    setIsImportModalOpen(false);
-    setSelectedFile(null);
-  };
+  const modalTitle = editingId
+    ? `Edit ${modalSection.singular}`
+    : `Add New ${modalSection.singular}`;
 
-  const handleDelete = async (id: string, name: string) => {
-    await deleteActivity(id, name, () => fetchActivities(filters));
-  };
-
-  const resetJobModal = () => {
-    setIsJobModalOpen(false);
-    setJobName("");
-    setJobError("");
-    setEditingJobId(null);
-  };
-
-  const openJobModal = () => {
-    setJobName("");
-    setJobError("");
-    setEditingJobId(null);
-    setIsJobModalOpen(true);
-    getJobs(setJobsList);
-  };
-
-  const startEditJob = (job: { id: string; name: string }) => {
-    setEditingJobId(job.id);
-    setJobName(job.name);
-    setJobError("");
-  };
-
-  const handleDeleteJob = async (job: { id: string; name: string }) => {
-    const deleted = await deleteJob(job.id, job.name);
-    if (deleted) {
-      if (editingJobId === job.id) {
-        setEditingJobId(null);
-        setJobName("");
-        setJobError("");
-      }
-      getJobs(setJobsList);
-    }
-  };
-
-  const handleSaveJob = async () => {
-    const trimmed = jobName.trim();
-    if (!trimmed) {
-      setJobError("Job name is required");
+  const handleSave = async () => {
+    const name = itemName.trim();
+    if (!name) {
+      setItemError("Name is required");
       return;
     }
-    setJobSaving(true);
-    setJobError("");
-    const saved = editingJobId
-      ? await updateJob(editingJobId, trimmed)
-      : await createJob(trimmed);
-    setJobSaving(false);
-    if (saved) {
-      setJobName("");
-      setEditingJobId(null);
-      getJobs(setJobsList);
-      if (editingJobId) {
-        fetchActivities(filters);
-      }
+    setSaving(true);
+    let ok = null;
+    if (modalType === "job") {
+      ok = editingId ? await updateJob(editingId, name) : await createJob(name);
+    } else if (modalType === "workStage") {
+      ok = editingId
+        ? await updateWorkStage(editingId, name)
+        : await createWorkStage(name);
+    } else if (modalType === "unit") {
+      ok = editingId ? await updateUnit(editingId, name) : await createUnit(name);
+    }
+    setSaving(false);
+    if (ok) {
+      closeModal();
+      refresh();
     }
   };
 
-  const formatDate = (dateString: string | Date) => {
-    try {
-      const dateObj = new Date(dateString);
-      return dateObj.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-    } catch (e) {
-      return "N/A";
-    }
+  const activeRows =
+    activeTab === "job"
+      ? jobs
+      : activeTab === "workStage"
+        ? workStages
+        : units;
+
+  const filteredRows = activeRows.filter((row) =>
+    row.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
+  );
+
+  const tabCounts: Record<SectionType, number> = {
+    job: jobs.length,
+    workStage: workStages.length,
+    unit: units.length,
   };
 
-  const columns = [
-    "Sr No.",
-    "Activity ID",
-    "Comments",
-    "Job",
-    "Work Stages",
-    "Date of Entry",
-    ...(showActions ? ["Actions"] : []),
-  ];
+  const ModalIcon = modalSection.icon;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in  ">
+    <div className="space-y-6 animate-fade-in">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl text-foreground font-bold">
-              Activities
-            </h1>
+          <div className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wider mb-1">
+            <Sparkles size={14} />
+            <span>Master Catalog</span>
           </div>
+          <h1 className="text-2xl sm:text-3xl text-foreground font-bold tracking-tight">
+            Jobs, Stages & Units
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+            Manage master classifications, work milestone stages, and measurement
+            units referenced across contracts, projects, and cashflow.
+          </p>
         </div>
 
-        <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
-          <Can permission={PERMISSIONS.ACTIVITY_IMPORT}>
-            <button
-              onClick={() => setIsImportModalOpen(true)}
-              className="flex h-10 px-4 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs"
-            >
-              <Upload size={16} />
-              Import CSV
-            </button>
-          </Can>
-
+        <div className="flex items-center gap-2.5 shrink-0">
           <Can permission={PERMISSIONS.ACTIVITY_CREATE}>
-            <button
-              onClick={openJobModal}
-              className="flex h-10 px-4 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs"
+            <Button
+              variant="primary"
+              onClick={() => openCreate(activeTab)}
+              className="h-10 text-xs px-4 font-semibold flex items-center gap-2 shadow-xs"
             >
               <Plus size={16} />
-              Create Job
-            </button>
-          </Can>
-
-          <Can permission={PERMISSIONS.ACTIVITY_CREATE}>
-            <Link
-              to="/activity/create"
-              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
-            >
-              <Plus size={18} />
-              Create Activity
-            </Link>
+              {currentSection.createLabel}
+            </Button>
           </Can>
         </div>
       </div>
 
-      {/* Filters Toolbar Card */}
-      <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-wrap items-end justify-start md:justify-end gap-3 w-full">
-        {/* Search */}
-        <div className="flex flex-col items-start gap-1 w-full sm:max-w-sm flex-1 md:max-w-md min-w-[260px]">
-          <label
-            htmlFor="search"
-            className="text-xs text-foreground font-medium whitespace-nowrap"
-          >
-            Search
-          </label>
-          <div className="relative w-full">
-            <Search
-              className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
-              size={16}
-            />
-            <input
-              type="search"
-              name="search"
-              placeholder="Search by activity name..."
-              value={searchVal}
-              onChange={(e) => setSearchVal(e.target.value)}
-              className="common-input pl-10 pr-4 text-sm h-10 w-full"
-            />
+      {/* 3 Interactive Master Selector / Metric Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {SECTIONS.map((section) => {
+          const isActive = activeTab === section.key;
+          const Icon = section.icon;
+          const count = tabCounts[section.key];
+
+          return (
+            <button
+              key={section.key}
+              type="button"
+              onClick={() => {
+                setActiveTab(section.key);
+                setSearchQuery("");
+              }}
+              className={`p-5 rounded-2xl border text-left transition-all duration-200 cursor-pointer relative overflow-hidden bg-card flex flex-col justify-between shadow-xs group ${
+                isActive
+                  ? "border-primary ring-2 ring-primary/20 shadow-md translate-y-[-2px]"
+                  : "border-border-main hover:border-primary/50 hover:shadow-sm"
+              }`}
+            >
+              {/* Active Top Line Indicator */}
+              {isActive && (
+                <span className="absolute top-0 left-0 right-0 h-1 bg-primary" />
+              )}
+
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-105 ${
+                      isActive
+                        ? "bg-primary text-white shadow-sm shadow-primary/30"
+                        : "bg-muted-foreground/10 text-muted-foreground group-hover:text-foreground"
+                    }`}
+                  >
+                    <Icon size={22} />
+                  </div>
+                  <span
+                    className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                      isActive
+                        ? "bg-primary/10 text-primary border border-primary/20"
+                        : "bg-muted-foreground/10 text-muted-foreground"
+                    }`}
+                  >
+                    {section.badgeText}
+                  </span>
+                </div>
+
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-2xl font-bold text-foreground">
+                    {count}
+                  </h3>
+                  <span className="text-base font-semibold text-foreground">
+                    {section.label}
+                  </span>
+                </div>
+
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  {section.description}
+                </p>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-border-main flex items-center justify-between text-xs">
+                <span
+                  className={`font-semibold ${
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  {isActive ? "Currently Active" : "Click to select"}
+                </span>
+                {isActive && (
+                  <CheckCircle2 size={15} className="text-primary" />
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Main Table Card */}
+      <div className="bg-card rounded-2xl border border-border-main shadow-xs overflow-hidden">
+        {/* Card Toolbar with Active Section Header & Search */}
+        <div className="p-4 sm:p-5 border-b border-border-main flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <CurrentIcon size={20} />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                <span>{currentSection.label}</span>
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted-foreground/10 text-muted-foreground">
+                  {tabCounts[activeTab]} records
+                </span>
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {currentSection.description}
+              </p>
+            </div>
+          </div>
+
+          {/* Search Input & Action Button */}
+          <div className="flex items-center gap-3 w-full sm:w-auto sm:max-w-md sm:flex-1 sm:justify-end">
+            <div className="relative flex-1 sm:max-w-xs">
+              <Search
+                size={16}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              />
+              <input
+                type="text"
+                placeholder={`Search ${currentSection.label.toLowerCase()}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-bg-input border border-border-input hover:border-primary focus:border-primary rounded-xl outline-none transition-all placeholder:text-muted-foreground/60 text-foreground"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
+                  title="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <Can permission={PERMISSIONS.ACTIVITY_CREATE}>
+              <Button
+                variant="primary"
+                onClick={() => openCreate(activeTab)}
+                className="h-9 text-xs px-3.5 font-semibold flex items-center gap-1.5 shrink-0"
+              >
+                <Plus size={15} />
+                <span>{currentSection.createLabel}</span>
+              </Button>
+            </Can>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
-          <Button
-            variant="primary"
-            onClick={handleApplyFilters}
-            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
-          >
-            Apply
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={handleResetFilters}
-            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
-          >
-            Reset
-          </Button>
-        </div>
-      </div>
+        {/* Search Status Filter Indicator */}
+        {searchQuery && (
+          <div className="px-5 py-2.5 bg-muted-foreground/5 border-b border-border-main flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              Showing {filteredRows.length} of {activeRows.length} {currentSection.label.toLowerCase()} matching &quot;<strong className="text-foreground">{searchQuery}</strong>&quot;
+            </span>
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="text-primary hover:underline font-semibold cursor-pointer"
+            >
+              Reset filter
+            </button>
+          </div>
+        )}
 
-      {/* Table / Grid Container */}
-      <div className="w-full flex flex-col gap-4">
-        {activities.length > 0 ? (
-          <div className="bg-card rounded-xl border border-border-main overflow-hidden shadow-xs animate-slide-up">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-border-main">
-                {/* Table Header */}
-                <thead className="bg-muted-foreground/5">
-                  <tr className="text-left">
-                    {columns.map((column, index) => (
-                      <th
-                        className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap"
-                        key={index}
-                      >
-                        {column}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-
-                {/* Table Body */}
-                <tbody className="divide-y divide-border-main bg-card text-foreground">
-                  {activities.map((act, index) => (
-                    <tr
-                      key={act.id}
-                      className="hover:bg-muted-foreground/5 transition-colors"
-                    >
-                      <td className="table-td">
-                        {(filters.page - 1) * filters.limit + index + 1}
-                      </td>
-                      <td className="table-td font-mono">{act.id}</td>
-                      <td className="table-td font-semibold text-foreground">
-                        {act.name}
-                      </td>
-                      <td className="table-td font-semibold text-foreground">
-                        {act.category || "—"}
-                      </td>
-                      <td className="table-td font-semibold text-foreground">
-                        {act.workStage || "—"}
-                      </td>
-                      <td className="table-td">{formatDate(act.created_at)}</td>
-                      {showActions ? (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex gap-2">
+        {/* Table Content */}
+        {filteredRows.length ? (
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="min-w-full divide-y divide-border-main">
+              <thead className="bg-muted-foreground/5">
+                <tr>
+                  <th className="px-6 py-3.5 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider w-24">
+                    S/No.
+                  </th>
+                  <th className="px-6 py-3.5 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider">
+                    {currentSection.singular} Name
+                  </th>
+                  {canUpdate || canDelete || canCreate ? (
+                    <th className="px-6 py-3.5 text-xs font-bold text-right text-muted-foreground uppercase tracking-wider w-32">
+                      Actions
+                    </th>
+                  ) : null}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-main">
+                {filteredRows.map((row, index) => (
+                  <tr
+                    key={row.id}
+                    className="hover:bg-muted-foreground/5 transition-colors group"
+                  >
+                    <td className="px-6 py-4 text-xs font-bold text-muted-foreground whitespace-nowrap">
+                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-muted-foreground/10 text-foreground text-xs font-semibold">
+                        {index + 1}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                          {row.name}
+                        </span>
+                      </div>
+                    </td>
+                    {canUpdate || canDelete || canCreate ? (
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
                           {canUpdate ? (
-                            <Link
-                              to={`/activity/edit/${act.id}`}
-                              className="btn-action-edit"
-                              title="Edit Activity"
-                            >
-                              <Pencil size={16} />
-                            </Link>
-                          ) : null}
-                          {canDelete ? (
                             <button
-                              onClick={() => handleDelete(act.id, act.name)}
-                              className="btn-action-delete"
-                              title="Delete"
+                              type="button"
+                              className="btn-action-edit"
+                              title={`Edit ${row.name}`}
+                              onClick={() => openEdit(activeTab, row)}
                             >
-                              <Trash2 size={16} />
+                              <Pencil size={15} />
+                            </button>
+                          ) : null}
+                          {canDelete || canCreate ? (
+                            <button
+                              type="button"
+                              className="btn-action-delete"
+                              title={`Delete ${row.name}`}
+                              onClick={async () => {
+                                const ok =
+                                  activeTab === "job"
+                                    ? await deleteJob(row.id, row.name)
+                                    : activeTab === "workStage"
+                                      ? await deleteWorkStage(row.id, row.name)
+                                      : await deleteUnit(row.id, row.name);
+                                if (ok) refresh();
+                              }}
+                            >
+                              <Trash2 size={15} />
                             </button>
                           ) : null}
                         </div>
                       </td>
-                      ) : null}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    ) : null}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
-          <DataNotFound show={true} />
-        )}
-
-        {totalElements > 0 && (
-          <Pagination
-            count={totalElements}
-            page={filters.page}
-            limit={filters.limit}
-            onPageChange={onPageChange}
-          />
+          /* Empty State */
+          <div className="px-6 py-16 text-center flex flex-col items-center justify-center">
+            <div className="w-14 h-14 rounded-2xl bg-muted-foreground/10 flex items-center justify-center text-muted-foreground mb-4">
+              <Inbox size={28} />
+            </div>
+            {searchQuery ? (
+              <>
+                <h4 className="text-base font-bold text-foreground">
+                  No {currentSection.label.toLowerCase()} found
+                </h4>
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                  We couldn&apos;t find any {currentSection.label.toLowerCase()} matching &quot;{searchQuery}&quot;. Try a different search term.
+                </p>
+                <Button
+                  variant="secondary"
+                  onClick={() => setSearchQuery("")}
+                  className="mt-4 h-8 text-xs px-4"
+                >
+                  Clear Search
+                </Button>
+              </>
+            ) : (
+              <>
+                <h4 className="text-base font-bold text-foreground">
+                  No {currentSection.label.toLowerCase()} recorded yet
+                </h4>
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                  Get started by adding your first {currentSection.singular.toLowerCase()} to the system.
+                </p>
+                <Can permission={PERMISSIONS.ACTIVITY_CREATE}>
+                  <Button
+                    variant="primary"
+                    onClick={() => openCreate(activeTab)}
+                    className="mt-4 h-9 text-xs px-4 font-semibold flex items-center gap-1.5"
+                  >
+                    <Plus size={15} />
+                    {currentSection.createLabel}
+                  </Button>
+                </Can>
+              </>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Create / Edit Job Modal */}
-      {isJobModalOpen && (
+      {/* Modal Dialog */}
+      {modalType ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
-            onClick={() => {
-              if (!jobSaving) resetJobModal();
-            }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
+            onClick={closeModal}
           />
-
-          <div className="bg-card border border-border-main w-full max-w-md rounded-2xl shadow-xl overflow-hidden z-10 animate-scale-up relative">
-            <div className="px-6 py-4 border-b border-border-main flex items-center justify-between">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                {editingJobId ? (
-                  <Pencil size={20} className="text-primary" />
-                ) : (
-                  <Plus size={20} className="text-primary" />
-                )}
-                {editingJobId ? "Edit Job" : "Create Job"}
-              </h3>
+          <div className="bg-card border border-border-main w-full max-w-md rounded-2xl shadow-2xl z-10 relative overflow-hidden animate-slide-up">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-border-main flex items-center justify-between bg-muted-foreground/5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <ModalIcon size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">
+                    {modalTitle}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {modalSection.badgeText} Master Entry
+                  </p>
+                </div>
+              </div>
               <button
-                onClick={() => {
-                  if (!jobSaving) resetJobModal();
-                }}
-                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted-foreground/5 cursor-pointer"
+                type="button"
+                onClick={closeModal}
+                className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-muted-foreground/10 transition-colors cursor-pointer"
+                title="Close"
               >
                 <X size={18} />
               </button>
             </div>
 
+            {/* Modal Body */}
             <div className="p-6 space-y-4">
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {editingJobId
-                  ? "Fix the spelling and save. Activities using this job will be updated too."
-                  : "Add a job that can be selected when creating an activity. Only one job value is used per activity."}
-              </p>
               <div>
-                <label className="mb-2 block ui-form-label">Job Name</label>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-foreground">
+                  {modalSection.singular} Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
-                  value={jobName}
+                  value={itemName}
+                  placeholder={modalSection.placeholder}
+                  autoFocus
                   onChange={(e) => {
-                    setJobName(e.target.value);
-                    if (jobError) setJobError("");
+                    setItemName(e.target.value);
+                    if (itemError) setItemError("");
                   }}
-                  placeholder="e.g. Plumbing"
-                  className={`common-input ${jobError ? "border-red-500 focus:border-red-500" : ""}`}
-                  disabled={jobSaving}
+                  className={`w-full px-4 py-2.5 text-sm bg-bg-input border ${
+                    itemError
+                      ? "border-red-500 ring-2 ring-red-500/20"
+                      : "border-border-input hover:border-primary focus:border-primary"
+                  } rounded-xl outline-none transition-all placeholder:text-muted-foreground/50 text-foreground`}
+                  disabled={saving}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      handleSaveJob();
+                      handleSave();
                     }
                   }}
                 />
-                {jobError ? (
-                  <p className="mt-1.5 text-xs text-red-500 font-semibold">{jobError}</p>
-                ) : null}
-              </div>
-
-              {!editingJobId && jobsList.length > 0 ? (
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Existing Jobs
-                  </label>
-                  <div className="max-h-48 overflow-y-auto rounded-xl border border-border-main divide-y divide-border-main">
-                    {jobsList.map((job) => (
-                      <div
-                        key={job.id}
-                        className="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-muted-foreground/5"
-                      >
-                        <span className="text-sm font-medium text-foreground truncate">
-                          {job.name}
-                        </span>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => startEditJob(job)}
-                            className="btn-action-edit"
-                            title="Edit job"
-                            disabled={jobSaving}
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteJob(job)}
-                            className="btn-action-delete"
-                            title="Delete job"
-                            disabled={jobSaving}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="px-6 py-4 bg-muted-foreground/5 border-t border-border-main flex gap-3 justify-end">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  if (editingJobId) {
-                    setEditingJobId(null);
-                    setJobName("");
-                    setJobError("");
-                  } else {
-                    resetJobModal();
-                  }
-                }}
-                disabled={jobSaving}
-                className="h-10 text-xs px-6 font-semibold"
-              >
-                {editingJobId ? "Back" : "Cancel"}
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleSaveJob}
-                disabled={jobSaving}
-                className="h-10 text-xs px-6 font-semibold flex items-center justify-center gap-2"
-              >
-                {jobSaving ? (
-                  <>
-                    <Loader2 className="animate-spin" size={16} />
-                    Saving...
-                  </>
-                ) : editingJobId ? (
-                  "Save Changes"
+                {itemError ? (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold flex items-center gap-1">
+                    {itemError}
+                  </p>
                 ) : (
-                  "Create Job"
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    Provide a clear, standard name for this master {modalSection.singular.toLowerCase()}.
+                  </p>
                 )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Import CSV Modal */}
-      {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
-            onClick={() => {
-              setIsImportModalOpen(false);
-              setSelectedFile(null);
-            }}
-          />
-
-          {/* Modal Content */}
-          <div className="bg-card border border-border-main w-full max-w-md rounded-2xl shadow-xl overflow-hidden z-10 animate-scale-up relative">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-border-main flex items-center justify-between">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Upload size={20} className="text-primary" />
-                Import Activities
-              </h3>
-              <button
-                onClick={() => {
-                  setIsImportModalOpen(false);
-                  setSelectedFile(null);
-                }}
-                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted-foreground/5 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="p-6 space-y-6">
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Upload an Excel (.xlsx) file containing activities. Ensure your file format matches the required structure.
-              </p>
-
-              {/* Sample File Download */}
-              <div className="p-4 rounded-xl bg-muted-foreground/5 border border-border-main flex items-center justify-between gap-4">
-                <div>
-                  <h4 className="text-xs font-bold text-foreground">Need a template?</h4>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Use our predefined format for a smooth import.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={downloadSampleExcel}
-                  className="text-xs font-bold text-primary hover:underline whitespace-nowrap cursor-pointer"
-                >
-                  Download Sample Excel
-                </button>
-              </div>
-
-              {/* File Drag and Drop / Input */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Select Excel File
-                </label>
-                <div className="relative border-2 border-dashed border-border-main hover:border-primary/50 transition-colors rounded-xl p-6 flex flex-col items-center justify-center gap-2 bg-bg-input/20">
-                  <input
-                    type="file"
-                    accept=".xlsx"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files.length > 0) {
-                        setSelectedFile(e.target.files[0]);
-                      }
-                    }}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  />
-                  <FileSpreadsheet size={32} className="text-muted-foreground/60 stroke-[1.5]" />
-                  <span className="text-sm text-foreground font-semibold text-center">
-                    {selectedFile ? selectedFile.name : "Click or drag file to upload"}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {selectedFile ? `${(selectedFile.size / 1024).toFixed(2)} KB` : "Supports only XLSX files"}
-                  </span>
-                </div>
               </div>
             </div>
 
-            {/* Footer */}
+            {/* Modal Footer */}
             <div className="px-6 py-4 bg-muted-foreground/5 border-t border-border-main flex gap-3 justify-end">
               <Button
                 variant="secondary"
-                onClick={() => {
-                  setIsImportModalOpen(false);
-                  setSelectedFile(null);
-                }}
-                disabled={csvUploading}
-                className="h-10 text-xs px-6 font-semibold"
+                onClick={closeModal}
+                disabled={saving}
+                className="h-9 text-xs px-5 font-semibold"
               >
                 Cancel
               </Button>
               <Button
                 variant="primary"
-                onClick={handleUpload}
-                disabled={!selectedFile || csvUploading}
-                className="h-10 text-xs px-6 font-semibold flex items-center justify-center gap-2"
+                onClick={handleSave}
+                disabled={saving}
+                className="h-9 text-xs px-5 font-semibold flex items-center gap-1.5"
               >
-                {csvUploading ? (
+                {saving ? (
                   <>
-                    <Loader2 className="animate-spin" size={16} />
-                    Importing...
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Saving...</span>
                   </>
+                ) : editingId ? (
+                  "Update"
                 ) : (
-                  "Add Bulk Data"
+                  "Save Entry"
                 )}
               </Button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

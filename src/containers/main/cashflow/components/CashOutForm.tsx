@@ -9,7 +9,8 @@ import PaymentDetailsFields, {
 interface CashOutFormInputs {
   projectId: string;
   vendorId: string;
-  activityId: string;
+  jobId: string;
+  workStageId: string;
   items: string;
   category: string;
   quantity: string;
@@ -19,6 +20,9 @@ interface CashOutFormInputs {
   entryDate: string;
   enteredBy: string;
   paymentSource: string;
+  status: string;
+  paidAmount: string;
+  remainingAmount: string;
   chequeNo: string;
   transactionId: string;
   mediaId: string;
@@ -28,7 +32,10 @@ interface CashOutFormInputs {
 interface CashOutFormProps {
   projects: any[];
   vendors: any[];
-  activities: any[];
+  jobs: any[];
+  workStages: any[];
+  units: any[];
+  employees: Array<{ id: string; name: string }>;
   onSubmit: (data: CashOutFormInputs) => Promise<void>;
   submitting: boolean;
   editData?: any;
@@ -38,7 +45,10 @@ interface CashOutFormProps {
 export default function CashOutForm({
   projects,
   vendors,
-  activities,
+  jobs,
+  workStages,
+  units,
+  employees,
   onSubmit,
   submitting,
   editData,
@@ -55,7 +65,8 @@ export default function CashOutForm({
     defaultValues: {
       projectId: "",
       vendorId: "",
-      activityId: "",
+      jobId: "",
+      workStageId: "",
       items: "",
       category: "",
       quantity: "",
@@ -88,7 +99,8 @@ export default function CashOutForm({
       reset({
         projectId: editData.projectId || "",
         vendorId: editData.vendorId || "",
-        activityId: editData.activityId || "",
+        jobId: editData.jobId || editData.job?.id || "",
+        workStageId: editData.workStageId || editData.workStage?.id || "",
         items: editData.items || "",
         category: editData.category || "",
         quantity: qty ? String(qty) : "",
@@ -101,7 +113,8 @@ export default function CashOutForm({
       reset({
         projectId: "",
         vendorId: "",
-        activityId: "",
+        jobId: "",
+      workStageId: "",
         items: "",
         category: "",
         quantity: "",
@@ -118,7 +131,8 @@ export default function CashOutForm({
     reset({
       projectId: "",
       vendorId: "",
-      activityId: "",
+      jobId: "",
+      workStageId: "",
       items: "",
       category: "",
       quantity: "",
@@ -136,7 +150,7 @@ export default function CashOutForm({
           <ArrowUpCircle size={22} className="stroke-[2.5]" />
         </div>
         <h2 className="text-xl font-bold text-foreground">
-          {editData ? "Edit Cash Out" : "Cash Out"}
+          {editData ? "Edit Cash Out / Material In" : "Cash Out / Material In"}
         </h2>
       </div>
 
@@ -163,21 +177,41 @@ export default function CashOutForm({
           </div>
 
           <div>
-            <label className="mb-2 block ui-form-label">SELECT ACTIVITY</label>
+            <label className="mb-2 block ui-form-label">SELECT JOB</label>
             <select
               className="common-input cursor-pointer"
-              {...register("activityId", { required: "Activity is required" })}
+              {...register("jobId", { required: "Job is required" })}
             >
-              <option value="">Select an Activity</option>
-              {activities.map((act) => (
-                <option key={act.id} value={act.id}>
-                  {act.name}
+              <option value="">Select a Job</option>
+              {jobs.map((job) => (
+                <option key={job.id} value={job.id}>
+                  {job.name}
                 </option>
               ))}
             </select>
-            {errors.activityId && (
+            {errors.jobId && (
               <p className="mt-1 text-xs text-danger-text font-semibold">
-                {errors.activityId.message}
+                {errors.jobId.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-2 block ui-form-label">WORK STAGE</label>
+            <select
+              className="common-input cursor-pointer"
+              {...register("workStageId", { required: "Work Stage is required" })}
+            >
+              <option value="">Select Work Stage</option>
+              {workStages.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.name}
+                </option>
+              ))}
+            </select>
+            {errors.workStageId && (
+              <p className="mt-1 text-xs text-danger-text font-semibold">
+                {errors.workStageId.message}
               </p>
             )}
           </div>
@@ -272,17 +306,11 @@ export default function CashOutForm({
                 {...register("uom", { required: "UOM is required" })}
               >
                 <option value="">Select UOM</option>
-                <option value="CFT">CFT</option>
-                <option value="Bags">Bags</option>
-                <option value="Rft">Rft</option>
-                <option value="Sft">Sft</option>
-                <option value="Nos">Nos</option>
-                <option value="Kg">Kg</option>
-                <option value="Liters">Liters</option>
-                <option value="Tons">Tons</option>
-                <option value="Hours">Hours</option>
-                <option value="Days">Days</option>
-                <option value="Lumpsum">Lumpsum</option>
+                {units.map((unit) => (
+                  <option key={unit.id} value={unit.name}>
+                    {unit.name}
+                  </option>
+                ))}
               </select>
               {errors.uom && (
                 <p className="mt-1 text-xs text-danger-text font-semibold">
@@ -332,6 +360,9 @@ export default function CashOutForm({
           errors={errors}
           watch={watch}
           setValue={setValue}
+          employees={employees}
+          isCashOut={true}
+          totalAmount={Number(watch("amount") || 0)}
         />
 
         <div className="flex gap-3">

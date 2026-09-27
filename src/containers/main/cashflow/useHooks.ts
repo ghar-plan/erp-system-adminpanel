@@ -271,6 +271,30 @@ const useCashflow = () => {
     }
   };
 
+  const recordInstallment = async (
+    id: string,
+    body: any,
+    callback?: Function,
+  ) => {
+    const response = await Cashflows_APIS.recordInstallment(id, body);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message || "Installment recorded successfully");
+      callback?.();
+      return response;
+    }
+  };
+
+  const getInstallments = async (id: string, setData: Function) => {
+    const response = await Cashflows_APIS.getInstallments(id);
+    const { status = false, data = [] } = response || {};
+    if (status && data) {
+      setData(data);
+    } else {
+      setData([]);
+    }
+  };
+
   return {
     getProjects,
     getVendors,
@@ -283,6 +307,8 @@ const useCashflow = () => {
     getCashOutById,
     recordCashIn,
     recordCashOut,
+    recordInstallment,
+    getInstallments,
     editCashIn,
     editCashOut,
     deleteCashflow,

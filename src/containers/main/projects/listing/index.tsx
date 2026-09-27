@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Plus,
-  Trash2,
   Eye,
   Pencil,
   MessageSquare,
   CircleCheck,
   CircleX,
   PackagePlus,
+  Trash2,
   X,
 } from "lucide-react";
 import useProjects from "../useHooks";
@@ -27,6 +27,7 @@ import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
+import useActivities from "../../activities/useHooks";
 
 interface ProjectFilters {
   region: string;
@@ -34,6 +35,7 @@ interface ProjectFilters {
   constructionType: string;
   paymentPlan: string;
   managerName: string;
+  status: string;
   startDate: string;
   endDate: string;
   page: number;
@@ -75,6 +77,7 @@ const emptyFilters: ProjectFilters = {
   constructionType: "",
   paymentPlan: "",
   managerName: "",
+  status: "",
   startDate: "",
   endDate: "",
   page: 1,
@@ -82,20 +85,19 @@ const emptyFilters: ProjectFilters = {
 };
 
 export default function ProjectListing() {
-  const { hasPermission, isSuperAdmin } = usePermissions();
+  const { hasPermission } = usePermissions();
   const {
     getProjects,
-    deleteProject,
     updateProjectStatus,
     getProjectFilterOptions,
     getPullableMaterials,
     pullMaterials,
   } = useProjects();
+  const { getUnits } = useActivities();
   const canView = hasPermission(PERMISSIONS.CONSTRUCTION_SITE_READ);
   const canUpdate = hasPermission(PERMISSIONS.CONSTRUCTION_SITE_UPDATE);
-  const canDelete = isSuperAdmin;
   const canComments = hasPermission(PERMISSIONS.COMMENTS_READ);
-  const showActions = canView || canUpdate || canDelete || canComments;
+  const showActions = canView || canUpdate || canComments;
   const [projects, setProjects] = useState<Project[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [filterOptions, setFilterOptions] = useState({
@@ -122,6 +124,7 @@ export default function ProjectListing() {
   const [pullLoading, setPullLoading] = useState(false);
   const [pullSaving, setPullSaving] = useState(false);
   const [pullError, setPullError] = useState("");
+  const [unitsList, setUnitsList] = useState<Array<{ id: string; name: string }>>([]);
 
   const fetchProjects = (currentFilters: ProjectFilters) => {
     const queryParams: any = {
@@ -134,6 +137,7 @@ export default function ProjectListing() {
       queryParams.constructionType = currentFilters.constructionType;
     if (currentFilters.paymentPlan) queryParams.paymentPlan = currentFilters.paymentPlan;
     if (currentFilters.managerName) queryParams.managerName = currentFilters.managerName;
+    if (currentFilters.status) queryParams.status = currentFilters.status;
     if (currentFilters.startDate) queryParams.startDate = currentFilters.startDate;
     if (currentFilters.endDate) queryParams.endDate = currentFilters.endDate;
 
@@ -142,6 +146,7 @@ export default function ProjectListing() {
 
   useEffect(() => {
     getProjectFilterOptions(setFilterOptions);
+    getUnits(setUnitsList);
     fetchProjects({ ...emptyFilters, page: 1 });
   }, []);
 
@@ -182,9 +187,6 @@ export default function ProjectListing() {
 
   const refresh = () => fetchProjects(filters);
 
-  const handleDelete = async (id: string, name: string) => {
-    await deleteProject(id, name, refresh);
-  };
 
   const resetPullModal = () => {
     setPullModalOpen(false);
@@ -401,6 +403,24 @@ export default function ProjectListing() {
         </div>
 
         <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label htmlFor="status" className="text-xs text-foreground font-medium whitespace-nowrap">
+            Status
+          </label>
+          <select
+            name="status"
+            id="status"
+            value={filters.status}
+            onChange={handleChangeFilter}
+            className="common-input h-10 w-full sm:w-40 text-sm bg-card"
+          >
+            <option value="">All statuses</option>
+            <option value={ProjectStatus.ACTIVE}>Active</option>
+            <option value={ProjectStatus.COMPLETED}>Completed</option>
+            <option value={ProjectStatus.CLOSED}>Closed</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
           <label htmlFor="managerName" className="text-xs text-foreground font-medium whitespace-nowrap">
             Manager
           </label>
@@ -544,10 +564,10 @@ export default function ProjectListing() {
                                 type="button"
                                 onClick={() => openPullModal(project)}
                                 className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors cursor-pointer"
-                                title="Pull Material"
+                                title="Supplies"
                               >
                                 <PackagePlus size={14} />
-                                Pull Material
+                                Supplies
                               </button>
                             ) : null}
                             {canUpdate ? (
@@ -582,18 +602,6 @@ export default function ProjectListing() {
                                 title="Mark as Closed"
                               >
                                 <CircleX size={16} />
-                              </button>
-                            ) : null}
-                            {canDelete ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleDelete(project.id, project.siteName)
-                                }
-                                className="btn-action-delete"
-                                title="Delete Project"
-                              >
-                                <Trash2 size={16} />
                               </button>
                             ) : null}
                             {canComments ? (
@@ -641,7 +649,7 @@ export default function ProjectListing() {
               <div>
                 <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
                   <PackagePlus size={20} className="text-primary" />
-                  Pull Material
+                  Supplies
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {pullProject.siteName}
@@ -750,7 +758,10 @@ export default function ProjectListing() {
                         disabled={pullSaving}
                       >
                         <option value="">Select UOM</option>
-                        {UOM_OPTIONS.map((uom) => (
+                        {(unitsList.length
+                          ? unitsList.map((u) => u.name)
+                          : UOM_OPTIONS
+                        ).map((uom) => (
                           <option key={uom} value={uom}>
                             {uom}
                           </option>
@@ -791,7 +802,7 @@ export default function ProjectListing() {
                               <p className="text-xs text-muted-foreground truncate">
                                 {item.vendorName}
                                 {item.quantity !== ""
-                                  ? ` · Qty ${item.quantity}`
+                                  ? ` Â· Qty ${item.quantity}`
                                   : ""}
                                 {item.uom ? ` ${item.uom}` : ""}
                               </p>
@@ -848,3 +859,5 @@ export default function ProjectListing() {
     </div>
   );
 }
+
+

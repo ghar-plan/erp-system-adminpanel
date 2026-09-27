@@ -1,14 +1,18 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   FieldErrors,
   UseFormRegister,
   UseFormSetValue,
   UseFormWatch,
 } from "react-hook-form";
-import { FileText, Loader2, Upload } from "lucide-react";
+import { FileText, Loader2, Upload, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import {
-  PAYMENT_SOURCE_OPTIONS,
+  CASH_OUT_PAYMENT_SOURCE_OPTIONS,
+  CASH_IN_PAYMENT_SOURCE_OPTIONS,
+  CashOutPaymentSource,
   PaymentSource,
+  TransactionStatus,
+  TRANSACTION_STATUS_OPTIONS,
 } from "@/utils/helpers/models/cashflow/cashflow.dto";
 import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
 import { errorToaster } from "@/utils/helpers/common/alert-service";
@@ -20,6 +24,9 @@ interface PaymentDetailsFieldsProps {
   watch: UseFormWatch<any>;
   setValue: UseFormSetValue<any>;
   narrow?: boolean;
+  employees?: Array<{ id: string; name: string }>;
+  isCashOut?: boolean;
+  totalAmount?: number;
 }
 
 const getErrorMessage = (error: unknown): string | undefined => {
@@ -37,6 +44,9 @@ export const emptyPaymentDetails = {
   entryDate: "",
   enteredBy: "",
   paymentSource: "",
+  status: TransactionStatus.PENDING,
+  paidAmount: "",
+  remainingAmount: "",
   chequeNo: "",
   transactionId: "",
   mediaId: "",
@@ -59,6 +69,20 @@ export const mapPaymentDetailsFromEdit = (editData: any) => ({
   entryDate: toDateInputValue(editData?.date || editData?.entryDate),
   enteredBy: editData?.enteredBy || "",
   paymentSource: editData?.paymentSource || "",
+  status:
+    editData?.status ||
+    (editData?.paymentSource === CashOutPaymentSource.CREDIT ||
+    editData?.paymentSource === CashOutPaymentSource.PARTIAL
+      ? TransactionStatus.PENDING
+      : TransactionStatus.RESOLVED),
+  paidAmount:
+    editData?.paidAmount !== null && editData?.paidAmount !== undefined
+      ? String(editData.paidAmount)
+      : "",
+  remainingAmount:
+    editData?.remainingAmount !== null && editData?.remainingAmount !== undefined
+      ? String(editData.remainingAmount)
+      : "",
   chequeNo: editData?.chequeNo || "",
   transactionId: editData?.transactionId || "",
   mediaId: editData?.mediaId || editData?.media?.id || "",
@@ -68,81 +92,54 @@ export const mapPaymentDetailsFromEdit = (editData: any) => ({
   })(),
 });
 
-function highlightSuggestion(name: string, query: string) {
-  const needle = query.trim();
-  if (!needle) return name;
-  const start = name.toLowerCase().indexOf(needle.toLowerCase());
-  if (start < 0) return name;
-  const end = start + needle.length;
-  return (
-    <>
-      {name.slice(0, start)}
-      <span className="text-muted-foreground">{name.slice(start, end)}</span>
-      <span className="font-semibold text-foreground">{name.slice(end)}</span>
-    </>
-  );
-}
-
 export default function PaymentDetailsFields({
   register,
   errors,
   watch,
   setValue,
   narrow = false,
+  employees = [],
+  isCashOut = false,
+  totalAmount = 0,
 }: PaymentDetailsFieldsProps) {
   const paymentSource = watch("paymentSource");
+  const status = watch("status");
+  const paidAmount = watch("paidAmount");
+  const remainingAmount = watch("remainingAmount");
   const receiptUrl = watch("receiptUrl");
-  const enteredBy = watch("enteredBy") || "";
-  const { uploadReceipt, suggestEnteredBy } = useCashflow();
+  const { uploadReceipt } = useCashflow();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const enteredByWrapRef = useRef<HTMLDivElement>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
 
-  const enteredByRegister = register("enteredBy", {
-    required: "Entered By is required",
-  });
-
+  // Auto calculate remainingAmount and suggest status when paidAmount or totalAmount or paymentSource changes for Cash Out
   useEffect(() => {
-    const query = String(enteredBy).trim();
-    if (!showSuggestions || query.length < 1) {
-      setSuggestions([]);
-      setActiveIndex(-1);
-      return;
-    }
+    if (!isCashOut) return;
 
-    let cancelled = false;
-    const timer = window.setTimeout(async () => {
-      const names = await suggestEnteredBy(query);
-      if (cancelled) return;
-      setSuggestions(names.filter((name) => name.toLowerCase() !== query.toLowerCase()));
-      setActiveIndex(-1);
-    }, 220);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [enteredBy, showSuggestions]);
-
-  useEffect(() => {
-    const onPointerDown = (event: MouseEvent) => {
-      if (!enteredByWrapRef.current?.contains(event.target as Node)) {
-        setShowSuggestions(false);
+    if (paymentSource === CashOutPaymentSource.PARTIAL) {
+      const paid = Number(paidAmount) || 0;
+      const total = Number(totalAmount) || 0;
+      const remaining = Math.max(0, total - paid);
+      setValue("remainingAmount", remaining ? String(remaining.toFixed(2)) : "0.00");
+      if (paid > 0 && remaining <= 0) {
+        setValue("status", TransactionStatus.RESOLVED);
+      } else {
+        setValue("status", TransactionStatus.PENDING);
       }
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, []);
-
-  const applySuggestion = (name: string) => {
-    setValue("enteredBy", name, { shouldDirty: true, shouldValidate: true });
-    setShowSuggestions(false);
-    setSuggestions([]);
-    setActiveIndex(-1);
-  };
+    } else if (paymentSource === CashOutPaymentSource.CREDIT) {
+      const total = Number(totalAmount) || 0;
+      setValue("paidAmount", "0");
+      setValue("remainingAmount", total ? String(total.toFixed(2)) : "0.00");
+      setValue("status", TransactionStatus.PENDING);
+    } else if (
+      paymentSource === CashOutPaymentSource.CASH ||
+      paymentSource === CashOutPaymentSource.ADVANCE
+    ) {
+      const total = Number(totalAmount) || 0;
+      setValue("paidAmount", total ? String(total.toFixed(2)) : "");
+      setValue("remainingAmount", "0.00");
+      setValue("status", TransactionStatus.RESOLVED);
+    }
+  }, [paymentSource, paidAmount, totalAmount, isCashOut, setValue]);
 
   const handleReceiptChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -174,6 +171,10 @@ export default function PaymentDetailsFields({
     }
   };
 
+  const paymentOptions = isCashOut
+    ? CASH_OUT_PAYMENT_SOURCE_OPTIONS
+    : CASH_IN_PAYMENT_SOURCE_OPTIONS;
+
   return (
     <>
       <div className={`grid gap-5 grid-cols-1 ${narrow ? "" : "md:grid-cols-2"}`}>
@@ -193,73 +194,21 @@ export default function PaymentDetailsFields({
           )}
         </div>
 
-        <div ref={enteredByWrapRef} className="relative z-20 overflow-visible">
+        <div>
           <label className="mb-2 block ui-form-label">
             Entered By <span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
-            autoComplete="off"
-            placeholder="Who is entering this record"
-            className={`common-input ${errors.enteredBy ? "border-red-500 focus:border-red-500" : ""}`}
-            {...enteredByRegister}
-            onFocus={() => {
-              if (String(enteredBy).trim()) setShowSuggestions(true);
-            }}
-            onChange={(event) => {
-              enteredByRegister.onChange(event);
-              setShowSuggestions(true);
-            }}
-            onKeyDown={(event) => {
-              if (!showSuggestions || !suggestions.length) {
-                if (event.key === "Escape") setShowSuggestions(false);
-                return;
-              }
-              if (event.key === "ArrowDown") {
-                event.preventDefault();
-                setActiveIndex((index) =>
-                  index < suggestions.length - 1 ? index + 1 : 0,
-                );
-              } else if (event.key === "ArrowUp") {
-                event.preventDefault();
-                setActiveIndex((index) =>
-                  index > 0 ? index - 1 : suggestions.length - 1,
-                );
-              } else if (event.key === "Enter" && activeIndex >= 0) {
-                event.preventDefault();
-                applySuggestion(suggestions[activeIndex]);
-              } else if (event.key === "Escape") {
-                setShowSuggestions(false);
-              }
-            }}
-          />
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 top-[calc(100%-2px)] z-50 rounded-lg border border-border-main bg-card shadow-xl">
-              <ul className="max-h-52 overflow-y-auto py-1">
-                {suggestions.map((name, index) => (
-                  <li key={name}>
-                    <button
-                      type="button"
-                      className={`flex w-full cursor-pointer items-center px-3.5 py-2.5 text-left text-sm leading-5 ${
-                        index === activeIndex
-                          ? "bg-primary/10 text-foreground"
-                          : "hover:bg-muted-foreground/5 text-foreground"
-                      }`}
-                      onMouseDown={(event) => {
-                        event.preventDefault();
-                        applySuggestion(name);
-                      }}
-                      onMouseEnter={() => setActiveIndex(index)}
-                    >
-                      <span className="block w-full truncate">
-                        {highlightSuggestion(name, String(enteredBy))}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <select
+            className={`common-input cursor-pointer ${errors.enteredBy ? "border-red-500 focus:border-red-500" : ""}`}
+            {...register("enteredBy", { required: "Entered By is required" })}
+          >
+            <option value="">Select employee</option>
+            {employees.map((emp) => (
+              <option key={emp.id} value={emp.name}>
+                {emp.name}
+              </option>
+            ))}
+          </select>
           {getErrorMessage(errors.enteredBy) && (
             <p className="mt-1 text-xs text-danger-text font-semibold">
               {getErrorMessage(errors.enteredBy)}
@@ -277,11 +226,15 @@ export default function PaymentDetailsFields({
           {...register("paymentSource", {
             required: "Source of Payment is required",
             onChange: (e) => {
-              if (e.target.value !== PaymentSource.CHEQUE) {
+              const val = e.target.value;
+              if (val !== PaymentSource.CHEQUE) {
                 setValue("chequeNo", "");
               }
-              if (e.target.value !== PaymentSource.ONLINE_TRANSFER) {
+              if (val !== PaymentSource.ONLINE_TRANSFER) {
                 setValue("transactionId", "");
+              }
+              if (val !== CashOutPaymentSource.PARTIAL) {
+                setValue("paidAmount", "");
               }
             },
           })}
@@ -289,7 +242,7 @@ export default function PaymentDetailsFields({
           <option value="" disabled>
             Select Source of Payment
           </option>
-          {PAYMENT_SOURCE_OPTIONS.map((source) => (
+          {paymentOptions.map((source) => (
             <option key={source} value={source}>
               {source}
             </option>
@@ -302,7 +255,89 @@ export default function PaymentDetailsFields({
         )}
       </div>
 
-      {paymentSource === PaymentSource.CHEQUE && (
+      {/* When Partial is selected in Cash Out */}
+      {isCashOut && paymentSource === CashOutPaymentSource.PARTIAL && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-4 animate-fade-in">
+          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-bold text-xs uppercase tracking-wide">
+            <Clock size={16} />
+            <span>Partial Payment Details</span>
+          </div>
+
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground">
+                Paid / First Installment (PKR) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="e.g. 30000"
+                className={`common-input bg-card ${errors.paidAmount ? "border-red-500" : ""}`}
+                {...register("paidAmount", {
+                  required:
+                    paymentSource === CashOutPaymentSource.PARTIAL
+                      ? "Paid amount is required for partial payment"
+                      : false,
+                  min: {
+                    value: 0.01,
+                    message: "Paid amount must be greater than 0",
+                  },
+                  validate: (val) => {
+                    if (paymentSource === CashOutPaymentSource.PARTIAL) {
+                      const num = Number(val);
+                      if (totalAmount > 0 && num > totalAmount) {
+                        return `Paid amount cannot exceed total decided amount (PKR ${totalAmount.toLocaleString()})`;
+                      }
+                    }
+                    return true;
+                  },
+                })}
+              />
+              {getErrorMessage(errors.paidAmount) && (
+                <p className="mt-1 text-xs text-danger-text font-semibold">
+                  {getErrorMessage(errors.paidAmount)}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground">
+                Remaining Balance (PKR)
+              </label>
+              <input
+                type="text"
+                readOnly
+                tabIndex={-1}
+                value={
+                  remainingAmount !== undefined && remainingAmount !== ""
+                    ? `PKR ${Number(remainingAmount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : "--"
+                }
+                className="common-input bg-muted-foreground/10 text-foreground font-bold cursor-not-allowed"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Auto-calculated (Total PKR {totalAmount.toLocaleString()} &minus; Paid PKR {Number(paidAmount || 0).toLocaleString()})
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* When Credit is selected in Cash Out */}
+      {isCashOut && paymentSource === CashOutPaymentSource.CREDIT && (
+        <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-700 dark:text-blue-300 flex items-start gap-2.5 animate-fade-in">
+          <AlertCircle size={17} className="shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold">Credit Transaction</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Total decided amount of <strong>PKR {totalAmount.toLocaleString()}</strong> will be recorded on credit with remaining balance of <strong>PKR {totalAmount.toLocaleString()}</strong>.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Legacy Cheque & Online Transfer fields for Cash In */}
+      {!isCashOut && paymentSource === PaymentSource.CHEQUE && (
         <div>
           <label className="mb-2 block ui-form-label">
             Cheque No <span className="text-red-500">*</span>
@@ -326,7 +361,7 @@ export default function PaymentDetailsFields({
         </div>
       )}
 
-      {paymentSource === PaymentSource.ONLINE_TRANSFER && (
+      {!isCashOut && paymentSource === PaymentSource.ONLINE_TRANSFER && (
         <div>
           <label className="mb-2 block ui-form-label">
             Transaction ID <span className="text-red-500">*</span>

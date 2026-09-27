@@ -18,6 +18,10 @@ export const Cashflows_APIS = {
   getInById: (id: string) => getRequest(`/v1/cashflows/in/${id}`),
   getOutById: (id: string) => getRequest(`/v1/cashflows/out/${id}`),
   getProjectListSummary: () => getRequest("/v1/cashflows/project-list"),
+  recordInstallment: (id: string, body: any) =>
+    postRequest(`/v1/cashflows/out/${id}/installments`, body),
+  getInstallments: (id: string) =>
+    getRequest(`/v1/cashflows/out/${id}/installments`),
   downloadReceipt: (id: string, type: "in" | "out" = "out") =>
     `/v1/cashflows/${type}/${id}/receipt`,
   exportCsv: (params: any = {}) => getRequest("/v1/cashflows/export", params),
