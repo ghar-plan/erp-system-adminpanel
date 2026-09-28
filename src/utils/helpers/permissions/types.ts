@@ -15,6 +15,11 @@ export type AuthSession = {
   isSuperAdmin: boolean;
   isClient: boolean;
   permissions: string[];
+  title?: string;
+  companyName?: string;
+  country?: string;
+  gender?: string;
+  phone?: string;
 };
 
 export type PermissionMode = "any" | "all";

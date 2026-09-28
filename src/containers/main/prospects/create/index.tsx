@@ -12,6 +12,7 @@ interface ProspectFormInputs {
   email: string;
   notes: string;
   status: "New" | "Contacted" | "Qualified" | "Lost" | "Converted";
+  prospectType: "Construction Prospect" | "Design Prospect" | "";
   project: string;
   leadSource: string;
 }
@@ -36,6 +37,7 @@ export default function ProspectCreate() {
       email: "",
       notes: "",
       status: "" as any,
+      prospectType: "",
       project: "",
       leadSource: "",
     },
@@ -52,6 +54,7 @@ export default function ProspectCreate() {
           email: data?.email || "",
           notes: data?.notes || "",
           status: data?.status || "",
+          prospectType: data?.prospectType || "",
           project: data?.project || "",
           leadSource: data?.leadSource || "",
         });
@@ -166,6 +169,26 @@ export default function ProspectCreate() {
               className="common-input"
               {...register("project")}
             />
+          </div>
+
+          {/* Prospect Type */}
+          <div>
+            <label className="mb-2 block ui-form-label">Prospect Type</label>
+            <select
+              className="common-input bg-card"
+              {...register("prospectType", {
+                required: "Prospect type is required",
+              })}
+            >
+              <option value="">Select Prospect Type</option>
+              <option value="Construction Prospect">Construction Prospect</option>
+              <option value="Design Prospect">Design Prospect</option>
+            </select>
+            {errors.prospectType && (
+              <p className="mt-1 text-xs text-danger-text font-semibold">
+                {errors.prospectType.message}
+              </p>
+            )}
           </div>
 
           {/* Lead Source */}

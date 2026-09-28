@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, MapPin, Save } from "lucide-react";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
+import { OFFICE_LOCATION } from "@/utils/helpers/constants";
 import useEmployees from "../useHooks";
 import useProjects from "../../projects/useHooks";
 import {
@@ -10,6 +11,8 @@ import {
   validatePakistanMobile,
 } from "@/utils/helpers/common/phone";
 import type { EmployeeType } from "@/utils/helpers/models/employees/employee.dto";
+
+type LocationMode = "office" | "custom";
 
 type EmployeeForm = {
   name: string;
@@ -26,12 +29,16 @@ type EmployeeForm = {
 
 const RADIUS_PRESETS = [10, 50, 100];
 
+const isSameCoord = (a: number, b: number) =>
+  Number(a).toFixed(6) === Number(b).toFixed(6);
+
 export default function EmployeesEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getEmployeeById, updateEmployee } = useEmployees();
   const { getAllProjects } = useProjects();
   const [projects, setProjects] = useState<any[]>([]);
+  const [locationMode, setLocationMode] = useState<LocationMode>("custom");
 
   const {
     register,
@@ -39,11 +46,13 @@ export default function EmployeesEdit() {
     reset,
     watch,
     setValue,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<EmployeeForm>();
 
   const radius = Number(watch("radius"));
   const employeeType = watch("employeeType");
+  const isOfficeLocation = locationMode === "office";
 
   useEffect(() => {
     getAllProjects(setProjects);
@@ -52,6 +61,10 @@ export default function EmployeesEdit() {
   useEffect(() => {
     if (!id) return;
     getEmployeeById(id, (employee: any) => {
+      const matchesOffice =
+        isSameCoord(employee.lat, OFFICE_LOCATION.lat) &&
+        isSameCoord(employee.lng, OFFICE_LOCATION.lng);
+      setLocationMode(matchesOffice ? "office" : "custom");
       reset({
         name: employee.name || "",
         email: employee.email || "",
@@ -66,6 +79,28 @@ export default function EmployeesEdit() {
       });
     });
   }, [id]);
+
+  const applyOfficeLocation = () => {
+    setLocationMode("office");
+    setValue("lat", OFFICE_LOCATION.lat, { shouldValidate: true });
+    setValue("lng", OFFICE_LOCATION.lng, { shouldValidate: true });
+    clearErrors(["lat", "lng"]);
+  };
+
+  const switchToCustomLocation = () => {
+    setLocationMode("custom");
+    setValue("lat", undefined as unknown as number, { shouldValidate: false });
+    setValue("lng", undefined as unknown as number, { shouldValidate: false });
+    clearErrors(["lat", "lng"]);
+  };
+
+  const handleLocationModeChange = (mode: LocationMode) => {
+    if (mode === "office") {
+      applyOfficeLocation();
+    } else {
+      switchToCustomLocation();
+    }
+  };
 
   const onSubmit = async (form: EmployeeForm) => {
     if (!id) return;
@@ -192,33 +227,115 @@ export default function EmployeesEdit() {
             <textarea rows={3} className={`common-input ${errors.address ? "border-red-500" : ""}`} {...register("address", { required: "Address is required" })} />
             {errors.address && <p className="mt-1.5 text-xs text-red-500 font-semibold">{errors.address.message}</p>}
           </div>
-          <div className="grid gap-5 grid-cols-1 md:grid-cols-3">
-            <div>
-              <label className="mb-2 block ui-form-label">Latitude <span className="text-red-500">*</span></label>
-              <input type="number" step="any" className="common-input" {...register("lat", { required: true, valueAsNumber: true })} />
+          <div>
+            <h2 className="text-lg font-semibold text-foreground mb-1">Attendance location</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              The employee can only check in or out within this radius of the configured coordinates.
+            </p>
+
+            <div className="mb-4 space-y-3">
+              <label className="mb-2 block ui-form-label">
+                Location type <span className="text-red-500">*</span>
+              </label>
+              <div className="flex flex-wrap gap-3">
+                <label
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-semibold cursor-pointer transition-all ${
+                    isOfficeLocation
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="locationMode"
+                    className="accent-primary"
+                    checked={isOfficeLocation}
+                    onChange={() => handleLocationModeChange("office")}
+                  />
+                  Office Location
+                </label>
+                <label
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-semibold cursor-pointer transition-all ${
+                    !isOfficeLocation
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="locationMode"
+                    className="accent-primary"
+                    checked={!isOfficeLocation}
+                    onChange={() => handleLocationModeChange("custom")}
+                  />
+                  Custom Location
+                </label>
+              </div>
+
+              {!isOfficeLocation && (
+                <button
+                  type="button"
+                  onClick={applyOfficeLocation}
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-md border border-primary text-primary text-sm font-semibold hover:bg-primary/10 transition-all cursor-pointer"
+                >
+                  <MapPin size={16} />
+                  Add Office Lat/Lng
+                </button>
+              )}
+
+              {isOfficeLocation && (
+                <p className="text-xs text-muted-foreground">
+                  Using {OFFICE_LOCATION.label} coordinates. Latitude and longitude are locked and cannot be edited.
+                </p>
+              )}
             </div>
-            <div>
-              <label className="mb-2 block ui-form-label">Longitude <span className="text-red-500">*</span></label>
-              <input type="number" step="any" className="common-input" {...register("lng", { required: true, valueAsNumber: true })} />
-            </div>
-            <div>
-              <label className="mb-2 block ui-form-label">Radius (meters) <span className="text-red-500">*</span></label>
-              <input type="number" min={1} className="common-input" {...register("radius", { required: true, valueAsNumber: true, min: 1 })} />
-              <div className="flex flex-wrap gap-2 mt-2">
-                {RADIUS_PRESETS.map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setValue("radius", preset, { shouldValidate: true })}
-                    className={`px-3 py-1 rounded-md text-xs font-semibold border cursor-pointer ${
-                      radius === preset
-                        ? "bg-primary text-white border-primary"
-                        : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
-                    }`}
-                  >
-                    {preset} m
-                  </button>
-                ))}
+
+            <div className="grid gap-5 grid-cols-1 md:grid-cols-3">
+              <div>
+                <label className="mb-2 block ui-form-label">Latitude <span className="text-red-500">*</span></label>
+                <input
+                  type="number"
+                  step="any"
+                  readOnly={isOfficeLocation}
+                  className={`common-input ${errors.lat ? "border-red-500" : ""} ${
+                    isOfficeLocation ? "bg-muted-foreground/5 cursor-not-allowed opacity-80" : ""
+                  }`}
+                  {...register("lat", { required: "Latitude is required", valueAsNumber: true })}
+                />
+                {errors.lat && <p className="mt-1.5 text-xs text-red-500 font-semibold">{errors.lat.message}</p>}
+              </div>
+              <div>
+                <label className="mb-2 block ui-form-label">Longitude <span className="text-red-500">*</span></label>
+                <input
+                  type="number"
+                  step="any"
+                  readOnly={isOfficeLocation}
+                  className={`common-input ${errors.lng ? "border-red-500" : ""} ${
+                    isOfficeLocation ? "bg-muted-foreground/5 cursor-not-allowed opacity-80" : ""
+                  }`}
+                  {...register("lng", { required: "Longitude is required", valueAsNumber: true })}
+                />
+                {errors.lng && <p className="mt-1.5 text-xs text-red-500 font-semibold">{errors.lng.message}</p>}
+              </div>
+              <div>
+                <label className="mb-2 block ui-form-label">Radius (meters) <span className="text-red-500">*</span></label>
+                <input type="number" min={1} className="common-input" {...register("radius", { required: true, valueAsNumber: true, min: 1 })} />
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {RADIUS_PRESETS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setValue("radius", preset, { shouldValidate: true })}
+                      className={`px-3 py-1 rounded-md text-xs font-semibold border cursor-pointer ${
+                        radius === preset
+                          ? "bg-primary text-white border-primary"
+                          : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
+                      }`}
+                    >
+                      {preset} m
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

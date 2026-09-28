@@ -24,6 +24,7 @@ interface Prospect {
   email: string;
   notes: string;
   status: "New" | "Contacted" | "Qualified" | "Lost" | "Converted";
+  prospectType?: "Construction Prospect" | "Design Prospect";
   project?: string;
   leadSource?: string;
   created_at: string;
@@ -214,6 +215,21 @@ export default function ProspectView() {
                     {prospect?.updated_at
                       ? formatDate(prospect.updated_at)
                       : "--"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Prospect Type */}
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-lg bg-info-bg text-info-text">
+                  <User size={18} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                    Prospect Type
+                  </label>
+                  <p className="text-sm font-semibold text-foreground mt-0.5">
+                    {prospect?.prospectType || "--"}
                   </p>
                 </div>
               </div>

@@ -118,8 +118,8 @@ export default function PaymentDetailsFields({
     if (paymentSource === CashOutPaymentSource.PARTIAL) {
       const paid = Number(paidAmount) || 0;
       const total = Number(totalAmount) || 0;
-      const remaining = Math.max(0, total - paid);
-      setValue("remainingAmount", remaining ? String(remaining.toFixed(2)) : "0.00");
+      const remaining = Math.max(0, Math.round((total - paid) * 100) / 100);
+      setValue("remainingAmount", remaining ? remaining.toFixed(2) : "0.00");
       if (paid > 0 && remaining <= 0) {
         setValue("status", TransactionStatus.RESOLVED);
       } else {
@@ -128,14 +128,14 @@ export default function PaymentDetailsFields({
     } else if (paymentSource === CashOutPaymentSource.CREDIT) {
       const total = Number(totalAmount) || 0;
       setValue("paidAmount", "0");
-      setValue("remainingAmount", total ? String(total.toFixed(2)) : "0.00");
+      setValue("remainingAmount", total ? Number(total).toFixed(2) : "0.00");
       setValue("status", TransactionStatus.PENDING);
     } else if (
       paymentSource === CashOutPaymentSource.CASH ||
       paymentSource === CashOutPaymentSource.ADVANCE
     ) {
       const total = Number(totalAmount) || 0;
-      setValue("paidAmount", total ? String(total.toFixed(2)) : "");
+      setValue("paidAmount", total ? Number(total).toFixed(2) : "");
       setValue("remainingAmount", "0.00");
       setValue("status", TransactionStatus.RESOLVED);
     }
@@ -316,7 +316,17 @@ export default function PaymentDetailsFields({
                 className="common-input bg-muted-foreground/10 text-foreground font-bold cursor-not-allowed"
               />
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Auto-calculated (Total PKR {totalAmount.toLocaleString()} &minus; Paid PKR {Number(paidAmount || 0).toLocaleString()})
+                Auto-calculated (Total PKR{" "}
+                {Number(totalAmount || 0).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{" "}
+                &minus; Paid PKR{" "}
+                {Number(paidAmount || 0).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                )
               </p>
             </div>
           </div>
