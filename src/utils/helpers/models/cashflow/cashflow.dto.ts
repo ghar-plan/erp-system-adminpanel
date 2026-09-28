@@ -39,6 +39,41 @@ export const CASH_IN_PAYMENT_SOURCE_OPTIONS = [
 
 export const PAYMENT_SOURCE_OPTIONS = Object.values(PaymentSource);
 
+/** Parse money from number/string (allows commas) and round to 2 decimal places. */
+export const parseMoney = (value: unknown): number => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? Math.round(value * 100) / 100 : NaN;
+  }
+  if (value === null || value === undefined) return NaN;
+  const cleaned = String(value).replace(/,/g, "").trim();
+  if (!cleaned) return NaN;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : NaN;
+};
+
+/** Multiply two money/qty values using integer cents to avoid float drift. */
+export const multiplyMoney = (a: unknown, b: unknown): number => {
+  const aCents = Math.round(parseMoney(a) * 100);
+  const bCents = Math.round(parseMoney(b) * 100);
+  if (!Number.isFinite(aCents) || !Number.isFinite(bCents)) return NaN;
+  // (aCents/100) * (bCents/100) = aCents * bCents / 10000 → round to cents
+  return Math.round((aCents * bCents) / 100) / 100;
+};
+
+/** Divide money by qty using integer cents. */
+export const divideMoney = (total: unknown, qty: unknown): number => {
+  const totalCents = Math.round(parseMoney(total) * 100);
+  const q = parseMoney(qty);
+  if (!Number.isFinite(totalCents) || !Number.isFinite(q) || q === 0) return NaN;
+  return Math.round(totalCents / q) / 100;
+};
+
+/** Format a money value as a fixed 2-decimal number for API payloads. */
+export const toMoneyNumber = (value: unknown): number => {
+  const n = parseMoney(value);
+  return Number.isFinite(n) ? Number(n.toFixed(2)) : NaN;
+};
+
 export const buildPaymentDetailsPayload = (data: {
   entryDate: string;
   enteredBy: string;
@@ -55,10 +90,10 @@ export const buildPaymentDetailsPayload = (data: {
   paymentSource: data.paymentSource,
   ...(data.status ? { status: data.status } : {}),
   ...(data.paidAmount !== undefined && data.paidAmount !== ""
-    ? { paidAmount: Number(data.paidAmount) }
+    ? { paidAmount: parseMoney(data.paidAmount) }
     : {}),
   ...(data.remainingAmount !== undefined && data.remainingAmount !== ""
-    ? { remainingAmount: Number(data.remainingAmount) }
+    ? { remainingAmount: parseMoney(data.remainingAmount) }
     : {}),
   ...(data.paymentSource === PaymentSource.CHEQUE && data.chequeNo
     ? { chequeNo: data.chequeNo.trim() }

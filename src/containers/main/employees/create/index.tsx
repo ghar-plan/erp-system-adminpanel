@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, MapPin, Plus } from "lucide-react";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
+import { OFFICE_LOCATION } from "@/utils/helpers/constants";
 import useEmployees from "../useHooks";
 import useProjects from "../../projects/useHooks";
 import {
@@ -10,6 +11,8 @@ import {
   validatePakistanMobile,
 } from "@/utils/helpers/common/phone";
 import type { EmployeeType } from "@/utils/helpers/models/employees/employee.dto";
+
+type LocationMode = "office" | "custom";
 
 type EmployeeForm = {
   name: string;
@@ -31,12 +34,14 @@ export default function EmployeesCreate() {
   const { createEmployee } = useEmployees();
   const { getAllProjects } = useProjects();
   const [projects, setProjects] = useState<any[]>([]);
+  const [locationMode, setLocationMode] = useState<LocationMode>("custom");
 
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<EmployeeForm>({
     defaultValues: {
@@ -55,6 +60,7 @@ export default function EmployeesCreate() {
 
   const radius = Number(watch("radius"));
   const employeeType = watch("employeeType");
+  const isOfficeLocation = locationMode === "office";
 
   useEffect(() => {
     getAllProjects(setProjects);
@@ -65,6 +71,28 @@ export default function EmployeesCreate() {
       setValue("designation", "Chaukidar");
     }
   }, [employeeType]);
+
+  const applyOfficeLocation = () => {
+    setLocationMode("office");
+    setValue("lat", OFFICE_LOCATION.lat, { shouldValidate: true });
+    setValue("lng", OFFICE_LOCATION.lng, { shouldValidate: true });
+    clearErrors(["lat", "lng"]);
+  };
+
+  const switchToCustomLocation = () => {
+    setLocationMode("custom");
+    setValue("lat", undefined as unknown as number, { shouldValidate: false });
+    setValue("lng", undefined as unknown as number, { shouldValidate: false });
+    clearErrors(["lat", "lng"]);
+  };
+
+  const handleLocationModeChange = (mode: LocationMode) => {
+    if (mode === "office") {
+      applyOfficeLocation();
+    } else {
+      switchToCustomLocation();
+    }
+  };
 
   const onSubmit = async (form: EmployeeForm) => {
     await createEmployee({
@@ -219,14 +247,75 @@ export default function EmployeesCreate() {
             <p className="text-sm text-muted-foreground mb-4">
               The employee can only check in or out within this radius of the configured coordinates.
             </p>
+
+            <div className="mb-4 space-y-3">
+              <label className="mb-2 block ui-form-label">
+                Location type <span className="text-red-500">*</span>
+              </label>
+              <div className="flex flex-wrap gap-3">
+                <label
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-semibold cursor-pointer transition-all ${
+                    isOfficeLocation
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="locationMode"
+                    className="accent-primary"
+                    checked={isOfficeLocation}
+                    onChange={() => handleLocationModeChange("office")}
+                  />
+                  Office Location
+                </label>
+                <label
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-semibold cursor-pointer transition-all ${
+                    !isOfficeLocation
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="locationMode"
+                    className="accent-primary"
+                    checked={!isOfficeLocation}
+                    onChange={() => handleLocationModeChange("custom")}
+                  />
+                  Custom Location
+                </label>
+              </div>
+
+              {/* {!isOfficeLocation && (
+                <button
+                  type="button"
+                  onClick={applyOfficeLocation}
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-md border border-primary text-primary text-sm font-semibold hover:bg-primary/10 transition-all cursor-pointer"
+                >
+                  <MapPin size={16} />
+                  Add Office Lat/Lng
+                </button>
+              )} */}
+
+              {/* {isOfficeLocation && (
+                <p className="text-xs text-muted-foreground">
+                  Using {OFFICE_LOCATION.label} coordinates. Latitude and longitude are locked and cannot be edited.
+                </p>
+              )} */}
+            </div>
+
             <div className="grid gap-5 grid-cols-1 md:grid-cols-3">
               <div>
                 <label className="mb-2 block ui-form-label">Latitude <span className="text-red-500">*</span></label>
                 <input
                   type="number"
                   step="any"
-                  className={`common-input ${errors.lat ? "border-red-500" : ""}`}
-                  placeholder="31.5204"
+                  readOnly={isOfficeLocation}
+                  className={`common-input ${errors.lat ? "border-red-500" : ""} ${
+                    isOfficeLocation ? "bg-muted-foreground/5 cursor-not-allowed opacity-80" : ""
+                  }`}
+                  placeholder={isOfficeLocation ? String(OFFICE_LOCATION.lat) : "e.g. 31.474284"}
                   {...register("lat", {
                     required: "Latitude is required",
                     valueAsNumber: true,
@@ -241,8 +330,11 @@ export default function EmployeesCreate() {
                 <input
                   type="number"
                   step="any"
-                  className={`common-input ${errors.lng ? "border-red-500" : ""}`}
-                  placeholder="74.3587"
+                  readOnly={isOfficeLocation}
+                  className={`common-input ${errors.lng ? "border-red-500" : ""} ${
+                    isOfficeLocation ? "bg-muted-foreground/5 cursor-not-allowed opacity-80" : ""
+                  }`}
+                  placeholder={isOfficeLocation ? String(OFFICE_LOCATION.lng) : "e.g. 74.277459"}
                   {...register("lng", {
                     required: "Longitude is required",
                     valueAsNumber: true,

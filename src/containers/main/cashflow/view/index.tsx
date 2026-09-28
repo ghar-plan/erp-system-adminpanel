@@ -412,7 +412,10 @@ export default function CashflowView() {
                   icon={<Users size={20} />}
                   iconClass="bg-success-bg text-success-text"
                   label="Vendor"
-                  value={entry.vendor?.vendorName}
+                  value={
+                    entry.vendor?.vendorName ||
+                    (!entry.vendorId ? "Miscellaneous" : undefined)
+                  }
                 />
                 <DetailItem
                   icon={<Briefcase size={20} />}

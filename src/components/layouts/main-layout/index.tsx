@@ -86,7 +86,7 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
 
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({
     Reports: false,
-    "Stake Holders": false,
+    "Stakeholders": false,
     Contracts: false,
   });
 

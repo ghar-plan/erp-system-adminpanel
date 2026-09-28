@@ -24,6 +24,7 @@ interface Prospect {
   email: string;
   notes: string;
   status: "New" | "Contacted" | "Qualified" | "Lost" | "Converted";
+  prospectType?: "Construction Prospect" | "Design Prospect" | null;
   project?: string;
   leadSource?: string;
   created_at: string;
@@ -41,41 +42,51 @@ export default function ProspectsListing() {
   // Applied (active) filter state — triggers API call
   const [activeSearch, setActiveSearch] = useState("");
   const [activeStatus, setActiveStatus] = useState("");
+  const [activeProspectType, setActiveProspectType] = useState("");
 
   // Draft states inside the filters card
   const [draftSearch, setDraftSearch] = useState("");
   const [draftStatus, setDraftStatus] = useState("");
+  const [draftProspectType, setDraftProspectType] = useState("");
 
   // Pagination states
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
-  const fetchProspectsList = (search = activeSearch, status = activeStatus) => {
+  const fetchProspectsList = (
+    search = activeSearch,
+    status = activeStatus,
+    prospectType = activeProspectType,
+  ) => {
     const params: any = {};
     if (search) params.search = search;
     if (status) params.status = status;
+    if (prospectType) params.prospectType = prospectType;
     getProspects(setProspects, params);
   };
 
   // Initial load
   useEffect(() => {
-    fetchProspectsList("", "");
+    fetchProspectsList("", "", "");
   }, []);
 
   const handleApplyFilters = () => {
     setActiveSearch(draftSearch);
     setActiveStatus(draftStatus);
+    setActiveProspectType(draftProspectType);
     setPage(1);
-    fetchProspectsList(draftSearch, draftStatus);
+    fetchProspectsList(draftSearch, draftStatus, draftProspectType);
   };
 
   const handleResetFilters = () => {
     setDraftSearch("");
     setDraftStatus("");
+    setDraftProspectType("");
     setActiveSearch("");
     setActiveStatus("");
+    setActiveProspectType("");
     setPage(1);
-    fetchProspectsList("", "");
+    fetchProspectsList("", "", "");
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -139,6 +150,7 @@ export default function ProspectsListing() {
     "Name",
     "Phone",
     "Email",
+    "Prospect Type",
     "Project",
     "Lead Source",
     "Status",
@@ -209,6 +221,26 @@ export default function ProspectsListing() {
               className="common-input pl-10 pr-4 text-sm h-10 w-full"
             />
           </div>
+        </div>
+
+        {/* Prospect Type Dropdown */}
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label
+            htmlFor="prospectType"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Prospect Type
+          </label>
+          <select
+            id="prospectType"
+            value={draftProspectType}
+            onChange={(e) => setDraftProspectType(e.target.value)}
+            className="common-input text-sm h-10 w-full sm:w-52 bg-card text-sm"
+          >
+            <option value="">All Types</option>
+            <option value="Construction Prospect">Construction Prospect</option>
+            <option value="Design Prospect">Design Prospect</option>
+          </select>
         </div>
 
         {/* Status Dropdown */}
@@ -288,6 +320,9 @@ export default function ProspectsListing() {
                         {prospect?.phone || "--"}
                       </td>
                       <td className="table-td">{prospect?.email || "--"}</td>
+                      <td className="table-td font-medium">
+                        {prospect?.prospectType || "--"}
+                      </td>
                       <td className="table-td font-medium">
                         {prospect?.project || "--"}
                       </td>

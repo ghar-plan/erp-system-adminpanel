@@ -4,7 +4,12 @@ import CashInForm from "./components/CashInForm";
 import CashOutForm from "./components/CashOutForm";
 import TransactionsTable from "./components/TransactionsTable";
 import Pagination from "@/components/particles/table/pagination";
-import { buildPaymentDetailsPayload } from "@/utils/helpers/models/cashflow/cashflow.dto";
+import {
+  buildPaymentDetailsPayload,
+  parseMoney,
+  multiplyMoney,
+  toMoneyNumber,
+} from "@/utils/helpers/models/cashflow/cashflow.dto";
 import { CanIf } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
@@ -71,6 +76,7 @@ export default function Cashflow() {
   const [filterSearch, setFilterSearch] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
+  const [filterMiscellaneous, setFilterMiscellaneous] = useState("");
 
   // Helper date formatters
   const formatDate = (dateString: string | Date) => {
@@ -118,10 +124,12 @@ export default function Cashflow() {
     search?: string;
     startDate?: string;
     endDate?: string;
+    miscellaneous?: string;
     page: number;
     limit: number;
   }) => {
-    const { projectId, type, search, startDate, endDate, page, limit } = currentFilters;
+    const { projectId, type, search, startDate, endDate, miscellaneous, page, limit } =
+      currentFilters;
 
     const queryParams: any = {
       offset: (page - 1) * limit,
@@ -132,6 +140,7 @@ export default function Cashflow() {
     if (search) queryParams.search = search;
     if (startDate) queryParams.startDate = startDate;
     if (endDate) queryParams.endDate = endDate;
+    if (miscellaneous) queryParams.miscellaneous = miscellaneous;
 
     await getCashflowCombinedList(setTransactions, queryParams, setTotalElements, setTotals);
   };
@@ -144,7 +153,7 @@ export default function Cashflow() {
   // Reset page to 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [filterProject, filterType, filterSearch, filterStartDate, filterEndDate]);
+  }, [filterProject, filterType, filterSearch, filterStartDate, filterEndDate, filterMiscellaneous]);
 
   useEffect(() => {
     if (!canRead) return;
@@ -154,10 +163,21 @@ export default function Cashflow() {
       search: filterSearch,
       startDate: filterStartDate,
       endDate: filterEndDate,
+      miscellaneous: filterMiscellaneous,
       page,
       limit,
     });
-  }, [canRead, filterProject, filterType, filterSearch, filterStartDate, filterEndDate, page, limit]);
+  }, [
+    canRead,
+    filterProject,
+    filterType,
+    filterSearch,
+    filterStartDate,
+    filterEndDate,
+    filterMiscellaneous,
+    page,
+    limit,
+  ]);
 
   const refreshTransactions = () => {
     fetchTransactions({
@@ -166,6 +186,7 @@ export default function Cashflow() {
       search: filterSearch,
       startDate: filterStartDate,
       endDate: filterEndDate,
+      miscellaneous: filterMiscellaneous,
       page,
       limit,
     });
@@ -201,18 +222,50 @@ export default function Cashflow() {
   const handleRecordExpense = async (data: any) => {
     setSubmittingOut(true);
 
-    // DB stores unit price in `amount`; total shown in UI is quantity Ã— price
+    const isLabour = data.category === "Labour";
+    const isMiscellaneous = data.vendorMode === "miscellaneous" || !data.vendorId;
+    // DB stores unit price in `amount`; total shown in UI is quantity × price
+    // Labour: only total is entered → store as qty 1, unit price = total
+    const quantity = isLabour ? 1 : toMoneyNumber(data.quantity);
+    const unitAmount = isLabour
+      ? toMoneyNumber(data.amount)
+      : toMoneyNumber(data.price);
+    const total = isLabour
+      ? unitAmount
+      : multiplyMoney(quantity, unitAmount);
+
+    const paymentDetails = buildPaymentDetailsPayload(data);
+    // Keep paid/remaining consistent with the exact computed total
+    if (data.paymentSource === "Partial") {
+      const paid = toMoneyNumber(data.paidAmount) || 0;
+      paymentDetails.paidAmount = paid;
+      paymentDetails.remainingAmount = Math.max(
+        0,
+        Math.round((total - paid) * 100) / 100,
+      );
+    } else if (data.paymentSource === "Credit") {
+      paymentDetails.paidAmount = 0;
+      paymentDetails.remainingAmount = total;
+    } else if (
+      data.paymentSource === "Cash" ||
+      data.paymentSource === "Advance"
+    ) {
+      paymentDetails.paidAmount = total;
+      paymentDetails.remainingAmount = 0;
+    }
+
     const payload = {
       projectId: data.projectId,
-      vendorId: data.vendorId,
+      isMiscellaneous,
+      ...(isMiscellaneous ? { vendorId: null } : { vendorId: data.vendorId }),
       jobId: data.jobId,
       workStageId: data.workStageId,
       items: data.items,
       category: data.category,
-      quantity: Number(data.quantity),
-      uom: data.uom,
-      amount: Number(data.price),
-      ...buildPaymentDetailsPayload(data),
+      quantity,
+      uom: isLabour ? "Job" : data.uom,
+      amount: unitAmount,
+      ...paymentDetails,
     };
     if (editDataOut) {
       await useCashflow().editCashOut(editDataOut.id, payload, () => {
@@ -349,6 +402,8 @@ export default function Cashflow() {
           setFilterStartDate={setFilterStartDate}
           filterEndDate={filterEndDate}
           setFilterEndDate={setFilterEndDate}
+          filterMiscellaneous={filterMiscellaneous}
+          setFilterMiscellaneous={setFilterMiscellaneous}
           exportData={handlePdfExport}
           formatDate={formatDate}
           onDelete={handleDelete}

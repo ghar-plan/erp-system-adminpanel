@@ -112,7 +112,7 @@ export const menuConfig: MenuGroup[] = [
   },
   {
     key: "roles-permissions",
-    text: "Stake Holders",
+    text: "Stakeholders",
     path: siteRoutes.roles,
     children: [
       {

@@ -86,5 +86,10 @@ export function normalizeAuthSession(data: unknown): AuthSession {
     isSuperAdmin,
     isClient,
     permissions,
+    title: asString(user.title),
+    companyName: asString(user.companyName),
+    country: asString(user.country),
+    gender: asString(user.gender),
+    phone: asString(user.phone),
   };
 }

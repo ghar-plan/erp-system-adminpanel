@@ -42,6 +42,8 @@ interface TransactionsTableProps {
   setFilterStartDate: (val: string) => void;
   filterEndDate: string;
   setFilterEndDate: (val: string) => void;
+  filterMiscellaneous: string;
+  setFilterMiscellaneous: (val: string) => void;
   exportData: () => void;
   formatDate: (d: any) => string;
   onDelete: (id: string, type: "CASH IN" | "CASH OUT", label: string) => void;
@@ -65,6 +67,8 @@ export default function TransactionsTable({
   setFilterStartDate,
   filterEndDate,
   setFilterEndDate,
+  filterMiscellaneous,
+  setFilterMiscellaneous,
   exportData,
   formatDate,
   onDelete,
@@ -88,6 +92,7 @@ export default function TransactionsTable({
   const [draftSearch, setDraftSearch] = useState(filterSearch);
   const [draftStartDate, setDraftStartDate] = useState(filterStartDate);
   const [draftEndDate, setDraftEndDate] = useState(filterEndDate);
+  const [draftMiscellaneous, setDraftMiscellaneous] = useState(filterMiscellaneous);
 
   // Sync draft states if parent filters change externally
   useEffect(() => {
@@ -110,12 +115,17 @@ export default function TransactionsTable({
     setDraftEndDate(filterEndDate);
   }, [filterEndDate]);
 
+  useEffect(() => {
+    setDraftMiscellaneous(filterMiscellaneous);
+  }, [filterMiscellaneous]);
+
   const handleApply = () => {
     setFilterProject(draftProject);
     setFilterType(draftType);
     setFilterSearch(draftSearch);
     setFilterStartDate(draftStartDate);
     setFilterEndDate(draftEndDate);
+    setFilterMiscellaneous(draftMiscellaneous);
   };
 
   const handleReset = () => {
@@ -124,11 +134,13 @@ export default function TransactionsTable({
     setDraftSearch("");
     setDraftStartDate("");
     setDraftEndDate("");
+    setDraftMiscellaneous("");
     setFilterProject("");
     setFilterType("");
     setFilterSearch("");
     setFilterStartDate("");
     setFilterEndDate("");
+    setFilterMiscellaneous("");
   };
 
   return (
@@ -215,6 +227,26 @@ export default function TransactionsTable({
             <option value="">All Types</option>
             <option value="CASH IN">Cash In</option>
             <option value="CASH OUT">Cash Out / Material In</option>
+          </select>
+        </div>
+
+        {/* Vendor / Miscellaneous Filter */}
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label
+            htmlFor="miscellaneous"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Vendor
+          </label>
+          <select
+            id="miscellaneous"
+            value={draftMiscellaneous}
+            onChange={(e) => setDraftMiscellaneous(e.target.value)}
+            className="common-input text-sm h-10 w-full sm:w-44 bg-card"
+          >
+            <option value="">All Vendors</option>
+            <option value="true">Miscellaneous only</option>
+            <option value="false">Vendors only</option>
           </select>
         </div>
 
