@@ -81,9 +81,8 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
                 ✕
               </button>
             </div>
-            <ul className=" py-3  overflow-y-auto whitespace-nowrap">
-              {" "}
-              {children}{" "}
+            <ul className="py-3 overflow-y-auto overflow-x-hidden">
+              {children}
             </ul>
           </nav>
         </div>

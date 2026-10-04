@@ -86,9 +86,11 @@ export function SidebarItem({
       <Link
         to={submenu.length ? "#" : link}
         onClick={submenu.length ? toggleSubmenu : undefined}
-        className="flex items-center w-full py-3 px-3 h-12"
+        className="flex items-center w-full py-3 px-3 min-h-12"
       >
-        <span className="overflow-hidden transition-all w-52 ml-2">{text}</span>
+        <span className="overflow-hidden transition-all flex-1 min-w-0 ml-2 whitespace-normal break-words leading-tight text-sm">
+          {text}
+        </span>
         {submenu.length > 0 && (
           <span className="ml-auto ">
             {isSubmenuOpen ? (
