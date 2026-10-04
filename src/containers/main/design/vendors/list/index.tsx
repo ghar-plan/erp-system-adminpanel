@@ -1,0 +1,509 @@
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Plus, Search, Trash2, Eye, Pencil, Loader2, X } from "lucide-react";
+import useDesignVendors from "../useHooks";
+import { DesignVendor } from "@/utils/helpers/models/design/vendor.dto";
+import Pagination from "@/components/particles/table/pagination";
+import DataNotFound from "@/components/particles/table/data-not-found";
+import Button from "@/components/ui/Button";
+import { Can } from "@/components/auth/Can";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
+
+interface VendorFilters {
+  search: string;
+  city: string;
+  page: number;
+  limit: number;
+}
+
+const emptyFilters: VendorFilters = {
+  search: "",
+  city: "",
+  page: 1,
+  limit: 10,
+};
+
+export default function DesignVendorListing() {
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const {
+    getVendors,
+    deleteVendor,
+    getVendorFilterOptions,
+    getServices,
+    createService,
+    updateService,
+    deleteService,
+  } = useDesignVendors();
+  const canView = hasPermission(PERMISSIONS.DESIGN_VENDORS_READ);
+  const canUpdate = hasPermission(PERMISSIONS.DESIGN_VENDORS_UPDATE);
+  const canDelete = isSuperAdmin;
+  const showActions = canView || canUpdate || canDelete;
+  const [vendors, setVendors] = useState<DesignVendor[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [filterOptions, setFilterOptions] = useState({
+    cities: [] as string[],
+  });
+
+  const [searchVal, setSearchVal] = useState("");
+  const [filters, setFilters] = useState<VendorFilters>(emptyFilters);
+
+  // Create / Edit Service Modal
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [serviceName, setServiceName] = useState("");
+  const [serviceSaving, setServiceSaving] = useState(false);
+  const [serviceError, setServiceError] = useState("");
+  const [servicesList, setServicesList] = useState<{ id: string; name: string }[]>([]);
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+
+  const fetchVendors = (currentFilters: VendorFilters) => {
+    const queryParams: any = {
+      limit: currentFilters.limit,
+      offset: (currentFilters.page - 1) * currentFilters.limit,
+    };
+    if (currentFilters.search) queryParams.search = currentFilters.search;
+    if (currentFilters.city) queryParams.city = currentFilters.city;
+
+    getVendors(setVendors, queryParams, setTotalElements);
+  };
+
+  useEffect(() => {
+    getVendorFilterOptions(setFilterOptions);
+    fetchVendors({ ...emptyFilters, page: 1 });
+  }, []);
+
+  const handleChangeFilter = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleApplyFilters = () => {
+    const updatedFilters = { ...filters, search: searchVal, page: 1 };
+    setFilters(updatedFilters);
+    fetchVendors(updatedFilters);
+  };
+
+  const handleResetFilters = () => {
+    setSearchVal("");
+    setFilters(emptyFilters);
+    fetchVendors(emptyFilters);
+  };
+
+  const onPageChange = (pageInfo: { selected: number; limit: number }) => {
+    const nextPage = pageInfo.selected + 1;
+    setFilters((prev) => ({
+      ...prev,
+      page: nextPage,
+      limit: pageInfo.limit,
+    }));
+    fetchVendors({
+      ...filters,
+      page: nextPage,
+      limit: pageInfo.limit,
+    });
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    await deleteVendor(id, name, () => fetchVendors(filters));
+  };
+
+  const resetServiceModal = () => {
+    setIsServiceModalOpen(false);
+    setServiceName("");
+    setServiceError("");
+    setEditingServiceId(null);
+  };
+
+  const openServiceModal = () => {
+    setServiceName("");
+    setServiceError("");
+    setEditingServiceId(null);
+    setIsServiceModalOpen(true);
+    getServices(setServicesList);
+  };
+
+  const startEditService = (service: { id: string; name: string }) => {
+    setEditingServiceId(service.id);
+    setServiceName(service.name);
+    setServiceError("");
+  };
+
+  const handleDeleteService = async (service: { id: string; name: string }) => {
+    const deleted = await deleteService(service.id, service.name);
+    if (deleted) {
+      if (editingServiceId === service.id) {
+        setEditingServiceId(null);
+        setServiceName("");
+        setServiceError("");
+      }
+      getServices(setServicesList);
+    }
+  };
+
+  const handleSaveService = async () => {
+    const trimmed = serviceName.trim();
+    if (!trimmed) {
+      setServiceError("Service name is required");
+      return;
+    }
+    setServiceSaving(true);
+    setServiceError("");
+    const wasEditing = !!editingServiceId;
+    const saved = editingServiceId
+      ? await updateService(editingServiceId, trimmed)
+      : await createService(trimmed);
+    setServiceSaving(false);
+    if (saved) {
+      setServiceName("");
+      setEditingServiceId(null);
+      getServices(setServicesList);
+      if (wasEditing) {
+        fetchVendors(filters);
+      }
+    }
+  };
+
+  const columns = [
+    "Sr No.",
+    "Name",
+    "Job Description",
+    "Phone",
+    "City",
+    ...(showActions ? ["Actions"] : []),
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
+        <div>
+          <h1 className="text-2xl sm:text-3xl text-foreground font-bold">
+            Design Vendor Profiles
+          </h1>
+        </div>
+        <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+          <Can permission={PERMISSIONS.DESIGN_VENDORS_CREATE}>
+            <button
+              onClick={openServiceModal}
+              className="flex h-10 px-4 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs"
+            >
+              <Plus size={16} />
+              Create Service
+            </button>
+          </Can>
+          <Can permission={PERMISSIONS.DESIGN_VENDORS_CREATE}>
+            <Link
+              to={siteRoutes.designVendorsCreate}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
+            >
+              <Plus size={18} />
+              Create Vendor
+            </Link>
+          </Can>
+        </div>
+      </div>
+
+      <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-wrap items-end justify-start md:justify-end gap-3 w-full">
+        <div className="flex flex-col items-start gap-1 w-full sm:max-w-sm flex-1 md:max-w-md min-w-[260px]">
+          <label
+            htmlFor="search"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Search
+          </label>
+          <div className="relative w-full">
+            <Search
+              className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80"
+              size={16}
+            />
+            <input
+              type="search"
+              name="search"
+              placeholder="Search by name or phone..."
+              value={searchVal}
+              onChange={(e) => setSearchVal(e.target.value)}
+              className="common-input pl-10 pr-4 text-sm h-10 w-full"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label
+            htmlFor="city"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            City
+          </label>
+          <select
+            name="city"
+            id="city"
+            value={filters.city}
+            onChange={handleChangeFilter}
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
+          >
+            <option value="">All cities</option>
+            {filterOptions.cities.map((city) => (
+              <option key={city} value={city}>
+                {city}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
+          <Button
+            variant="primary"
+            onClick={handleApplyFilters}
+            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+          >
+            Apply
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleResetFilters}
+            className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+          >
+            Reset
+          </Button>
+        </div>
+      </div>
+
+      <div className="w-full flex flex-col gap-4">
+        {vendors.length > 0 ? (
+          <div className="bg-card rounded-xl border border-border-main overflow-hidden shadow-xs animate-slide-up">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-border-main">
+                <thead className="bg-muted-foreground/5">
+                  <tr className="text-left">
+                    {columns.map((column, index) => (
+                      <th
+                        className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap"
+                        key={index}
+                      >
+                        {column}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-border-main bg-card text-foreground">
+                  {vendors.map((vendor, index) => (
+                    <tr
+                      key={vendor.id}
+                      className="hover:bg-muted-foreground/5 transition-colors"
+                    >
+                      <td className="table-td">
+                        {(filters.page - 1) * filters.limit + index + 1}
+                      </td>
+                      <td className="table-td font-semibold text-foreground">
+                        {vendor?.vendorName || "--"}
+                      </td>
+                      <td className="table-td">
+                        {vendor?.jobDescription || "--"}
+                      </td>
+                      <td className="table-td">{vendor?.phone || "--"}</td>
+                      <td className="table-td">{vendor?.city || "--"}</td>
+                      {showActions ? (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex gap-2">
+                            {canView ? (
+                              <Link
+                                to={`${siteRoutes.designVendors}/view/${vendor.id}`}
+                                className="btn-action-view"
+                                title="View Details"
+                              >
+                                <Eye size={16} />
+                              </Link>
+                            ) : null}
+                            {canUpdate ? (
+                              <Link
+                                to={`${siteRoutes.designVendors}/edit/${vendor.id}`}
+                                className="btn-action-edit"
+                                title="Edit Vendor"
+                              >
+                                <Pencil size={16} />
+                              </Link>
+                            ) : null}
+                            {canDelete ? (
+                              <button
+                                onClick={() =>
+                                  handleDelete(vendor.id, vendor.vendorName)
+                                }
+                                className="btn-action-delete"
+                                title="Delete"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      ) : null}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <DataNotFound show={true} />
+        )}
+
+        {totalElements > 0 && (
+          <Pagination
+            count={totalElements}
+            page={filters.page}
+            limit={filters.limit}
+            onPageChange={onPageChange}
+          />
+        )}
+      </div>
+
+      {/* Create / Edit Service Modal */}
+      {isServiceModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => {
+              if (!serviceSaving) resetServiceModal();
+            }}
+          />
+
+          <div className="bg-card border border-border-main w-full max-w-md rounded-2xl shadow-xl overflow-hidden z-10 animate-scale-up relative">
+            <div className="px-6 py-4 border-b border-border-main flex items-center justify-between">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                {editingServiceId ? (
+                  <Pencil size={20} className="text-primary" />
+                ) : (
+                  <Plus size={20} className="text-primary" />
+                )}
+                {editingServiceId ? "Edit Service" : "Create Service"}
+              </h3>
+              <button
+                onClick={() => {
+                  if (!serviceSaving) resetServiceModal();
+                }}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted-foreground/5 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {editingServiceId
+                  ? "Fix the spelling and save. Vendors already linked keep this service."
+                  : "Add a service that can be selected when creating a vendor."}
+              </p>
+              <div>
+                <label className="mb-2 block ui-form-label">Service Name</label>
+                <input
+                  type="text"
+                  value={serviceName}
+                  onChange={(e) => {
+                    setServiceName(e.target.value);
+                    if (serviceError) setServiceError("");
+                  }}
+                  placeholder="e.g. Plumbing"
+                  className={`common-input ${serviceError ? "border-red-500 focus:border-red-500" : ""}`}
+                  disabled={serviceSaving}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSaveService();
+                    }
+                  }}
+                />
+                {serviceError ? (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {serviceError}
+                  </p>
+                ) : null}
+              </div>
+
+              {!editingServiceId && servicesList.length > 0 ? (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Existing Services
+                  </label>
+                  <div className="max-h-48 overflow-y-auto rounded-xl border border-border-main divide-y divide-border-main">
+                    {servicesList.map((service) => (
+                      <div
+                        key={service.id}
+                        className="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-muted-foreground/5"
+                      >
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {service.name}
+                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => startEditService(service)}
+                            className="btn-action-edit"
+                            title="Edit service"
+                            disabled={serviceSaving}
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteService(service)}
+                            className="btn-action-delete"
+                            title="Delete service"
+                            disabled={serviceSaving}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="px-6 py-4 bg-muted-foreground/5 border-t border-border-main flex gap-3 justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  if (editingServiceId) {
+                    setEditingServiceId(null);
+                    setServiceName("");
+                    setServiceError("");
+                  } else {
+                    resetServiceModal();
+                  }
+                }}
+                disabled={serviceSaving}
+                className="h-10 text-xs px-6 font-semibold"
+              >
+                {editingServiceId ? "Back" : "Cancel"}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSaveService}
+                disabled={serviceSaving}
+                className="h-10 text-xs px-6 font-semibold flex items-center justify-center gap-2"
+              >
+                {serviceSaving ? (
+                  <>
+                    <Loader2 className="animate-spin" size={16} />
+                    Saving...
+                  </>
+                ) : editingServiceId ? (
+                  "Save Changes"
+                ) : (
+                  "Create Service"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

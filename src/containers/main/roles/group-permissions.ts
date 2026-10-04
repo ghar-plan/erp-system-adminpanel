@@ -3,7 +3,7 @@ import type { RbacPermission } from "./types";
 const MODULE_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
   vendors: "Vendors",
-  construction_site: "Projects",
+  __LEGACY_CONSTRUCTION_SITE__: "Projects",
   activity: "Activities",
   cash_flow: "Cashflow",
   prospect: "Prospects",
@@ -18,6 +18,15 @@ const MODULE_LABELS: Record<string, string> = {
   attendance: "Attendance",
   leave: "Leave",
   super_admin: "Super Admin",
+
+  design_projects: "Design Projects",
+  design_vendors: "Design Vendors",
+  design_activity: "Design Material/Services & Units",
+  design_cash_flow: "Design Cashflow",
+  design_prospect: "Design Prospects",
+  design_contracts: "Design Contracts",
+  design_comments: "Design Comments",
+  design_reports: "Design Reports",
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -47,10 +56,10 @@ const PERMISSION_LABELS: Record<string, string> = {
   "vendors.update": "Edit vendor",
   "vendors.delete": "Delete vendor",
 
-  "construction_site.create": "Create project",
-  "construction_site.read": "View projects",
-  "construction_site.update": "Edit project",
-  "construction_site.delete": "Delete project",
+  "__LEGACY_CONSTRUCTION_SITE__.create": "Create project",
+  "__LEGACY_CONSTRUCTION_SITE__.read": "View projects",
+  "__LEGACY_CONSTRUCTION_SITE__.update": "Edit project",
+  "__LEGACY_CONSTRUCTION_SITE__.delete": "Delete project",
 
   "activity.create": "Create activity",
   "activity.read": "View activities",
@@ -122,6 +131,51 @@ const PERMISSION_LABELS: Record<string, string> = {
   "leave.reject": "Reject leave",
   "leave.update": "Edit leave",
   "leave.delete": "Delete leave",
+
+  "design_projects.create": "Create design project",
+  "design_projects.read": "View design projects",
+  "design_projects.update": "Edit design project",
+  "design_projects.delete": "Delete design project",
+
+  "design_vendors.create": "Create design vendor",
+  "design_vendors.read": "View design vendors",
+  "design_vendors.update": "Edit design vendor",
+  "design_vendors.delete": "Delete design vendor",
+
+  "design_activity.create": "Create design activity",
+  "design_activity.read": "View design activities",
+  "design_activity.update": "Edit design activity",
+  "design_activity.delete": "Delete design activity",
+  "design_activity.import": "Import design activity",
+  "design_activity.export": "Export design activity",
+
+  "design_cash_flow.read": "View design transactions",
+  "design_cash_flow.update": "Edit design transaction",
+  "design_cash_flow.delete": "Delete design transaction",
+  "design_cash_flow.in": "Record design Cash In",
+  "design_cash_flow.out": "Record design Cash Out",
+  "design_cash_flow.print": "Print design receipt",
+  "design_cash_flow.export": "Export design PDF",
+  "design_cash_flow.import": "Import design cashflow",
+
+  "design_prospect.create": "Create design prospect",
+  "design_prospect.read": "View design prospects",
+  "design_prospect.update": "Edit design prospect",
+  "design_prospect.delete": "Delete design prospect",
+
+  "design_contracts.create": "Create design contract",
+  "design_contracts.read": "View design contracts",
+  "design_contracts.update": "Edit design contract",
+  "design_contracts.delete": "Delete design contract",
+
+  "design_comments.create": "Add design comments",
+  "design_comments.read": "View design comments",
+  "design_comments.update": "Edit design comments",
+  "design_comments.delete": "Delete design comments",
+
+  "design_reports.project_list": "Design Project List",
+  "design_reports.vendor_list": "Design Vendor List",
+  "design_reports.vendor_filter": "Design Vendor filter",
 };
 
 export function toPermissionCodename(permission: {

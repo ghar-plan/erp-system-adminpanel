@@ -1,0 +1,406 @@
+import { useEffect, useRef, useState } from "react";
+import useDesignCashflow from "./useHooks";
+import CashInForm from "./components/CashInForm";
+import CashOutForm from "./components/CashOutForm";
+import TransactionsTable from "./components/TransactionsTable";
+import Pagination from "@/components/particles/table/pagination";
+import { buildPaymentDetailsPayload } from "@/utils/helpers/models/cashflow/cashflow.dto";
+import { CanIf } from "@/components/auth/Can";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { FileText } from "lucide-react";
+import useEmployees from "@/containers/main/employees/useHooks";
+import useDesignActivities from "@/containers/main/design/activities/useHooks";
+
+export default function DesignCashflow() {
+  const { hasPermission } = usePermissions();
+  const canRead = hasPermission(PERMISSIONS.DESIGN_CASH_FLOW_READ);
+  const canExport = hasPermission(PERMISSIONS.DESIGN_CASH_FLOW_EXPORT);
+  const canManageCash =
+    hasPermission(PERMISSIONS.DESIGN_CASH_FLOW_IN) ||
+    hasPermission(PERMISSIONS.DESIGN_CASH_FLOW_OUT) ||
+    hasPermission(PERMISSIONS.DESIGN_CASH_FLOW_UPDATE);
+  const canLoadVendorOptions =
+    hasPermission(PERMISSIONS.DESIGN_VENDORS_READ) ||
+    hasPermission(PERMISSIONS.DESIGN_REPORTS_VENDOR_FILTER) ||
+    hasPermission(PERMISSIONS.DESIGN_CASH_FLOW_OUT);
+  const {
+    getProjects,
+    getVendors,
+    getCashflowCombinedList,
+    recordCashIn,
+    recordCashOut,
+    editCashIn,
+    editCashOut,
+    deleteCashflow,
+    exportCashflowPdf,
+    downloadReceipt,
+  } = useDesignCashflow();
+  const { getAllEmployees } = useEmployees();
+  const { getJobs, getWorkStages } = useDesignActivities();
+
+  const formsSectionRef = useRef<HTMLDivElement>(null);
+  const cashInFormRef = useRef<HTMLDivElement>(null);
+  const cashOutFormRef = useRef<HTMLDivElement>(null);
+
+  // Dropdown states
+  const [projects, setProjects] = useState<any[]>([]);
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [workStages, setWorkStages] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
+
+  // List states
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [submittingIn, setSubmittingIn] = useState(false);
+  const [submittingOut, setSubmittingOut] = useState(false);
+  const [totals, setTotals] = useState({ totalIn: 0, totalOut: 0 });
+
+  // Edit states
+  const [editDataIn, setEditDataIn] = useState<any>(null);
+  const [editDataOut, setEditDataOut] = useState<any>(null);
+
+  // Pagination states
+  const [totalElements, setTotalElements] = useState(0);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+
+  // Filters state
+  const [filterProject, setFilterProject] = useState("");
+  const [filterType, setFilterType] = useState("");
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
+  const [filterMiscellaneous, setFilterMiscellaneous] = useState("");
+
+  // Helper date formatters
+  const formatDate = (dateString: string | Date) => {
+    try {
+      const dateObj = new Date(dateString);
+      return dateObj.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch (e) {
+      return "N/A";
+    }
+  };
+
+  // Fetch metadata dropdown options (skip write-only lookups for read-only clients)
+  const fetchMetadata = async () => {
+    await Promise.all([
+      getProjects(setProjects),
+      canLoadVendorOptions ? getVendors(setVendors) : Promise.resolve(),
+      canManageCash ? getJobs(setJobs) : Promise.resolve(),
+      canManageCash ? getWorkStages(setWorkStages) : Promise.resolve(),
+      canManageCash ? getAllEmployees(setEmployees) : Promise.resolve(),
+    ]);
+  };
+
+  // Fetch transactions from backend with active filters
+  const fetchTransactions = async (currentFilters: {
+    projectId?: string;
+    type?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    miscellaneous?: string;
+    page: number;
+    limit: number;
+  }) => {
+    const { projectId, type, search, startDate, endDate, miscellaneous, page, limit } =
+      currentFilters;
+
+    const queryParams: any = {
+      offset: (page - 1) * limit,
+      limit,
+    };
+    if (projectId) queryParams.projectId = projectId;
+    if (type) queryParams.type = type;
+    if (search) queryParams.search = search;
+    if (startDate) queryParams.startDate = startDate;
+    if (endDate) queryParams.endDate = endDate;
+    if (miscellaneous) queryParams.miscellaneous = miscellaneous;
+
+    await getCashflowCombinedList(setTransactions, queryParams, setTotalElements, setTotals);
+  };
+
+  useEffect(() => {
+    if (!canRead) return;
+    fetchMetadata();
+  }, [canRead]);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filterProject, filterType, filterSearch, filterStartDate, filterEndDate, filterMiscellaneous]);
+
+  useEffect(() => {
+    if (!canRead) return;
+    fetchTransactions({
+      projectId: filterProject,
+      type: filterType,
+      search: filterSearch,
+      startDate: filterStartDate,
+      endDate: filterEndDate,
+      miscellaneous: filterMiscellaneous,
+      page,
+      limit,
+    });
+  }, [
+    canRead,
+    filterProject,
+    filterType,
+    filterSearch,
+    filterStartDate,
+    filterEndDate,
+    filterMiscellaneous,
+    page,
+    limit,
+  ]);
+
+  const refreshTransactions = () => {
+    fetchTransactions({
+      projectId: filterProject,
+      type: filterType,
+      search: filterSearch,
+      startDate: filterStartDate,
+      endDate: filterEndDate,
+      miscellaneous: filterMiscellaneous,
+      page,
+      limit,
+    });
+  };
+
+  const onPageChange = (pageInfo: { selected: number; limit: number }) => {
+    setPage(pageInfo.selected + 1);
+    setLimit(pageInfo.limit);
+  };
+
+  // Form submits callbacks
+  const handleRecordPayment = async (data: any) => {
+    setSubmittingIn(true);
+    const payload = {
+      projectId: data.projectId,
+      installment: data.installment,
+      amount: Number(data.amount),
+      ...buildPaymentDetailsPayload(data),
+    };
+    if (editDataIn) {
+      await editCashIn(editDataIn.id, payload, () => {
+        setEditDataIn(null);
+        refreshTransactions();
+      });
+    } else {
+      await recordCashIn(payload, () => {
+        refreshTransactions();
+      });
+    }
+    setSubmittingIn(false);
+  };
+
+  const handleRecordExpense = async (data: any) => {
+    setSubmittingOut(true);
+
+    const isMiscellaneous = data.vendorMode === "miscellaneous" || !data.vendorId;
+    const total = Number(data.amount) || 0;
+
+    const paymentDetails = buildPaymentDetailsPayload(data);
+    // Keep paid/remaining consistent with the exact total amount
+    if (data.paymentSource === "Partial") {
+      const paid = Number(data.paidAmount) || 0;
+      paymentDetails.paidAmount = paid;
+      paymentDetails.remainingAmount = Math.max(
+        0,
+        Math.round((total - paid) * 100) / 100,
+      );
+    } else if (data.paymentSource === "Credit") {
+      paymentDetails.paidAmount = 0;
+      paymentDetails.remainingAmount = total;
+    } else if (
+      data.paymentSource === "Cash" ||
+      data.paymentSource === "Advance"
+    ) {
+      paymentDetails.paidAmount = total;
+      paymentDetails.remainingAmount = 0;
+    }
+
+    const payload = {
+      projectId: data.projectId,
+      isMiscellaneous,
+      ...(isMiscellaneous ? { vendorId: null } : { vendorId: data.vendorId }),
+      jobId: data.jobId,
+      workStageId: data.workStageId,
+      items: data.items,
+      amount: total,
+      ...paymentDetails,
+    };
+    if (editDataOut) {
+      await editCashOut(editDataOut.id, payload, () => {
+        setEditDataOut(null);
+        refreshTransactions();
+      });
+    } else {
+      await recordCashOut(payload, () => {
+        refreshTransactions();
+      });
+    }
+    setSubmittingOut(false);
+  };
+
+  const handleEdit = (tx: any) => {
+    if (tx.type === "CASH IN") {
+      setEditDataOut(null);
+      setEditDataIn(tx);
+    } else {
+      setEditDataIn(null);
+      setEditDataOut(tx);
+    }
+
+    // Scroll the relevant form into view (main layout scrolls inside <main>, not window)
+    requestAnimationFrame(() => {
+      const target =
+        tx.type === "CASH IN"
+          ? cashInFormRef.current
+          : cashOutFormRef.current;
+      (target || formsSectionRef.current)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
+
+  // Export to PDF from backend
+  const handlePdfExport = async () => {
+    const queryParams: any = {};
+    if (filterProject) queryParams.projectId = filterProject;
+    if (filterType && filterType !== "ALL") queryParams.type = filterType;
+    if (filterSearch) queryParams.search = filterSearch;
+    if (filterStartDate) queryParams.startDate = filterStartDate;
+    if (filterEndDate) queryParams.endDate = filterEndDate;
+
+    await exportCashflowPdf(queryParams);
+  };
+
+  const handleDelete = async (
+    id: string,
+    type: "CASH IN" | "CASH OUT",
+    label: string,
+  ) => {
+    await deleteCashflow(id, type, label, refreshTransactions);
+  };
+
+  const handleDownloadReceipt = async (
+    id: string,
+    type: "CASH IN" | "CASH OUT",
+  ) => {
+    await downloadReceipt(id, type);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl text-foreground font-bold  ">
+              Design Cashflow Management
+            </h1>
+          </div>
+        </div>
+      </div>
+
+      <hr className="border-border-main" />
+
+      {canRead ? (
+        <>
+      {/* Forms Grid Layout */}
+      <CanIf permissions={[PERMISSIONS.DESIGN_CASH_FLOW_IN, PERMISSIONS.DESIGN_CASH_FLOW_OUT, PERMISSIONS.DESIGN_CASH_FLOW_UPDATE]}>
+      <div
+        ref={formsSectionRef}
+        className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-slide-up scroll-mt-4"
+      >
+        <CanIf permissions={[PERMISSIONS.DESIGN_CASH_FLOW_IN, PERMISSIONS.DESIGN_CASH_FLOW_UPDATE]}>
+          <div ref={cashInFormRef} className="scroll-mt-4">
+            <CashInForm
+              projects={projects}
+              employees={employees}
+              onSubmit={handleRecordPayment}
+              submitting={submittingIn}
+              editData={editDataIn}
+              onCancelEdit={() => setEditDataIn(null)}
+            />
+          </div>
+        </CanIf>
+
+        <CanIf permissions={[PERMISSIONS.DESIGN_CASH_FLOW_OUT, PERMISSIONS.DESIGN_CASH_FLOW_UPDATE]}>
+          <div ref={cashOutFormRef} className="scroll-mt-4 lg:col-span-2">
+            <CashOutForm
+              projects={projects}
+              vendors={vendors}
+              jobs={jobs}
+              workStages={workStages}
+              employees={employees}
+              onSubmit={handleRecordExpense}
+              submitting={submittingOut}
+              editData={editDataOut}
+              onCancelEdit={() => setEditDataOut(null)}
+            />
+          </div>
+        </CanIf>
+      </div>
+      </CanIf>
+
+      {/* RECENT TRANSACTIONS TABLE */}
+      <div className="pt-4 border-t border-border-main/60 animate-fade-in space-y-4">
+        <TransactionsTable
+          transactions={transactions}
+          projects={projects}
+          employees={employees}
+          filterProject={filterProject}
+          setFilterProject={setFilterProject}
+          filterType={filterType}
+          setFilterType={setFilterType}
+          filterSearch={filterSearch}
+          setFilterSearch={setFilterSearch}
+          filterStartDate={filterStartDate}
+          setFilterStartDate={setFilterStartDate}
+          filterEndDate={filterEndDate}
+          setFilterEndDate={setFilterEndDate}
+          filterMiscellaneous={filterMiscellaneous}
+          setFilterMiscellaneous={setFilterMiscellaneous}
+          exportData={handlePdfExport}
+          formatDate={formatDate}
+          onDelete={handleDelete}
+          onDownloadReceipt={handleDownloadReceipt}
+          onEdit={handleEdit}
+          onRefresh={refreshTransactions}
+          totals={totals}
+        />
+
+        {totalElements > 0 && (
+          <Pagination
+            count={totalElements}
+            page={page}
+            limit={limit}
+            onPageChange={onPageChange}
+          />
+        )}
+      </div>
+        </>
+      ) : canExport ? (
+        <div className="flex justify-start">
+          <button
+            type="button"
+            onClick={handlePdfExport}
+            className="flex h-10 px-5 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs whitespace-nowrap"
+          >
+            <FileText size={16} />
+            Export PDF
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}

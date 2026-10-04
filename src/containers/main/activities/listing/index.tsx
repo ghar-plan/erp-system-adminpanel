@@ -49,7 +49,7 @@ const SECTIONS: SectionMeta[] = [
     label: "Work Stages",
     singular: "Work Stage",
     createLabel: "Add Work Stage",
-    description: "Construction milestones & project progress phases",
+    description: "Design milestones & project progress phases",
     badgeText: "Milestones",
     icon: Layers,
     placeholder: "e.g. Excavation, Foundation, Grey Structure, Finishing",

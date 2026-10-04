@@ -46,6 +46,31 @@ import LeavesPage from "@/containers/main/leaves";
 import PermissionGuard from "@/components/auth/PermissionGuard";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
+// Design module
+import DesignProjectListing from "@/containers/main/design/projects/listing";
+import DesignProjectsCreate from "@/containers/main/design/projects/create";
+import DesignProjectView from "@/containers/main/design/projects/view";
+import DesignProjectsEdit from "@/containers/main/design/projects/edit";
+import DesignComments from "@/containers/main/design/comments";
+import DesignActivitiesListing from "@/containers/main/design/activities/listing";
+import DesignVendorListing from "@/containers/main/design/vendors/list";
+import DesignVendorCreate from "@/containers/main/design/vendors/create";
+import DesignVendorEdit from "@/containers/main/design/vendors/edit";
+import DesignVendorView from "@/containers/main/design/vendors/view";
+import DesignCashflow from "@/containers/main/design/cashflow";
+import DesignCashflowView from "@/containers/main/design/cashflow/view";
+import DesignProspectsListing from "@/containers/main/design/prospects/listing";
+import DesignProspectCreate from "@/containers/main/design/prospects/create";
+import DesignProspectView from "@/containers/main/design/prospects/view";
+import DesignContractsListing from "@/containers/main/design/contracts/listing";
+import DesignContractCreate from "@/containers/main/design/contracts/create";
+import DesignContractEdit from "@/containers/main/design/contracts/edit";
+import DesignClientContractsListing from "@/containers/main/design/client-contracts/listing";
+import DesignClientContractCreate from "@/containers/main/design/client-contracts/create";
+import DesignClientContractEdit from "@/containers/main/design/client-contracts/edit";
+import DesignProjectLedger from "@/containers/main/design/reports/projectList/listing";
+import DesignVendorListReport from "@/containers/main/design/reports/vendorList/listing";
+
 function guard(
   element: ReactElement,
   permission?: string,
@@ -261,6 +286,116 @@ const DashboardRoutes = () => {
             PERMISSIONS.LEAVE_REJECT,
           ])}
         />
+        {/* Design module */}
+        <Route
+          path={siteRoutes.designProjects}
+          element={guard(<DesignProjectListing />, PERMISSIONS.DESIGN_PROJECTS_READ)}
+        />
+        <Route
+          path={siteRoutes.designProjectsCreate}
+          element={guard(<DesignProjectsCreate />, PERMISSIONS.DESIGN_PROJECTS_CREATE)}
+        />
+        <Route
+          path={siteRoutes.designProjectsView}
+          element={guard(<DesignProjectView />, PERMISSIONS.DESIGN_PROJECTS_READ)}
+        />
+        <Route
+          path={siteRoutes.designProjectsEdit}
+          element={guard(<DesignProjectsEdit />, PERMISSIONS.DESIGN_PROJECTS_UPDATE)}
+        />
+        <Route
+          path={siteRoutes.designComments}
+          element={guard(<DesignComments />, undefined, [
+            PERMISSIONS.DESIGN_COMMENTS_READ,
+            PERMISSIONS.DESIGN_PROJECTS_READ,
+          ])}
+        />
+        <Route
+          path={siteRoutes.designActivity}
+          element={guard(<DesignActivitiesListing />, PERMISSIONS.DESIGN_ACTIVITY_READ)}
+        />
+        <Route
+          path={siteRoutes.designVendors}
+          element={guard(<DesignVendorListing />, PERMISSIONS.DESIGN_VENDORS_READ)}
+        />
+        <Route
+          path={siteRoutes.designVendorsCreate}
+          element={guard(<DesignVendorCreate />, PERMISSIONS.DESIGN_VENDORS_CREATE)}
+        />
+        <Route
+          path={siteRoutes.designVendorsView}
+          element={guard(<DesignVendorView />, PERMISSIONS.DESIGN_VENDORS_READ)}
+        />
+        <Route
+          path={siteRoutes.designVendorsEdit}
+          element={guard(<DesignVendorEdit />, PERMISSIONS.DESIGN_VENDORS_UPDATE)}
+        />
+        <Route
+          path={siteRoutes.designCashflow}
+          element={guard(<DesignCashflow />, undefined, [
+            PERMISSIONS.DESIGN_CASH_FLOW_READ,
+            PERMISSIONS.DESIGN_CASH_FLOW_EXPORT,
+            PERMISSIONS.DESIGN_CASH_FLOW_PRINT,
+            PERMISSIONS.DESIGN_CASH_FLOW_IN,
+            PERMISSIONS.DESIGN_CASH_FLOW_OUT,
+            PERMISSIONS.DESIGN_CASH_FLOW_UPDATE,
+            PERMISSIONS.DESIGN_CASH_FLOW_DELETE,
+            PERMISSIONS.DESIGN_CASH_FLOW_IMPORT,
+          ])}
+        />
+        <Route
+          path={siteRoutes.designCashflowView}
+          element={guard(<DesignCashflowView />, PERMISSIONS.DESIGN_CASH_FLOW_READ)}
+        />
+        <Route
+          path={siteRoutes.designProspects}
+          element={guard(<DesignProspectsListing />, PERMISSIONS.DESIGN_PROSPECT_READ)}
+        />
+        <Route
+          path={siteRoutes.designProspectsCreate}
+          element={guard(<DesignProspectCreate />, PERMISSIONS.DESIGN_PROSPECT_CREATE)}
+        />
+        <Route
+          path={siteRoutes.designProspectsView}
+          element={guard(<DesignProspectView />, PERMISSIONS.DESIGN_PROSPECT_READ)}
+        />
+        <Route
+          path={siteRoutes.designProspectsEdit}
+          element={guard(<DesignProspectCreate />, PERMISSIONS.DESIGN_PROSPECT_UPDATE)}
+        />
+        <Route
+          path={siteRoutes.designContracts}
+          element={guard(<DesignContractsListing />, PERMISSIONS.DESIGN_CONTRACTS_READ)}
+        />
+        <Route
+          path={siteRoutes.designContractsCreate}
+          element={guard(<DesignContractCreate />, PERMISSIONS.DESIGN_CONTRACTS_CREATE)}
+        />
+        <Route
+          path={siteRoutes.designContractsEdit}
+          element={guard(<DesignContractEdit />, PERMISSIONS.DESIGN_CONTRACTS_UPDATE)}
+        />
+        <Route
+          path={siteRoutes.designClientContracts}
+          element={guard(<DesignClientContractsListing />, PERMISSIONS.DESIGN_CONTRACTS_READ)}
+        />
+        <Route
+          path={siteRoutes.designClientContractsCreate}
+          element={guard(<DesignClientContractCreate />, PERMISSIONS.DESIGN_CONTRACTS_CREATE)}
+        />
+        <Route
+          path={siteRoutes.designClientContractsEdit}
+          element={guard(<DesignClientContractEdit />, PERMISSIONS.DESIGN_CONTRACTS_UPDATE)}
+        />
+        <Route
+          path={siteRoutes.designReportsProjectList}
+          element={guard(<DesignProjectLedger />, PERMISSIONS.DESIGN_REPORTS_PROJECT_LIST)}
+        />
+        <Route
+          path={siteRoutes.designReportsVendorList}
+          element={guard(<DesignVendorListReport />, PERMISSIONS.DESIGN_REPORTS_VENDOR_LIST)}
+        />
+
         <Route path={siteRoutes.unauthorized} element={<Unauthorized />} />
       </Routes>
     </MainLayout>

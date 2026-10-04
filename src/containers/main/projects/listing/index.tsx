@@ -144,7 +144,7 @@ export default function ProjectListing() {
     "S/No.",
     "Site Name",
     "Manager",
-    "Type (Construction)",
+    "Type (Design)",
     "Payment Plan",
     "Start Date",
     ...(showActions ? ["Actions"] : []),
@@ -214,7 +214,7 @@ export default function ProjectListing() {
 
         <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
           <label htmlFor="constructionType" className="text-xs text-foreground font-medium whitespace-nowrap">
-            Construction Type
+            Design Type
           </label>
           <select
             name="constructionType"

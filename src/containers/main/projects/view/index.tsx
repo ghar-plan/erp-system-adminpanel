@@ -358,7 +358,7 @@ export default function ProjectsView() {
                 </div>
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                    Construction Type
+                    Design Type
                   </span>
                   <span className="text-sm font-semibold text-foreground mt-0.5 block">
                     {project.constructionType || "--"}

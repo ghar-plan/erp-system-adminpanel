@@ -21,6 +21,10 @@ export default function Cashflow() {
   const { hasPermission } = usePermissions();
   const canRead = hasPermission(PERMISSIONS.CASH_FLOW_READ);
   const canExport = hasPermission(PERMISSIONS.CASH_FLOW_EXPORT);
+  const canManageCash =
+    hasPermission(PERMISSIONS.CASH_FLOW_IN) ||
+    hasPermission(PERMISSIONS.CASH_FLOW_OUT) ||
+    hasPermission(PERMISSIONS.CASH_FLOW_UPDATE);
   const canLoadVendorOptions =
     hasPermission(PERMISSIONS.VENDORS_READ) ||
     hasPermission(PERMISSIONS.REPORTS_VENDOR_FILTER) ||
@@ -104,15 +108,15 @@ export default function Cashflow() {
     }
   };
 
-  // Fetch metadata dropdown options
+  // Fetch metadata dropdown options (skip write-only lookups for read-only clients)
   const fetchMetadata = async () => {
     await Promise.all([
       getProjects(setProjects),
       canLoadVendorOptions ? getVendors(setVendors) : Promise.resolve(),
-      getJobs(setJobs),
-      getWorkStages(setWorkStages),
-      getUnits(setUnits),
-      getAllEmployees(setEmployees),
+      canManageCash ? getJobs(setJobs) : Promise.resolve(),
+      canManageCash ? getWorkStages(setWorkStages) : Promise.resolve(),
+      canManageCash ? getUnits(setUnits) : Promise.resolve(),
+      canManageCash ? getAllEmployees(setEmployees) : Promise.resolve(),
     ]);
   };
 

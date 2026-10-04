@@ -8,6 +8,7 @@ export type MenuLeaf = {
   permission?: string;
   anyOf?: string[];
   explicit?: boolean;
+  children?: MenuLeaf[];
 };
 
 export type MenuGroup = {
@@ -26,6 +27,99 @@ export const menuConfig: MenuGroup[] = [
     text: "Dashboard",
     path: siteRoutes.dashboard,
     permission: PERMISSIONS.DASHBOARD_READ,
+  },
+  {
+    key: "design",
+    text: "Design",
+    path: siteRoutes.designProjects,
+    children: [
+      {
+        title: "Projects",
+        path: siteRoutes.designProjects,
+        icon: "design-projects",
+        permission: PERMISSIONS.DESIGN_PROJECTS_READ,
+      },
+      {
+        title: "Comments",
+        path: siteRoutes.designComments,
+        icon: "design-comments",
+        anyOf: [
+          PERMISSIONS.DESIGN_COMMENTS_READ,
+          PERMISSIONS.DESIGN_PROJECTS_READ,
+        ],
+      },
+      {
+        title: "Vendors",
+        path: siteRoutes.designVendors,
+        icon: "design-vendors",
+        permission: PERMISSIONS.DESIGN_VENDORS_READ,
+      },
+      {
+        title: "Material/Services & Stages",
+        path: siteRoutes.designActivity,
+        icon: "design-activity",
+        permission: PERMISSIONS.DESIGN_ACTIVITY_READ,
+      },
+      {
+        title: "Cashflow",
+        path: siteRoutes.designCashflow,
+        icon: "design-cashflow",
+        anyOf: [
+          PERMISSIONS.DESIGN_CASH_FLOW_READ,
+          PERMISSIONS.DESIGN_CASH_FLOW_EXPORT,
+          PERMISSIONS.DESIGN_CASH_FLOW_PRINT,
+          PERMISSIONS.DESIGN_CASH_FLOW_IN,
+          PERMISSIONS.DESIGN_CASH_FLOW_OUT,
+          PERMISSIONS.DESIGN_CASH_FLOW_UPDATE,
+          PERMISSIONS.DESIGN_CASH_FLOW_DELETE,
+          PERMISSIONS.DESIGN_CASH_FLOW_IMPORT,
+        ],
+      },
+      {
+        title: "Prospects",
+        path: siteRoutes.designProspects,
+        icon: "design-prospects",
+        permission: PERMISSIONS.DESIGN_PROSPECT_READ,
+      },
+      {
+        title: "Contracts",
+        path: siteRoutes.designContracts,
+        icon: "design-contracts",
+        children: [
+          {
+            title: "Vendor Contract",
+            path: siteRoutes.designContracts,
+            icon: "design-vendor-contract",
+            permission: PERMISSIONS.DESIGN_CONTRACTS_READ,
+          },
+          {
+            title: "Client Contract",
+            path: siteRoutes.designClientContracts,
+            icon: "design-client-contract",
+            permission: PERMISSIONS.DESIGN_CONTRACTS_READ,
+          },
+        ],
+      },
+      {
+        title: "Reports",
+        path: siteRoutes.designReportsProjectList,
+        icon: "design-reports",
+        children: [
+          {
+            title: "Project List",
+            path: siteRoutes.designReportsProjectList,
+            icon: "design-project-list",
+            permission: PERMISSIONS.DESIGN_REPORTS_PROJECT_LIST,
+          },
+          {
+            title: "Vendor List",
+            path: siteRoutes.designReportsVendorList,
+            icon: "design-vendor-list",
+            permission: PERMISSIONS.DESIGN_REPORTS_VENDOR_LIST,
+          },
+        ],
+      },
+    ],
   },
   {
     key: "projects",
@@ -180,6 +274,11 @@ function leafAllowed(
   hasAnyPermission: CanAnyFn,
   hasExplicitPermission: CanFn,
 ): boolean {
+  if (leaf.children?.length) {
+    return leaf.children.some((child) =>
+      leafAllowed(child, hasPermission, hasAnyPermission, hasExplicitPermission),
+    );
+  }
   const check = leaf.explicit ? hasExplicitPermission : hasPermission;
   if (leaf.anyOf?.length) {
     return leaf.explicit
@@ -188,6 +287,40 @@ function leafAllowed(
   }
   if (leaf.permission) return check(leaf.permission);
   return true;
+}
+
+function filterLeaves(
+  leaves: MenuLeaf[],
+  hasPermission: CanFn,
+  hasAnyPermission: CanAnyFn,
+  hasExplicitPermission: CanFn,
+): MenuLeaf[] {
+  return leaves
+    .map((leaf) => {
+      if (leaf.children?.length) {
+        const children = filterLeaves(
+          leaf.children,
+          hasPermission,
+          hasAnyPermission,
+          hasExplicitPermission,
+        );
+        if (!children.length) return null;
+        return {
+          ...leaf,
+          children,
+          path: children[0]?.path ?? leaf.path,
+        };
+      }
+      return leafAllowed(
+        leaf,
+        hasPermission,
+        hasAnyPermission,
+        hasExplicitPermission,
+      )
+        ? leaf
+        : null;
+    })
+    .filter(Boolean) as MenuLeaf[];
 }
 
 export function filterMenuByPermissions(
@@ -199,8 +332,11 @@ export function filterMenuByPermissions(
   return groups
     .map((group) => {
       if (group.children?.length) {
-        const children = group.children.filter((c) =>
-          leafAllowed(c, hasPermission, hasAnyPermission, hasExplicitPermission),
+        const children = filterLeaves(
+          group.children,
+          hasPermission,
+          hasAnyPermission,
+          hasExplicitPermission,
         );
         if (!children.length) return null;
         return {

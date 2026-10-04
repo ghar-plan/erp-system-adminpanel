@@ -27,9 +27,18 @@ import {
   MessageSquare,
   Clock,
   CalendarDays,
+  HardHat,
+  Hammer,
+  Wallet,
+  UserPlus,
+  FileSpreadsheet,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
-import { filterMenuByPermissions, menuConfig } from "@/navigation/menu.config";
+import {
+  filterMenuByPermissions,
+  menuConfig,
+  type MenuLeaf,
+} from "@/navigation/menu.config";
 
 interface LayoutProps {
   children: ReactNode;
@@ -48,6 +57,7 @@ const MENU_ICONS: Record<string, React.ReactNode> = {
   "roles-permissions": <Shield size={20} />,
   attendance: <Clock size={20} />,
   leaves: <CalendarDays size={20} />,
+  design: <HardHat size={20} />,
 };
 
 const CHILD_ICONS: Record<string, React.ReactNode> = {
@@ -60,6 +70,18 @@ const CHILD_ICONS: Record<string, React.ReactNode> = {
   employees: <Users size={16} />,
   "vendor-contract": <FileSignature size={16} />,
   "client-contract": <FileText size={16} />,
+  "design-projects": <Compass size={16} />,
+  "design-comments": <MessageSquare size={16} />,
+  "design-vendors": <UserCog size={16} />,
+  "design-activity": <Hammer size={16} />,
+  "design-cashflow": <Wallet size={16} />,
+  "design-prospects": <UserPlus size={16} />,
+  "design-contracts": <FileSignature size={16} />,
+  "design-reports": <BarChart3 size={16} />,
+  "design-vendor-contract": <FileSignature size={16} />,
+  "design-client-contract": <FileText size={16} />,
+  "design-project-list": <ClipboardList size={16} />,
+  "design-vendor-list": <FileSpreadsheet size={16} />,
 };
 
 const MainLayout: React.FC<LayoutProps> = ({ children }) => {
@@ -86,8 +108,11 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
 
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({
     Reports: false,
-    "Stakeholders": false,
+    Stakeholders: false,
     Contracts: false,
+    Design: false,
+    "Design-Contracts": false,
+    "Design-Reports": false,
   });
 
   const toggleDropdown = (text: string) => {
@@ -107,8 +132,12 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
     );
   };
 
-  const isChildActive = (children: { path: string }[]) => {
-    return children.some((child) => isActive(child.path));
+  const isChildActive = (children: MenuLeaf[]): boolean => {
+    return children.some((child) =>
+      child.children?.length
+        ? isChildActive(child.children)
+        : isActive(child.path),
+    );
   };
 
   return (
@@ -156,29 +185,92 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
 
                   {isOpen && isSidebarExpanded && (
                     <ul className="mt-1 ml-6 space-y-1">
-                      {item.children!.map((child) => (
-                        <li key={child.path}>
-                          <Link
-                            to={child.path}
-                            className={`group/child flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-200 cursor-pointer ${
-                              isActive(child.path)
-                                ? "bg-tertiary text-white shadow-lg shadow-tertiary/30 font-medium"
-                                : "text-white/60 hover:text-white hover:bg-white/5"
-                            }`}
-                          >
-                            <span
-                              className={`shrink-0 transition-transform duration-200 ${
+                      {item.children!.map((child) => {
+                        const nestedChildren = child.children || [];
+                        const hasNested = nestedChildren.length > 0;
+                        const nestedKey = `${item.text}-${child.title}`;
+                        const nestedOpen = !!openDropdowns[nestedKey];
+                        const nestedActive = hasNested
+                          ? isChildActive(nestedChildren)
+                          : isActive(child.path);
+
+                        if (hasNested) {
+                          return (
+                            <li key={`${child.title}-${child.path}`}>
+                              <button
+                                type="button"
+                                onClick={() => toggleDropdown(nestedKey)}
+                                className={`w-full group/child flex items-center justify-between gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-200 cursor-pointer ${
+                                  nestedActive
+                                    ? "bg-tertiary/20 text-white font-medium"
+                                    : "text-white/60 hover:text-white hover:bg-white/5"
+                                }`}
+                              >
+                                <span className="flex items-center gap-2.5 min-w-0">
+                                  <span className="shrink-0">
+                                    {child.icon
+                                      ? CHILD_ICONS[child.icon]
+                                      : null}
+                                  </span>
+                                  <span className="truncate">{child.title}</span>
+                                </span>
+                                {nestedOpen ? (
+                                  <ChevronDown size={14} />
+                                ) : (
+                                  <ChevronRight size={14} />
+                                )}
+                              </button>
+                              {nestedOpen ? (
+                                <ul className="mt-1 ml-4 space-y-1">
+                                  {nestedChildren.map((nested) => (
+                                    <li key={nested.path}>
+                                      <Link
+                                        to={nested.path}
+                                        className={`group/nested flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-200 cursor-pointer ${
+                                          isActive(nested.path)
+                                            ? "bg-tertiary text-white shadow-lg shadow-tertiary/30 font-medium"
+                                            : "text-white/60 hover:text-white hover:bg-white/5"
+                                        }`}
+                                      >
+                                        <span className="shrink-0">
+                                          {nested.icon
+                                            ? CHILD_ICONS[nested.icon]
+                                            : null}
+                                        </span>
+                                        <span>{nested.title}</span>
+                                      </Link>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                            </li>
+                          );
+                        }
+
+                        return (
+                          <li key={child.path}>
+                            <Link
+                              to={child.path}
+                              className={`group/child flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-200 cursor-pointer ${
                                 isActive(child.path)
-                                  ? "scale-110"
-                                  : "group-hover/child:scale-110"
+                                  ? "bg-tertiary text-white shadow-lg shadow-tertiary/30 font-medium"
+                                  : "text-white/60 hover:text-white hover:bg-white/5"
                               }`}
                             >
-                              {child.icon ? CHILD_ICONS[child.icon] : null}
-                            </span>
-                            <span>{child.title}</span>
-                          </Link>
-                        </li>
-                      ))}
+                              <span
+                                className={`shrink-0 transition-transform duration-200 ${
+                                  isActive(child.path)
+                                    ? "scale-110"
+                                    : "group-hover/child:scale-110"
+                                }`}
+                              >
+                                {child.icon ? CHILD_ICONS[child.icon] : null}
+                              </span>
+                              <span>{child.title}</span>
+                            </Link>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>

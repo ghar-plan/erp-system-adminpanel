@@ -250,7 +250,7 @@ export default function ProspectCreate() {
           <div className="md:col-span-2">
             <label className="mb-2 block ui-form-label">Prospect Notes</label>
             <textarea
-              placeholder="e.g. Interested in a 5-marla double-story construction design in Johar Town."
+              placeholder="e.g. Interested in a 5-marla double-story design design in Johar Town."
               rows={4}
               className="common-input py-3 resize-none"
               {...register("notes")}

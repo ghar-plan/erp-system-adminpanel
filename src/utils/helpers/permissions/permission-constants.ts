@@ -6,10 +6,10 @@ export const PERMISSIONS = {
   VENDORS_UPDATE: "vendors.update",
   VENDORS_DELETE: "vendors.delete",
 
-  CONSTRUCTION_SITE_CREATE: "construction_site.create",
-  CONSTRUCTION_SITE_READ: "construction_site.read",
-  CONSTRUCTION_SITE_UPDATE: "construction_site.update",
-  CONSTRUCTION_SITE_DELETE: "construction_site.delete",
+  CONSTRUCTION_SITE_CREATE: "__LEGACY_CONSTRUCTION_SITE__.create",
+  CONSTRUCTION_SITE_READ: "__LEGACY_CONSTRUCTION_SITE__.read",
+  CONSTRUCTION_SITE_UPDATE: "__LEGACY_CONSTRUCTION_SITE__.update",
+  CONSTRUCTION_SITE_DELETE: "__LEGACY_CONSTRUCTION_SITE__.delete",
 
   ACTIVITY_CREATE: "activity.create",
   ACTIVITY_READ: "activity.read",
@@ -81,6 +81,52 @@ export const PERMISSIONS = {
   LEAVE_REJECT: "leave.reject",
   LEAVE_UPDATE: "leave.update",
   LEAVE_DELETE: "leave.delete",
+
+  // Design module permissions
+  DESIGN_PROJECTS_CREATE: "design_projects.create",
+  DESIGN_PROJECTS_READ: "design_projects.read",
+  DESIGN_PROJECTS_UPDATE: "design_projects.update",
+  DESIGN_PROJECTS_DELETE: "design_projects.delete",
+
+  DESIGN_VENDORS_CREATE: "design_vendors.create",
+  DESIGN_VENDORS_READ: "design_vendors.read",
+  DESIGN_VENDORS_UPDATE: "design_vendors.update",
+  DESIGN_VENDORS_DELETE: "design_vendors.delete",
+
+  DESIGN_ACTIVITY_CREATE: "design_activity.create",
+  DESIGN_ACTIVITY_READ: "design_activity.read",
+  DESIGN_ACTIVITY_UPDATE: "design_activity.update",
+  DESIGN_ACTIVITY_DELETE: "design_activity.delete",
+  DESIGN_ACTIVITY_IMPORT: "design_activity.import",
+  DESIGN_ACTIVITY_EXPORT: "design_activity.export",
+
+  DESIGN_CASH_FLOW_READ: "design_cash_flow.read",
+  DESIGN_CASH_FLOW_UPDATE: "design_cash_flow.update",
+  DESIGN_CASH_FLOW_DELETE: "design_cash_flow.delete",
+  DESIGN_CASH_FLOW_IN: "design_cash_flow.in",
+  DESIGN_CASH_FLOW_OUT: "design_cash_flow.out",
+  DESIGN_CASH_FLOW_PRINT: "design_cash_flow.print",
+  DESIGN_CASH_FLOW_EXPORT: "design_cash_flow.export",
+  DESIGN_CASH_FLOW_IMPORT: "design_cash_flow.import",
+
+  DESIGN_PROSPECT_CREATE: "design_prospect.create",
+  DESIGN_PROSPECT_READ: "design_prospect.read",
+  DESIGN_PROSPECT_UPDATE: "design_prospect.update",
+  DESIGN_PROSPECT_DELETE: "design_prospect.delete",
+
+  DESIGN_CONTRACTS_CREATE: "design_contracts.create",
+  DESIGN_CONTRACTS_READ: "design_contracts.read",
+  DESIGN_CONTRACTS_UPDATE: "design_contracts.update",
+  DESIGN_CONTRACTS_DELETE: "design_contracts.delete",
+
+  DESIGN_COMMENTS_CREATE: "design_comments.create",
+  DESIGN_COMMENTS_READ: "design_comments.read",
+  DESIGN_COMMENTS_UPDATE: "design_comments.update",
+  DESIGN_COMMENTS_DELETE: "design_comments.delete",
+
+  DESIGN_REPORTS_PROJECT_LIST: "design_reports.project_list",
+  DESIGN_REPORTS_VENDOR_LIST: "design_reports.vendor_list",
+  DESIGN_REPORTS_VENDOR_FILTER: "design_reports.vendor_filter",
 } as const;
 
 export type PermissionCodename =
