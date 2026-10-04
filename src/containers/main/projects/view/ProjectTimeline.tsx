@@ -166,7 +166,7 @@ export default function ProjectTimeline({
   return (
     <div className="bg-card border border-border-main rounded-xl p-6 shadow-xs">
       <div>
-        <h2 className="text-xl font-bold text-foreground">Project Timeline</h2>
+        <h2 className="text-xl font-bold text-foreground">Project Cashflow</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
           Chronological record of cash in, cash out, vendors, activities, and project updates.
         </p>

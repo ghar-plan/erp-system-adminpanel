@@ -6,6 +6,7 @@ import PaymentDetailsFields, {
   emptyPaymentDetails,
   mapPaymentDetailsFromEdit,
 } from "./PaymentDetailsFields";
+import TypeaheadSelect from "./TypeaheadSelect";
 
 interface CashOutFormInputs {
   projectId: string;
@@ -85,8 +86,13 @@ export default function CashOutForm({
   const price = watch("price");
   const category = watch("category");
   const vendorMode = watch("vendorMode");
+  const jobId = watch("jobId");
   const isLabour = category === "Labour";
   const isMiscellaneous = vendorMode === "miscellaneous";
+
+  React.useEffect(() => {
+    register("jobId", { required: "Material/Service is required" });
+  }, [register]);
 
   // Total is derived from quantity × price, except Labour (manual total only)
   React.useEffect(() => {
@@ -265,23 +271,26 @@ export default function CashOutForm({
           )}
 
           <div>
-            <label className="mb-2 block ui-form-label">SELECT JOB</label>
-            <select
-              className="common-input cursor-pointer"
-              {...register("jobId", { required: "Job is required" })}
-            >
-              <option value="">Select a Job</option>
-              {jobs.map((job) => (
-                <option key={job.id} value={job.id}>
-                  {job.name}
-                </option>
-              ))}
-            </select>
-            {errors.jobId && (
-              <p className="mt-1 text-xs text-danger-text font-semibold">
-                {errors.jobId.message}
-              </p>
-            )}
+            <label className="mb-2 block ui-form-label">
+              SELECT MATERIAL/SERVICE
+            </label>
+            <TypeaheadSelect
+              options={jobs.map((job) => ({
+                id: job.id,
+                label: job.name,
+              }))}
+              value={jobId || ""}
+              onChange={(value) => {
+                setValue("jobId", value, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+              }}
+              placeholder="Select a Material/Service"
+              searchPlaceholder="Search material/service..."
+              emptyText="No material/service found"
+              error={errors.jobId?.message}
+            />
           </div>
 
           <div>
@@ -362,6 +371,7 @@ export default function CashOutForm({
               <option value="">Select Category</option>
               <option value="Materials">Materials</option>
               <option value="Labour">Labour</option>
+              <option value="Asserts">Asserts</option>
               <option value="Overheads">Overheads</option>
               <option value="Machinery">Machinery</option>
               <option value="Other">Other</option>

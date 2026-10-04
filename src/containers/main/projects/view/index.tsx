@@ -16,7 +16,6 @@ import {
   Phone,
   Shield,
   ChevronDown,
-  Package,
 } from "lucide-react";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import { IoArrowBackOutline } from "react-icons/io5";
@@ -129,7 +128,6 @@ export default function ProjectsView() {
     profile: true,
     clientContract: false,
     vendorContracts: false,
-    pulledMaterials: false,
     timeline: false,
   });
 
@@ -149,8 +147,6 @@ export default function ProjectsView() {
   const vendorContracts = (project.contracts || []).filter(
     (contract) => contract.type !== "client",
   );
-  const materialPulls = project.materialPulls || [];
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
     const dateObj = new Date(dateString);
@@ -227,23 +223,6 @@ export default function ProjectsView() {
           onToggle={() => toggleSection("profile")}
         >
           <div className="space-y-6">
-            <div className="h-64 sm:h-80 w-full bg-panel-bg relative rounded-xl overflow-hidden border border-border-main">
-              {project.media?.url ? (
-                <img
-                  src={getFilePathWithBackendUrl(project.media.url)}
-                  alt={project.siteName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-                  <Building2 size={64} className="opacity-40" />
-                  <span className="text-xs font-semibold mt-2">
-                    No Cover Photo Uploaded
-                  </span>
-                </div>
-              )}
-            </div>
-
             <InfoSection title="Client Information">
               <InfoField
                 icon={<UserRound size={20} />}
@@ -650,79 +629,7 @@ export default function ProjectsView() {
         </AccordionSection>
 
         <AccordionSection
-          title="Pulled Materials"
-          description="Materials pulled from contracted vendors for this project."
-          open={!!openSections.pulledMaterials}
-          onToggle={() => toggleSection("pulledMaterials")}
-        >
-          {materialPulls.length > 0 ? (
-            <div className="overflow-x-auto rounded-xl border border-border-main">
-              <table className="w-full min-w-[640px] text-sm">
-                <thead>
-                  <tr className="bg-muted-foreground/5 border-b border-border-main">
-                    <th className="px-3 py-2.5 text-left text-xs font-bold text-foreground w-16">
-                      S/ No.
-                    </th>
-                    <th className="px-3 py-2.5 text-left text-xs font-bold text-foreground">
-                      Material
-                    </th>
-                    <th className="px-3 py-2.5 text-left text-xs font-bold text-foreground">
-                      Vendor
-                    </th>
-                    <th className="px-3 py-2.5 text-left text-xs font-bold text-foreground">
-                      Quantity
-                    </th>
-                    <th className="px-3 py-2.5 text-left text-xs font-bold text-foreground">
-                      UOM
-                    </th>
-                    <th className="px-3 py-2.5 text-left text-xs font-bold text-foreground">
-                      Pulled On
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {materialPulls.map((pull, index) => (
-                    <tr
-                      key={pull.id}
-                      className="border-b border-border-main last:border-b-0"
-                    >
-                      <td className="px-3 py-2.5 text-foreground font-semibold">
-                        {index + 1}
-                      </td>
-                      <td className="px-3 py-2.5 text-foreground">
-                        <div className="flex items-center gap-2">
-                          <Package size={14} className="text-primary shrink-0" />
-                          {pull.material?.name || "--"}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2.5 text-foreground">
-                        {pull.vendor?.vendorName || "--"}
-                      </td>
-                      <td className="px-3 py-2.5 text-foreground">
-                        {pull.quantity !== null && pull.quantity !== undefined
-                          ? Number(pull.quantity).toLocaleString("en-US")
-                          : "--"}
-                      </td>
-                      <td className="px-3 py-2.5 text-foreground">
-                        {pull.uom || "--"}
-                      </td>
-                      <td className="px-3 py-2.5 text-foreground">
-                        {formatDate(pull.created_at)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No materials have been pulled for this project yet.
-            </p>
-          )}
-        </AccordionSection>
-
-        <AccordionSection
-          title="Project Timeline"
+          title="Project Cashflow"
           description="Cash in and cash out activity for this project."
           open={!!openSections.timeline}
           onToggle={() => toggleSection("timeline")}

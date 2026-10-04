@@ -36,11 +36,11 @@ interface SectionMeta {
 const SECTIONS: SectionMeta[] = [
   {
     key: "job",
-    label: "Jobs",
-    singular: "Job",
-    createLabel: "Add Job",
-    description: "Contractor roles, craft trades, & labour titles",
-    badgeText: "Roles & Labor",
+    label: "Material/Services",
+    singular: "Material/Service",
+    createLabel: "Add Material/Service",
+    description: "Material & Labour tasks",
+    badgeText: "Material and Labour",
     icon: Briefcase,
     placeholder: "e.g. Mason, Plumber, Painter, Site Supervisor",
   },
@@ -197,7 +197,7 @@ export default function ActivitiesListing() {
             <span>Master Catalog</span>
           </div>
           <h1 className="text-2xl sm:text-3xl text-foreground font-bold tracking-tight">
-            Jobs, Stages & Units
+            Material/Services, Stages & Units
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
             Manage master classifications, work milestone stages, and measurement

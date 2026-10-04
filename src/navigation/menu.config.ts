@@ -47,7 +47,7 @@ export const menuConfig: MenuGroup[] = [
   },
   {
     key: "activities",
-    text: "Jobs, Stages & Units",
+    text: "Material/Services, Stages & Units",
     path: siteRoutes.activity,
     permission: PERMISSIONS.ACTIVITY_READ,
   },

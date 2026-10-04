@@ -7,9 +7,6 @@ import {
   MessageSquare,
   CircleCheck,
   CircleX,
-  PackagePlus,
-  Trash2,
-  X,
 } from "lucide-react";
 import useProjects from "../useHooks";
 import {
@@ -27,7 +24,6 @@ import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
-import useActivities from "../../activities/useHooks";
 
 interface ProjectFilters {
   region: string;
@@ -42,34 +38,6 @@ interface ProjectFilters {
   limit: number;
 }
 
-interface PullableVendor {
-  id: string;
-  vendorName: string;
-  materials: Array<{ id: string; name: string }>;
-}
-
-interface PullSelection {
-  vendorId: string;
-  materialId: string;
-  materialName: string;
-  vendorName: string;
-  quantity: string;
-  uom: string;
-}
-
-const UOM_OPTIONS = [
-  "CFT",
-  "Bags",
-  "Rft",
-  "Sft",
-  "Nos",
-  "Kg",
-  "Liters",
-  "Tons",
-  "Hours",
-  "Days",
-  "Lumpsum",
-];
 
 const emptyFilters: ProjectFilters = {
   region: "",
@@ -90,10 +58,7 @@ export default function ProjectListing() {
     getProjects,
     updateProjectStatus,
     getProjectFilterOptions,
-    getPullableMaterials,
-    pullMaterials,
   } = useProjects();
-  const { getUnits } = useActivities();
   const canView = hasPermission(PERMISSIONS.CONSTRUCTION_SITE_READ);
   const canUpdate = hasPermission(PERMISSIONS.CONSTRUCTION_SITE_UPDATE);
   const canComments = hasPermission(PERMISSIONS.COMMENTS_READ);
@@ -113,18 +78,6 @@ export default function ProjectListing() {
 
   const [filters, setFilters] = useState<ProjectFilters>(emptyFilters);
 
-  const [pullModalOpen, setPullModalOpen] = useState(false);
-  const [pullProject, setPullProject] = useState<Project | null>(null);
-  const [pullVendors, setPullVendors] = useState<PullableVendor[]>([]);
-  const [selectedVendorId, setSelectedVendorId] = useState("");
-  const [selectedMaterialId, setSelectedMaterialId] = useState("");
-  const [pullQuantity, setPullQuantity] = useState("");
-  const [pullUom, setPullUom] = useState("");
-  const [pullSelections, setPullSelections] = useState<PullSelection[]>([]);
-  const [pullLoading, setPullLoading] = useState(false);
-  const [pullSaving, setPullSaving] = useState(false);
-  const [pullError, setPullError] = useState("");
-  const [unitsList, setUnitsList] = useState<Array<{ id: string; name: string }>>([]);
 
   const fetchProjects = (currentFilters: ProjectFilters) => {
     const queryParams: any = {
@@ -146,7 +99,6 @@ export default function ProjectListing() {
 
   useEffect(() => {
     getProjectFilterOptions(setFilterOptions);
-    getUnits(setUnitsList);
     fetchProjects({ ...emptyFilters, page: 1 });
   }, []);
 
@@ -187,113 +139,6 @@ export default function ProjectListing() {
 
   const refresh = () => fetchProjects(filters);
 
-
-  const resetPullModal = () => {
-    setPullModalOpen(false);
-    setPullProject(null);
-    setPullVendors([]);
-    setSelectedVendorId("");
-    setSelectedMaterialId("");
-    setPullQuantity("");
-    setPullUom("");
-    setPullSelections([]);
-    setPullLoading(false);
-    setPullSaving(false);
-    setPullError("");
-  };
-
-  const openPullModal = async (project: Project) => {
-    setPullProject(project);
-    setPullModalOpen(true);
-    setPullVendors([]);
-    setSelectedVendorId("");
-    setSelectedMaterialId("");
-    setPullQuantity("");
-    setPullUom("");
-    setPullSelections([]);
-    setPullError("");
-    setPullLoading(true);
-    await getPullableMaterials(project.id, setPullVendors);
-    setPullLoading(false);
-  };
-
-  const selectedVendor = pullVendors.find((v) => v.id === selectedVendorId);
-  const vendorMaterials = selectedVendor?.materials || [];
-
-  const handleAddPullSelection = () => {
-    setPullError("");
-    if (!selectedVendorId || !selectedMaterialId) {
-      setPullError("Select a vendor and a material to add.");
-      return;
-    }
-    if (!pullUom) {
-      setPullError("Select a UOM (unit) to add.");
-      return;
-    }
-    const vendor = pullVendors.find((v) => v.id === selectedVendorId);
-    const material = vendor?.materials.find((m) => m.id === selectedMaterialId);
-    if (!vendor || !material) {
-      setPullError("Selected vendor or material is invalid.");
-      return;
-    }
-    const alreadyAdded = pullSelections.some(
-      (item) =>
-        item.vendorId === selectedVendorId &&
-        item.materialId === selectedMaterialId,
-    );
-    if (alreadyAdded) {
-      setPullError("This material is already added for the selected vendor.");
-      return;
-    }
-    setPullSelections((prev) => [
-      ...prev,
-      {
-        vendorId: vendor.id,
-        materialId: material.id,
-        materialName: material.name,
-        vendorName: vendor.vendorName,
-        quantity: pullQuantity,
-        uom: pullUom,
-      },
-    ]);
-    setSelectedMaterialId("");
-    setPullQuantity("");
-    setPullUom("");
-  };
-
-  const handleRemovePullSelection = (vendorId: string, materialId: string) => {
-    setPullSelections((prev) =>
-      prev.filter(
-        (item) =>
-          !(item.vendorId === vendorId && item.materialId === materialId),
-      ),
-    );
-  };
-
-  const handleSubmitPull = async () => {
-    if (!pullProject) return;
-    if (pullSelections.length === 0) {
-      setPullError("Add at least one material to pull.");
-      return;
-    }
-    setPullSaving(true);
-    setPullError("");
-    const response = await pullMaterials(
-      pullProject.id,
-      pullSelections.map((item) => ({
-        vendorId: item.vendorId,
-        materialId: item.materialId,
-        uom: item.uom,
-        ...(item.quantity !== ""
-          ? { quantity: Number(item.quantity) }
-          : {}),
-      })),
-    );
-    setPullSaving(false);
-    if (response) {
-      resetPullModal();
-    }
-  };
 
   const columns = [
     "S/No.",
@@ -562,17 +407,6 @@ export default function ProjectListing() {
                             {canUpdate ? (
                               <button
                                 type="button"
-                                onClick={() => openPullModal(project)}
-                                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors cursor-pointer"
-                                title="Supplies"
-                              >
-                                <PackagePlus size={14} />
-                                Supplies
-                              </button>
-                            ) : null}
-                            {canUpdate ? (
-                              <button
-                                type="button"
                                 onClick={() =>
                                   updateProjectStatus(
                                     project.id,
@@ -635,227 +469,6 @@ export default function ProjectListing() {
           />
         )}
       </div>
-
-      {pullModalOpen && pullProject ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
-            onClick={() => {
-              if (!pullSaving) resetPullModal();
-            }}
-          />
-          <div className="bg-card border border-border-main w-full max-w-xl rounded-2xl shadow-xl overflow-hidden z-10 animate-scale-up relative max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 border-b border-border-main flex items-center justify-between shrink-0">
-              <div>
-                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                  <PackagePlus size={20} className="text-primary" />
-                  Supplies
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {pullProject.siteName}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!pullSaving) resetPullModal();
-                }}
-                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted-foreground/5 cursor-pointer"
-                title="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 overflow-y-auto">
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Only vendors linked to this project through a vendor contract
-                are shown. Select materials they supply and pull them against
-                this project.
-              </p>
-
-              {pullLoading ? (
-                <p className="text-sm text-muted-foreground">
-                  Loading vendors and materials...
-                </p>
-              ) : pullVendors.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No vendor contracts with materials are linked to this project.
-                </p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="mb-2 block ui-form-label">Vendor</label>
-                      <select
-                        value={selectedVendorId}
-                        onChange={(e) => {
-                          setSelectedVendorId(e.target.value);
-                          setSelectedMaterialId("");
-                          setPullError("");
-                        }}
-                        className="common-input"
-                        disabled={pullSaving}
-                      >
-                        <option value="">Select vendor</option>
-                        {pullVendors.map((vendor) => (
-                          <option key={vendor.id} value={vendor.id}>
-                            {vendor.vendorName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="mb-2 block ui-form-label">
-                        Material
-                      </label>
-                      <select
-                        value={selectedMaterialId}
-                        onChange={(e) => {
-                          setSelectedMaterialId(e.target.value);
-                          setPullError("");
-                        }}
-                        className="common-input"
-                        disabled={pullSaving || !selectedVendorId}
-                      >
-                        <option value="">Select material</option>
-                        {vendorMaterials.map((material) => (
-                          <option key={material.id} value={material.id}>
-                            {material.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-3 items-end">
-                    <div className="flex-1 w-full">
-                      <label className="mb-2 block ui-form-label">
-                        Quantity
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={pullQuantity}
-                        onChange={(e) => setPullQuantity(e.target.value)}
-                        className="common-input"
-                        placeholder="e.g. 10"
-                        disabled={pullSaving}
-                      />
-                    </div>
-                    <div className="flex-1 w-full">
-                      <label className="mb-2 block ui-form-label">
-                        UOM (Unit)
-                      </label>
-                      <select
-                        value={pullUom}
-                        onChange={(e) => {
-                          setPullUom(e.target.value);
-                          setPullError("");
-                        }}
-                        className="common-input cursor-pointer"
-                        disabled={pullSaving}
-                      >
-                        <option value="">Select UOM</option>
-                        {(unitsList.length
-                          ? unitsList.map((u) => u.name)
-                          : UOM_OPTIONS
-                        ).map((uom) => (
-                          <option key={uom} value={uom}>
-                            {uom}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      onClick={handleAddPullSelection}
-                      disabled={pullSaving}
-                      className="h-10 text-xs px-5 font-semibold w-full sm:w-auto"
-                    >
-                      Add Material
-                    </Button>
-                  </div>
-
-                  {pullError ? (
-                    <p className="text-xs text-red-500 font-semibold">
-                      {pullError}
-                    </p>
-                  ) : null}
-
-                  {pullSelections.length > 0 ? (
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        Materials to Pull
-                      </label>
-                      <div className="rounded-xl border border-border-main divide-y divide-border-main max-h-48 overflow-y-auto">
-                        {pullSelections.map((item) => (
-                          <div
-                            key={`${item.vendorId}-${item.materialId}`}
-                            className="flex items-center justify-between gap-3 px-3 py-2.5"
-                          >
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-foreground truncate">
-                                {item.materialName}
-                              </p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {item.vendorName}
-                                {item.quantity !== ""
-                                  ? ` Â· Qty ${item.quantity}`
-                                  : ""}
-                                {item.uom ? ` ${item.uom}` : ""}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleRemovePullSelection(
-                                  item.vendorId,
-                                  item.materialId,
-                                )
-                              }
-                              className="btn-action-delete"
-                              title="Remove"
-                              disabled={pullSaving}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </>
-              )}
-            </div>
-
-            <div className="px-6 py-4 bg-muted-foreground/5 border-t border-border-main flex gap-3 justify-end shrink-0">
-              <Button
-                variant="secondary"
-                onClick={resetPullModal}
-                disabled={pullSaving}
-                className="h-10 text-xs px-6 font-semibold"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleSubmitPull}
-                disabled={
-                  pullSaving ||
-                  pullLoading ||
-                  pullVendors.length === 0 ||
-                  pullSelections.length === 0
-                }
-                className="h-10 text-xs px-6 font-semibold"
-              >
-                {pullSaving ? "Pulling..." : "Pull Materials"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -215,12 +215,12 @@ export default function ContractEdit() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-foreground">Job</label>
+              <label className="mb-2 block text-sm font-semibold text-foreground">Material/Service</label>
               <select
                 className={`common-input w-full ${errors.jobId ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("jobId", { required: "Job is required" })}
+                {...register("jobId", { required: "Material/Service is required" })}
               >
-                <option value="">Select Job</option>
+                <option value="">Select Material/Service</option>
                 {jobs.map((job) => (
                   <option key={job.id} value={job.id}>
                     {job.name}

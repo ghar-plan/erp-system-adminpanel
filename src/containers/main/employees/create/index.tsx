@@ -1,15 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { ArrowLeft, MapPin, Plus } from "lucide-react";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import { OFFICE_LOCATION } from "@/utils/helpers/constants";
 import useEmployees from "../useHooks";
 import useProjects from "../../projects/useHooks";
-import {
-  PAKISTAN_MOBILE_PLACEHOLDER,
-  validatePakistanMobile,
-} from "@/utils/helpers/common/phone";
+import { validatePakistanMobile } from "@/utils/helpers/common/phone";
+import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
 import type { EmployeeType } from "@/utils/helpers/models/employees/employee.dto";
 
 type LocationMode = "office" | "custom";
@@ -38,6 +36,7 @@ export default function EmployeesCreate() {
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     setValue,
@@ -210,13 +209,22 @@ export default function EmployeesCreate() {
             </div>
             <div>
               <label className="mb-2 block ui-form-label">Mobile Number <span className="text-red-500">*</span></label>
-              <input
-                className={`common-input ${errors.mobileNumber ? "border-red-500" : ""}`}
-                placeholder={PAKISTAN_MOBILE_PLACEHOLDER}
-                {...register("mobileNumber", {
+              <Controller
+                name="mobileNumber"
+                control={control}
+                rules={{
                   required: "Mobile number is required",
                   validate: (v) => validatePakistanMobile(v),
-                })}
+                }}
+                render={({ field }) => (
+                  <PakistanPhoneInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    hasError={!!errors.mobileNumber}
+                  />
+                )}
               />
               {errors.mobileNumber && <p className="mt-1.5 text-xs text-red-500 font-semibold">{errors.mobileNumber.message}</p>}
             </div>

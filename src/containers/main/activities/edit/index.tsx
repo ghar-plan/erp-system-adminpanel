@@ -113,12 +113,12 @@ export default function ActivityEdit() {
             </div>
 
             <div>
-              <label className="mb-2 block ui-form-label">Job</label>
+              <label className="mb-2 block ui-form-label">Material/Service</label>
               <select
                 className={`common-input py-3 ${errors.category ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("category", { required: "Job is required" })}
+                {...register("category", { required: "Material/Service is required" })}
               >
-                <option value="">Select Job</option>
+                <option value="">Select Material/Service</option>
                 {jobOptions.map((job) => (
                   <option key={job.id} value={job.name}>
                     {job.name}

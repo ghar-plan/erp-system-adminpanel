@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { PlusSquare, Loader2, Save } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import useProspects from "../useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
+import { validatePakistanMobile } from "@/utils/helpers/common/phone";
+import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
 
 interface ProspectFormInputs {
   name: string;
@@ -27,6 +29,7 @@ export default function ProspectCreate() {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -131,11 +134,22 @@ export default function ProspectCreate() {
           {/* Phone */}
           <div>
             <label className="mb-2 block ui-form-label">Phone Number</label>
-            <input
-              type="text"
-              placeholder="e.g. +923009876543"
-              className="common-input"
-              {...register("phone", { required: "Phone number is required" })}
+            <Controller
+              name="phone"
+              control={control}
+              rules={{
+                required: "Phone number is required",
+                validate: (value) => validatePakistanMobile(value),
+              }}
+              render={({ field }) => (
+                <PakistanPhoneInput
+                  name={field.name}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  hasError={!!errors.phone}
+                />
+              )}
             />
             {errors.phone && (
               <p className="mt-1 text-xs text-danger-text font-semibold">

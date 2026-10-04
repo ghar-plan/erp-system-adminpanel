@@ -103,15 +103,6 @@ export interface Project {
     media?: { id: string; url: string } | null;
     drawingMedia?: { id: string; url: string } | null;
   }[];
-  materialPulls?: {
-    id: string;
-    quantity?: number | string | null;
-    uom?: string | null;
-    notes?: string | null;
-    created_at?: string;
-    vendor?: { id?: string; vendorName?: string } | null;
-    material?: { id?: string; name?: string } | null;
-  }[];
   created_at: string;
 }
 

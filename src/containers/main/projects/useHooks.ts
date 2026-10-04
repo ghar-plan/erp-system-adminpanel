@@ -202,36 +202,6 @@ const useProjects = () => {
     }
   };
 
-  const getPullableMaterials = async (id: string, setData: Function) => {
-    const response = await Projects_APIS.getPullableMaterials(id);
-    const { status = false, data = null } = response || {};
-    if (status && data) {
-      setData(data.vendors || []);
-      return data;
-    }
-    setData([]);
-    return null;
-  };
-
-  const pullMaterials = async (
-    id: string,
-    items: Array<{
-      vendorId: string;
-      materialId: string;
-      quantity?: number;
-      uom?: string;
-      notes?: string;
-    }>,
-  ) => {
-    const response = await Projects_APIS.pullMaterials(id, { items });
-    const { status = false, message = "" } = response || {};
-    if (status) {
-      successToaster(message || "Materials pulled successfully");
-      return response;
-    }
-    return null;
-  };
-
   const updateProject = async (id: string, queryParams: any = {}) => {
     const payload = buildProjectPayload(queryParams);
     const response = await Projects_APIS.update(id, payload);
@@ -281,8 +251,6 @@ const useProjects = () => {
     deleteProject,
     uploadImage,
     getProjectById,
-    getPullableMaterials,
-    pullMaterials,
     updateProject,
     updateProjectStatus,
     getProjectFilterOptions,

@@ -420,7 +420,7 @@ export default function CashflowView() {
                 <DetailItem
                   icon={<Briefcase size={20} />}
                   iconClass="bg-primary/10 text-primary"
-                  label="Job"
+                  label="Material/Service"
                   value={entry.job?.name || entry.activity?.name}
                 />
                 <DetailItem

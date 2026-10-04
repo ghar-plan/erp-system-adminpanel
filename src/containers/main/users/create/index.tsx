@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { ArrowLeft, Plus } from "lucide-react";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import { errorToaster } from "@/utils/helpers/common/alert-service";
-import {
-  PAKISTAN_MOBILE_PLACEHOLDER,
-  validatePakistanMobile,
-} from "@/utils/helpers/common/phone";
+import { validatePakistanMobile } from "@/utils/helpers/common/phone";
+import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
 import useRoles from "../../roles/useHooks";
 import useUsers from "../useHooks";
 import type { RbacRole } from "../../roles/types";
@@ -28,6 +26,7 @@ export default function UsersCreate() {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<UserForm>({
@@ -149,14 +148,22 @@ export default function UsersCreate() {
               <label className="mb-2 block ui-form-label">
                 Mobile Number <span className="text-red-500">*</span>
               </label>
-              <input
-                type="tel"
-                placeholder={PAKISTAN_MOBILE_PLACEHOLDER}
-                className={`common-input ${errors.phone ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("phone", {
+              <Controller
+                name="phone"
+                control={control}
+                rules={{
                   required: "Mobile number is required",
                   validate: (value) => validatePakistanMobile(value),
-                })}
+                }}
+                render={({ field }) => (
+                  <PakistanPhoneInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    hasError={!!errors.phone}
+                  />
+                )}
               />
               {errors.phone && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">

@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import useVendors from "../useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
-import {
-  PAKISTAN_MOBILE_PLACEHOLDER,
-  validatePakistanMobile,
-} from "@/utils/helpers/common/phone";
+import { validatePakistanMobile } from "@/utils/helpers/common/phone";
+import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
 
 interface VendorFormInputs {
   vendorName: string;
@@ -26,6 +24,7 @@ export default function VendorCreate() {
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     formState: { errors },
@@ -147,14 +146,22 @@ export default function VendorCreate() {
               <label className="mb-2 block ui-form-label">
                 Phone Number <span className="text-red-500">*</span>
               </label>
-              <input
-                type="tel"
-                placeholder={PAKISTAN_MOBILE_PLACEHOLDER}
-                className={`common-input ${errors.phone ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("phone", {
+              <Controller
+                name="phone"
+                control={control}
+                rules={{
                   required: "Phone number is required",
                   validate: (value) => validatePakistanMobile(value),
-                })}
+                }}
+                render={({ field }) => (
+                  <PakistanPhoneInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    hasError={!!errors.phone}
+                  />
+                )}
               />
               {errors.phone && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">

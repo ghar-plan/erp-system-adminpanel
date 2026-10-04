@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Upload, Save, Loader2 } from "lucide-react";
+import { Save, Loader2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import useProjects from "../useHooks";
-import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
 import { IoArrowBackOutline } from "react-icons/io5";
 import {
   ConstructionType,
@@ -14,9 +13,9 @@ import {
 } from "@/utils/helpers/models/projects/project.dto";
 import {
   PAKISTAN_MOBILE_FORMAT_MESSAGE,
-  PAKISTAN_MOBILE_PLACEHOLDER,
   validatePakistanMobile,
 } from "@/utils/helpers/common/phone";
+import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
 import PaymentStagesTable from "../PaymentStagesTable";
 
 interface ProjectFormInputs {
@@ -42,17 +41,14 @@ interface ProjectFormInputs {
     amount: string;
     expectedDate: string;
   }>;
-  mediaId: string | null;
 }
 
 export default function ProjectsEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getProjectById, updateProject, uploadImage, getManagerOptions } = useProjects();
+  const { getProjectById, updateProject, getManagerOptions } = useProjects();
   const { isLoading } = useStore();
 
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [hasClient, setHasClient] = useState(false);
   const [selectedManagerId, setSelectedManagerId] = useState("");
   const [selectedSupervisorId, setSelectedSupervisorId] = useState("");
@@ -179,11 +175,7 @@ export default function ProjectsEdit() {
                 ? String(stage.expectedDate).slice(0, 10)
                 : "",
             })),
-          mediaId: project.mediaId || project.media?.id || null,
         });
-        if (project.media?.url) {
-          setPreviewImageUrl(getFilePathWithBackendUrl(project.media.url));
-        }
       });
     }
   }, [id]);
@@ -240,26 +232,6 @@ export default function ProjectsEdit() {
     }
   };
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setPreviewImageUrl(URL.createObjectURL(file));
-    setUploadingImage(true);
-
-    const mediaObj = await uploadImage(file);
-    if (mediaObj) {
-      setValue("mediaId", mediaObj.id, { shouldValidate: true });
-      if (mediaObj.url) {
-        setPreviewImageUrl(getFilePathWithBackendUrl(mediaObj.url));
-      }
-    } else {
-      setPreviewImageUrl(null);
-      setValue("mediaId", null, { shouldValidate: true });
-    }
-    setUploadingImage(false);
-  };
-
   const onSubmitForm = async (data: ProjectFormInputs) => {
     if (id) {
       const payload: any = {
@@ -294,9 +266,6 @@ export default function ProjectsEdit() {
       } else {
         payload.paymentStages = [];
       }
-      if (data.mediaId) {
-        payload.mediaId = data.mediaId;
-      }
       await updateProject(id, payload);
     }
   };
@@ -330,7 +299,6 @@ export default function ProjectsEdit() {
         onSubmit={handleSubmit(onSubmitForm)}
         className="mt-8 w-full animate-slide-up space-y-6"
       >
-        <input type="hidden" {...register("mediaId")} />
         <hr className="border-border-main" />
 
         {/* Form Fields */}
@@ -404,14 +372,22 @@ export default function ProjectsEdit() {
                 <label className="mb-2 block ui-form-label">
                   Mobile Number <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="tel"
-                  placeholder={PAKISTAN_MOBILE_PLACEHOLDER}
-                  className={`common-input ${errors.clientPhone ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("clientPhone", {
+                <Controller
+                  name="clientPhone"
+                  control={control}
+                  rules={{
                     required: "Mobile number is required",
                     validate: (value) => validatePakistanMobile(value),
-                  })}
+                  }}
+                  render={({ field }) => (
+                    <PakistanPhoneInput
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      hasError={!!errors.clientPhone}
+                    />
+                  )}
                 />
                 {errors.clientPhone && (
                   <p className="mt-1.5 text-xs text-red-500 font-semibold">
@@ -440,14 +416,23 @@ export default function ProjectsEdit() {
               </div>
               <div>
                 <label className="mb-2 block ui-form-label">Guard Contact Number</label>
-                <input
-                  type="tel"
-                  placeholder={`${PAKISTAN_MOBILE_PLACEHOLDER} (optional)`}
-                  className={`common-input ${errors.guardContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("guardContactNumber", {
+                <Controller
+                  name="guardContactNumber"
+                  control={control}
+                  rules={{
                     validate: (value) =>
                       validatePakistanMobile(value, { optional: true }),
-                  })}
+                  }}
+                  render={({ field }) => (
+                    <PakistanPhoneInput
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      placeholder="optional"
+                      hasError={!!errors.guardContactNumber}
+                    />
+                  )}
                 />
                 {errors.guardContactNumber && (
                   <p className="mt-1.5 text-xs text-red-500 font-semibold">
@@ -487,12 +472,10 @@ export default function ProjectsEdit() {
                 <label className="mb-2 block ui-form-label">
                   Supervisor Contact Number <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="tel"
-                  placeholder="Auto-filled from selected supervisor"
-                  readOnly
-                  className={`common-input bg-muted-foreground/5 ${errors.supervisorContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("supervisorContactNumber", {
+                <Controller
+                  name="supervisorContactNumber"
+                  control={control}
+                  rules={{
                     required: "Supervisor contact number is required",
                     validate: (value) => {
                       if (!value?.trim()) {
@@ -503,7 +486,18 @@ export default function ProjectsEdit() {
                         PAKISTAN_MOBILE_FORMAT_MESSAGE
                       );
                     },
-                  })}
+                  }}
+                  render={({ field }) => (
+                    <PakistanPhoneInput
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      placeholder="Auto-filled"
+                      readOnly
+                      hasError={!!errors.supervisorContactNumber}
+                    />
+                  )}
                 />
                 {errors.supervisorContactNumber && (
                   <p className="mt-1.5 text-xs text-red-500 font-semibold">
@@ -543,12 +537,10 @@ export default function ProjectsEdit() {
                 <label className="mb-2 block ui-form-label">
                   Manager Contact Number <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="tel"
-                  placeholder="Auto-filled from selected manager"
-                  readOnly
-                  className={`common-input bg-muted-foreground/5 ${errors.managerContactNumber ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("managerContactNumber", {
+                <Controller
+                  name="managerContactNumber"
+                  control={control}
+                  rules={{
                     required: "Manager contact number is required",
                     validate: (value) => {
                       if (!value?.trim()) {
@@ -559,7 +551,18 @@ export default function ProjectsEdit() {
                         PAKISTAN_MOBILE_FORMAT_MESSAGE
                       );
                     },
-                  })}
+                  }}
+                  render={({ field }) => (
+                    <PakistanPhoneInput
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      placeholder="Auto-filled"
+                      readOnly
+                      hasError={!!errors.managerContactNumber}
+                    />
+                  )}
                 />
                 {errors.managerContactNumber && (
                   <p className="mt-1.5 text-xs text-red-500 font-semibold">
@@ -780,80 +783,13 @@ export default function ProjectsEdit() {
               </div>
             )}
 
-            <div>
-              <h2 className="text-sm font-bold text-foreground">Site Cover Image</h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                Optional. Upload a cover photo for this construction site.
-              </p>
-            </div>
-
-            <label className="block cursor-pointer group">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-                disabled={uploadingImage}
-              />
-              <div
-                className={`relative w-full h-44 sm:h-52 rounded-xl border-2 border-dashed flex flex-col items-center justify-center text-center p-4 transition-all duration-200 overflow-hidden bg-bg-input/50 ${
-                  errors.mediaId
-                    ? "border-red-500/60 hover:border-red-500"
-                    : "border-border-input hover:border-primary/50"
-                }`}
-              >
-                {uploadingImage ? (
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground animate-pulse">
-                    <Loader2 className="animate-spin text-primary" size={28} />
-                    <span className="text-xs font-semibold">Uploading...</span>
-                  </div>
-                ) : previewImageUrl ? (
-                  <>
-                    <img
-                      src={previewImageUrl}
-                      alt="Site cover preview"
-                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-1.5 text-white">
-                      <Upload size={20} className="stroke-[2]" />
-                      <span className="text-xs font-semibold">
-                        Change Cover Image
-                      </span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 p-2">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <Upload
-                        size={22}
-                        className="text-primary stroke-[1.5]"
-                      />
-                    </div>
-                    <div className="text-center sm:text-left">
-                      <span className="block text-sm font-bold text-foreground">
-                        Click to upload cover image
-                      </span>
-                      <span className="block text-xs text-muted-foreground mt-0.5">
-                        PNG or JPG, up to 10MB (optional)
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </label>
-
-            {errors.mediaId && (
-              <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                {errors.mediaId.message}
-              </p>
-            )}
         </div>
 
         {/* Action Button inside the form card */}
         <div className="flex justify-end pt-4 border-t border-border-main/60">
           <button
             type="submit"
-            disabled={isLoading || uploadingImage}
+            disabled={isLoading}
             className="flex h-10 px-6 items-center justify-center gap-2 rounded-md bg-primary hover:opacity-95 font-semibold text-white text-sm transition-all cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed animate-fade-in"
           >
             {isLoading ? (
