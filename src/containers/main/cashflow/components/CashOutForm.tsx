@@ -10,7 +10,7 @@ import TypeaheadSelect from "./TypeaheadSelect";
 
 interface CashOutFormInputs {
   projectId: string;
-  vendorMode: "vendor" | "miscellaneous";
+  vendorMode: "vendor" | "miscellaneous" | "transportation";
   vendorId: string;
   jobId: string;
   workStageId: string;
@@ -89,6 +89,8 @@ export default function CashOutForm({
   const jobId = watch("jobId");
   const isLabour = category === "Labour";
   const isMiscellaneous = vendorMode === "miscellaneous";
+  const isTransportation = vendorMode === "transportation";
+  const isNoVendor = isMiscellaneous || isTransportation;
 
   React.useEffect(() => {
     register("jobId", { required: "Material/Service is required" });
@@ -122,7 +124,13 @@ export default function CashOutForm({
     if (editData) {
       const isLabourEdit = editData.category === "Labour";
       const isMiscEdit =
-        editData.isMiscellaneous === true || !editData.vendorId;
+        editData.vendorType === "miscellaneous" ||
+        (editData.isMiscellaneous === true &&
+          editData.vendorType !== "transportation") ||
+        (!editData.vendorId && editData.vendorType !== "transportation");
+      const isTransportEdit =
+        editData.vendorType === "transportation" ||
+        editData.isTransportation === true;
       const qty = editData.quantity ? Number(editData.quantity) : 0;
       // List/API edit payloads expose amount as grand total (qty × unit rate)
       const total = editData.amount ? Number(editData.amount) : 0;
@@ -131,8 +139,12 @@ export default function CashOutForm({
 
       reset({
         projectId: editData.projectId || "",
-        vendorMode: isMiscEdit ? "miscellaneous" : "vendor",
-        vendorId: isMiscEdit ? "" : editData.vendorId || "",
+        vendorMode: isTransportEdit
+          ? "transportation"
+          : isMiscEdit
+            ? "miscellaneous"
+            : "vendor",
+        vendorId: isMiscEdit || isTransportEdit ? "" : editData.vendorId || "",
         jobId: editData.jobId || editData.job?.id || "",
         workStageId: editData.workStageId || editData.workStage?.id || "",
         items: editData.items || "",
@@ -199,7 +211,7 @@ export default function CashOutForm({
             <div className="flex flex-wrap gap-3">
               <label
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-semibold cursor-pointer transition-all ${
-                  !isMiscellaneous
+                  vendorMode === "vendor"
                     ? "bg-primary/10 border-primary text-primary"
                     : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
                 }`}
@@ -208,7 +220,12 @@ export default function CashOutForm({
                   type="radio"
                   value="vendor"
                   className="accent-primary"
-                  {...register("vendorMode", { required: true })}
+                  {...register("vendorMode", {
+                    required: true,
+                    onChange: () => {
+                      clearErrors("vendorId");
+                    },
+                  })}
                 />
                 Select Vendor
               </label>
@@ -235,16 +252,39 @@ export default function CashOutForm({
                 />
                 Miscellaneous
               </label>
+              <label
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-semibold cursor-pointer transition-all ${
+                  isTransportation
+                    ? "bg-primary/10 border-primary text-primary"
+                    : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
+                }`}
+              >
+                <input
+                  type="radio"
+                  value="transportation"
+                  className="accent-primary"
+                  {...register("vendorMode", {
+                    required: true,
+                    onChange: (e) => {
+                      if (e.target.value === "transportation") {
+                        setValue("vendorId", "");
+                        clearErrors("vendorId");
+                      }
+                    },
+                  })}
+                />
+                Transportation
+              </label>
             </div>
           </div>
 
-          {!isMiscellaneous && (
+          {!isNoVendor && (
             <div>
               <label className="mb-2 block ui-form-label">SELECT VENDOR</label>
               <select
                 className="common-input cursor-pointer"
                 {...register("vendorId", {
-                  required: !isMiscellaneous ? "Vendor is required" : false,
+                  required: !isNoVendor ? "Vendor is required" : false,
                 })}
               >
                 <option value="">Select a Vendor</option>
@@ -266,6 +306,14 @@ export default function CashOutForm({
             <div className="flex items-end">
               <p className="text-sm text-muted-foreground pb-2">
                 This expense will be recorded as <strong>Miscellaneous</strong> (no vendor).
+              </p>
+            </div>
+          )}
+
+          {isTransportation && (
+            <div className="flex items-end">
+              <p className="text-sm text-muted-foreground pb-2">
+                This expense will be recorded as <strong>Transportation</strong> (no vendor).
               </p>
             </div>
           )}

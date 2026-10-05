@@ -242,30 +242,30 @@ export default function DesignProjectView() {
 
             <hr className="border-border-main" />
 
-            <InfoSection title="Supervisor Information">
+            <InfoSection title="Architect Information">
               <InfoField
                 icon={<UserRound size={20} />}
-                label="Supervisor Name"
+                label="Architect Name"
                 value={project.supervisorName}
               />
               <InfoField
                 icon={<Phone size={20} />}
-                label="Supervisor Mobile Number"
+                label="Architect Mobile Number"
                 value={project.supervisorContactNumber}
               />
             </InfoSection>
 
             <hr className="border-border-main" />
 
-            <InfoSection title="Manager Information">
+            <InfoSection title="CAD Operator Information">
               <InfoField
                 icon={<UserRound size={20} />}
-                label="Manager Name"
+                label="CAD Operator"
                 value={project.managerName}
               />
               <InfoField
                 icon={<Phone size={20} />}
-                label="Manager Mobile Number"
+                label="CAD Operator Mobile Number"
                 value={project.managerContactNumber}
               />
             </InfoSection>

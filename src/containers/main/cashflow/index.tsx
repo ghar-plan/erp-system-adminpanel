@@ -227,7 +227,16 @@ export default function Cashflow() {
     setSubmittingOut(true);
 
     const isLabour = data.category === "Labour";
-    const isMiscellaneous = data.vendorMode === "miscellaneous" || !data.vendorId;
+    const isNoVendor =
+      data.vendorMode === "miscellaneous" ||
+      data.vendorMode === "transportation" ||
+      !data.vendorId;
+    const vendorType =
+      data.vendorMode === "transportation"
+        ? "transportation"
+        : data.vendorMode === "miscellaneous" || !data.vendorId
+          ? "miscellaneous"
+          : "vendor";
     // DB stores unit price in `amount`; total shown in UI is quantity × price
     // Labour: only total is entered → store as qty 1, unit price = total
     const quantity = isLabour ? 1 : toMoneyNumber(data.quantity);
@@ -260,8 +269,9 @@ export default function Cashflow() {
 
     const payload = {
       projectId: data.projectId,
-      isMiscellaneous,
-      ...(isMiscellaneous ? { vendorId: null } : { vendorId: data.vendorId }),
+      vendorType,
+      isMiscellaneous: vendorType === "miscellaneous",
+      ...(isNoVendor ? { vendorId: null } : { vendorId: data.vendorId }),
       jobId: data.jobId,
       workStageId: data.workStageId,
       items: data.items,

@@ -203,7 +203,16 @@ export default function DesignCashflow() {
   const handleRecordExpense = async (data: any) => {
     setSubmittingOut(true);
 
-    const isMiscellaneous = data.vendorMode === "miscellaneous" || !data.vendorId;
+    const isNoVendor =
+      data.vendorMode === "miscellaneous" ||
+      data.vendorMode === "transportation" ||
+      !data.vendorId;
+    const vendorType =
+      data.vendorMode === "transportation"
+        ? "transportation"
+        : data.vendorMode === "miscellaneous" || !data.vendorId
+          ? "miscellaneous"
+          : "vendor";
     const total = Number(data.amount) || 0;
 
     const paymentDetails = buildPaymentDetailsPayload(data);
@@ -228,8 +237,9 @@ export default function DesignCashflow() {
 
     const payload = {
       projectId: data.projectId,
-      isMiscellaneous,
-      ...(isMiscellaneous ? { vendorId: null } : { vendorId: data.vendorId }),
+      vendorType,
+      isMiscellaneous: vendorType === "miscellaneous",
+      ...(isNoVendor ? { vendorId: null } : { vendorId: data.vendorId }),
       jobId: data.jobId,
       workStageId: data.workStageId,
       items: data.items,

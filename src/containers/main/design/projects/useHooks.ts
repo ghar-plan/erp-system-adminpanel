@@ -16,8 +16,8 @@ const useDesignProjects = () => {
     region: string;
     subregion: string;
     startDate: string;
-    designType: string;
-    paymentPlan: string;
+    designType?: string | null;
+    paymentPlan?: string | null;
     markupPercentage?: number | string | null;
     amount?: number | string | null;
     mediaId?: string | null;
@@ -38,8 +38,12 @@ const useDesignProjects = () => {
     region: data.region,
     subregion: data.subregion,
     startDate: data.startDate,
-    designType: data.designType,
-    paymentPlan: data.paymentPlan,
+    ...(Object.prototype.hasOwnProperty.call(data, "designType")
+      ? { designType: data.designType || null }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(data, "paymentPlan")
+      ? { paymentPlan: data.paymentPlan || null }
+      : {}),
     ...(data.paymentPlan === PaymentPlan.MARKUP &&
     data.markupPercentage !== null &&
     data.markupPercentage !== undefined &&
@@ -82,14 +86,18 @@ const useDesignProjects = () => {
     region: string;
     subregion: string;
     startDate: string;
-    designType: string;
-    paymentPlan: string;
+    designType?: string | null;
+    paymentPlan?: string | null;
     markupPercentage?: number | string | null;
     amount?: number | string | null;
-    mediaId: string | null;
+    mediaId?: string | null;
     clientFullName: string;
-    clientEmail: string;
+    clientEmail?: string;
     clientPhone: string;
+    supervisorName: string;
+    supervisorContactNumber: string;
+    managerName: string;
+    managerContactNumber: string;
   }) => {
     // Sanitize payload: remove null/empty mediaId to avoid UUID validation check error on NestJS backend
     const payload = buildProjectPayload(data);

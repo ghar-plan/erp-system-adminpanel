@@ -416,7 +416,11 @@ export default function DesignCashflowView() {
                   label="Vendor"
                   value={
                     entry.vendor?.vendorName ||
-                    (!entry.vendorId ? "Miscellaneous" : undefined)
+                    (entry.vendorType === "transportation"
+                      ? "Transportation"
+                      : !entry.vendorId
+                        ? "Miscellaneous"
+                        : undefined)
                   }
                 />
                 <DetailItem

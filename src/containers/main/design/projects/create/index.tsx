@@ -1,22 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import useDesignProjects from "../useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
-import {
-  DesignType,
-  PaymentPlan,
-  sanitizePercentageInput,
-  sanitizeAmountInput,
-} from "@/utils/helpers/models/design/project.dto";
 import {
   PAKISTAN_MOBILE_FORMAT_MESSAGE,
   validatePakistanMobile,
 } from "@/utils/helpers/common/phone";
 import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
-import PaymentStagesTable from "../PaymentStagesTable";
 
 interface ProjectFormInputs {
   clientFullName: string;
@@ -30,15 +23,6 @@ interface ProjectFormInputs {
   region: string;
   subregion: string;
   startDate: string;
-  designType: string;
-  paymentPlan: string;
-  markupPercentage: string;
-  amount: string;
-  paymentStages: Array<{
-    stage: string;
-    amount: string;
-    expectedDate: string;
-  }>;
 }
 
 export default function DesignProjectCreate() {
@@ -55,7 +39,6 @@ export default function DesignProjectCreate() {
     handleSubmit,
     setValue,
     control,
-    watch,
     formState: { errors },
   } = useForm<ProjectFormInputs>({
     defaultValues: {
@@ -66,68 +49,6 @@ export default function DesignProjectCreate() {
       supervisorContactNumber: "",
       managerName: "",
       managerContactNumber: "",
-      designType: "",
-      paymentPlan: "",
-      markupPercentage: "",
-      amount: "",
-      paymentStages: [],
-    },
-  });
-
-  const {
-    fields: paymentStageFields,
-    append: appendPaymentStage,
-    remove: removePaymentStage,
-    replace: replacePaymentStages,
-  } = useFieldArray({
-    control,
-    name: "paymentStages",
-  });
-
-  const paymentPlan = watch("paymentPlan");
-  const showAmountField = paymentPlan === PaymentPlan.LUMP_SUM;
-  const { onChange: onMarkupChange, ...markupPercentageField } = register(
-    "markupPercentage",
-    {
-      required:
-        paymentPlan === PaymentPlan.MARKUP
-          ? "Markup percentage is required"
-          : false,
-      validate: (value) => {
-        if (paymentPlan !== PaymentPlan.MARKUP) return true;
-        if (value === "" || value === undefined) {
-          return "Markup percentage is required";
-        }
-        const numericValue = Number(value);
-        if (!Number.isFinite(numericValue)) {
-          return "Only numbers are allowed";
-        }
-        if (numericValue < 0) {
-          return "Markup percentage cannot be below 0";
-        }
-        if (numericValue > 999.99) {
-          return "Markup percentage cannot exceed 999.99";
-        }
-        return true;
-      },
-    },
-  );
-
-  const { onChange: onAmountChange, ...amountField } = register("amount", {
-    required: showAmountField ? "Amount is required" : false,
-    validate: (value) => {
-      if (!showAmountField) return true;
-      if (value === "" || value === undefined) {
-        return "Amount is required";
-      }
-      const numericValue = Number(value);
-      if (!Number.isFinite(numericValue)) {
-        return "Only numbers are allowed";
-      }
-      if (numericValue < 0) {
-        return "Amount cannot be below 0";
-      }
-      return true;
     },
   });
 
@@ -173,22 +94,9 @@ export default function DesignProjectCreate() {
       region: data.region,
       subregion: data.subregion,
       startDate: data.startDate,
-      designType: data.designType,
-      paymentPlan: data.paymentPlan,
     };
     if (data.clientEmail.trim()) {
       payload.clientEmail = data.clientEmail.trim();
-    }
-    if (data.paymentPlan === PaymentPlan.MARKUP) {
-      payload.markupPercentage = Number(data.markupPercentage);
-    }
-    if (data.paymentPlan === PaymentPlan.LUMP_SUM) {
-      payload.amount = Number(data.amount);
-      payload.paymentStages = (data.paymentStages || []).map((stage) => ({
-        stage: stage.stage.trim(),
-        amount: Number(stage.amount),
-        expectedDate: stage.expectedDate,
-      }));
     }
     await createProject(payload);
   };
@@ -308,26 +216,26 @@ export default function DesignProjectCreate() {
           </div>
 
           <div>
-            <h2 className="text-sm font-bold text-foreground">Site contacts</h2>
+            <h2 className="text-sm font-bold text-foreground">Project contacts</h2>
             <p className="text-xs text-muted-foreground mt-1">
-              Supervisor and Manager are selected from Employees.
+              Architect and CAD Operator are selected from Employees.
             </p>
           </div>
 
           <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
             <div>
               <label className="mb-2 block ui-form-label">
-                Supervisor Name <span className="text-red-500">*</span>
+                Architect Name <span className="text-red-500">*</span>
               </label>
               <input type="hidden" {...register("supervisorName", {
-                required: "Supervisor is required",
+                required: "Architect is required",
               })} />
               <select
                 className={`common-input bg-card ${errors.supervisorName ? "border-red-500 focus:border-red-500" : ""}`}
                 defaultValue=""
                 onChange={handleSupervisorChange}
               >
-                <option value="">Select supervisor</option>
+                <option value="">Select architect</option>
                 {managerOptions.map((person) => (
                   <option key={`supervisor-${person.source}-${person.id}`} value={person.id}>
                     {person.fullName}
@@ -342,16 +250,16 @@ export default function DesignProjectCreate() {
             </div>
             <div>
               <label className="mb-2 block ui-form-label">
-                Supervisor Contact Number <span className="text-red-500">*</span>
+                Architect Contact Number <span className="text-red-500">*</span>
               </label>
               <Controller
                 name="supervisorContactNumber"
                 control={control}
                 rules={{
-                  required: "Supervisor contact number is required",
+                  required: "Architect contact number is required",
                   validate: (value) => {
                     if (!value?.trim()) {
-                      return "Selected supervisor has no phone number";
+                      return "Selected architect has no phone number";
                     }
                     return (
                       validatePakistanMobile(value) === true ||
@@ -382,17 +290,17 @@ export default function DesignProjectCreate() {
           <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
             <div>
               <label className="mb-2 block ui-form-label">
-                Manager Name <span className="text-red-500">*</span>
+                CAD Operator <span className="text-red-500">*</span>
               </label>
               <input type="hidden" {...register("managerName", {
-                required: "Manager is required",
+                required: "CAD Operator is required",
               })} />
               <select
                 className={`common-input bg-card ${errors.managerName ? "border-red-500 focus:border-red-500" : ""}`}
                 defaultValue=""
                 onChange={handleManagerChange}
               >
-                <option value="">Select manager</option>
+                <option value="">Select CAD operator</option>
                 {managerOptions.map((manager) => (
                   <option key={`${manager.source}-${manager.id}`} value={manager.id}>
                     {manager.fullName}
@@ -407,16 +315,16 @@ export default function DesignProjectCreate() {
             </div>
             <div>
               <label className="mb-2 block ui-form-label">
-                Manager Contact Number <span className="text-red-500">*</span>
+                CAD Operator Contact Number <span className="text-red-500">*</span>
               </label>
               <Controller
                 name="managerContactNumber"
                 control={control}
                 rules={{
-                  required: "Manager contact number is required",
+                  required: "CAD Operator contact number is required",
                   validate: (value) => {
                     if (!value?.trim()) {
-                      return "Selected manager has no phone number";
+                      return "Selected CAD operator has no phone number";
                     }
                     return (
                       validatePakistanMobile(value) === true ||
@@ -519,141 +427,6 @@ export default function DesignProjectCreate() {
               )}
             </div>
           </div>
-
-          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
-            <div>
-              <label className="mb-2 block ui-form-label">
-                Design Type{" "}
-                <span className="text-red-500">*</span>
-              </label>
-              <select
-                className={`common-input bg-card ${errors.designType ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("designType", {
-                  required: "Design Type is required",
-                })}
-              >
-                <option value="" disabled>
-                  Select Design Type
-                </option>
-                <option value={DesignType.GREY_STRUCTURE}>
-                  {DesignType.GREY_STRUCTURE}
-                </option>
-                <option value={DesignType.FINISHING}>
-                  {DesignType.FINISHING}
-                </option>
-                <option value={DesignType.RENOVATION}>
-                  {DesignType.RENOVATION}
-                </option>
-              </select>
-              {errors.designType && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  {errors.designType.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="mb-2 block ui-form-label">
-                Payment Plan <span className="text-red-500">*</span>
-              </label>
-              <select
-                className={`common-input bg-card ${errors.paymentPlan ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("paymentPlan", {
-                  required: "Payment Plan is required",
-                  onChange: (e) => {
-                    if (e.target.value !== PaymentPlan.MARKUP) {
-                      setValue("markupPercentage", "");
-                    }
-                    if (e.target.value !== PaymentPlan.LUMP_SUM) {
-                      setValue("amount", "");
-                      replacePaymentStages([]);
-                    }
-                  },
-                })}
-              >
-                <option value="" disabled>
-                  Select Payment Plan
-                </option>
-                <option value={PaymentPlan.LUMP_SUM}>
-                  {PaymentPlan.LUMP_SUM}
-                </option>
-                <option value={PaymentPlan.MARKUP}>
-                  Cost Plus
-                </option>
-              </select>
-              {errors.paymentPlan && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  {errors.paymentPlan.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {showAmountField && (
-            <div>
-              <label className="mb-2 block ui-form-label">
-                {paymentPlan === PaymentPlan.LUMP_SUM
-                  ? "Lump Sum Amount"
-                  : "Amount"}{" "}
-                (PKR) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="e.g. 2500000"
-                className={`common-input ${errors.amount ? "border-red-500 focus:border-red-500" : ""}`}
-                {...amountField}
-                onChange={(e) => {
-                  e.target.value = sanitizeAmountInput(e.target.value);
-                  onAmountChange(e);
-                }}
-              />
-              {errors.amount && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  {errors.amount.message}
-                </p>
-              )}
-            </div>
-          )}
-
-          {paymentPlan === PaymentPlan.LUMP_SUM && (
-            <PaymentStagesTable
-              register={register}
-              errors={errors}
-              fields={paymentStageFields}
-              append={appendPaymentStage}
-              remove={removePaymentStage}
-            />
-          )}
-
-          {paymentPlan === PaymentPlan.MARKUP && (
-            <div>
-              <label className="mb-2 block ui-form-label">
-                Markup Percentage <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="e.g. 12"
-                  className={`common-input pr-10 ${errors.markupPercentage ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...markupPercentageField}
-                  onChange={(e) => {
-                    e.target.value = sanitizePercentageInput(e.target.value);
-                    onMarkupChange(e);
-                  }}
-                />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
-                  %
-                </span>
-              </div>
-              {errors.markupPercentage && (
-                <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                  {errors.markupPercentage.message}
-                </p>
-              )}
-            </div>
-          )}
 
         </div>
 

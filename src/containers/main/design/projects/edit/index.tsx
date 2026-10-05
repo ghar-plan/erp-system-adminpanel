@@ -244,8 +244,8 @@ export default function DesignProjectEdit() {
         region: data.region,
         subregion: data.subregion,
         startDate: data.startDate,
-        designType: data.designType,
-        paymentPlan: data.paymentPlan,
+        designType: data.designType || null,
+        paymentPlan: data.paymentPlan || null,
       };
       if (data.clientEmail.trim()) {
         payload.clientEmail = data.clientEmail.trim();
@@ -395,26 +395,26 @@ export default function DesignProjectEdit() {
             </div>
 
             <div>
-              <h2 className="text-sm font-bold text-foreground">Site contacts</h2>
+              <h2 className="text-sm font-bold text-foreground">Project contacts</h2>
               <p className="text-xs text-muted-foreground mt-1">
-                Supervisor and Manager are selected from Employees.
+                Architect and CAD Operator are selected from Employees.
               </p>
             </div>
 
             <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block ui-form-label">
-                  Supervisor Name <span className="text-red-500">*</span>
+                  Architect Name <span className="text-red-500">*</span>
                 </label>
                 <input type="hidden" {...register("supervisorName", {
-                  required: "Supervisor is required",
+                  required: "Architect is required",
                 })} />
                 <select
                   className={`common-input bg-card ${errors.supervisorName ? "border-red-500 focus:border-red-500" : ""}`}
                   value={selectedSupervisorId}
                   onChange={handleSupervisorChange}
                 >
-                  <option value="">Select supervisor</option>
+                  <option value="">Select architect</option>
                   {managerOptions.map((person) => (
                     <option key={`supervisor-${person.source}-${person.id}`} value={person.id}>
                       {person.fullName}
@@ -429,16 +429,16 @@ export default function DesignProjectEdit() {
               </div>
               <div>
                 <label className="mb-2 block ui-form-label">
-                  Supervisor Contact Number <span className="text-red-500">*</span>
+                  Architect Contact Number <span className="text-red-500">*</span>
                 </label>
                 <Controller
                   name="supervisorContactNumber"
                   control={control}
                   rules={{
-                    required: "Supervisor contact number is required",
+                    required: "Architect contact number is required",
                     validate: (value) => {
                       if (!value?.trim()) {
-                        return "Selected supervisor has no phone number";
+                        return "Selected architect has no phone number";
                       }
                       return (
                         validatePakistanMobile(value) === true ||
@@ -469,17 +469,17 @@ export default function DesignProjectEdit() {
             <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block ui-form-label">
-                  Manager Name <span className="text-red-500">*</span>
+                  CAD Operator <span className="text-red-500">*</span>
                 </label>
                 <input type="hidden" {...register("managerName", {
-                  required: "Manager is required",
+                  required: "CAD Operator is required",
                 })} />
                 <select
                   className={`common-input bg-card ${errors.managerName ? "border-red-500 focus:border-red-500" : ""}`}
                   value={selectedManagerId}
                   onChange={handleManagerChange}
                 >
-                  <option value="">Select manager</option>
+                  <option value="">Select CAD operator</option>
                   {managerOptions.map((manager) => (
                     <option key={`${manager.source}-${manager.id}`} value={manager.id}>
                       {manager.fullName}
@@ -494,16 +494,16 @@ export default function DesignProjectEdit() {
               </div>
               <div>
                 <label className="mb-2 block ui-form-label">
-                  Manager Contact Number <span className="text-red-500">*</span>
+                  CAD Operator Contact Number <span className="text-red-500">*</span>
                 </label>
                 <Controller
                   name="managerContactNumber"
                   control={control}
                   rules={{
-                    required: "Manager contact number is required",
+                    required: "CAD Operator contact number is required",
                     validate: (value) => {
                       if (!value?.trim()) {
-                        return "Selected manager has no phone number";
+                        return "Selected CAD operator has no phone number";
                       }
                       return (
                         validatePakistanMobile(value) === true ||
@@ -610,17 +610,14 @@ export default function DesignProjectEdit() {
             <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block ui-form-label">
-                  Design Type{" "}
-                  <span className="text-red-500">*</span>
+                  Design Type
                 </label>
                 <select
                   className={`common-input bg-card ${errors.designType ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("designType", {
-                    required: "Design Type is required",
-                  })}
+                  {...register("designType")}
                 >
-                  <option value="" disabled>
-                    Select Design Type
+                  <option value="">
+                    Select Design Type (optional)
                   </option>
                   <option value={DesignType.GREY_STRUCTURE}>
                     {DesignType.GREY_STRUCTURE}
@@ -641,12 +638,11 @@ export default function DesignProjectEdit() {
 
               <div>
                 <label className="mb-2 block ui-form-label">
-                  Payment Plan <span className="text-red-500">*</span>
+                  Payment Plan
                 </label>
                 <select
                   className={`common-input bg-card ${errors.paymentPlan ? "border-red-500 focus:border-red-500" : ""}`}
                   {...register("paymentPlan", {
-                    required: "Payment Plan is required",
                     onChange: (e) => {
                       if (e.target.value !== PaymentPlan.MARKUP) {
                         setValue("markupPercentage", "");
@@ -658,8 +654,8 @@ export default function DesignProjectEdit() {
                     },
                   })}
                 >
-                  <option value="" disabled>
-                    Select Payment Plan
+                  <option value="">
+                    Select Payment Plan (optional)
                   </option>
                   <option value={PaymentPlan.LUMP_SUM}>
                     {PaymentPlan.LUMP_SUM}
