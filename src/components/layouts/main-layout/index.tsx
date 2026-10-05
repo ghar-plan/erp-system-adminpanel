@@ -46,30 +46,20 @@ interface LayoutProps {
 
 const MENU_ICONS: Record<string, React.ReactNode> = {
   dashboard: <LayoutDashboard size={20} />,
-  projects: <Compass size={20} />,
-  comments: <MessageSquare size={20} />,
-  vendors: <UserCog size={20} />,
-  activities: <List size={20} />,
-  cashflow: <Banknote size={20} />,
-  prospects: <UserSearch size={20} />,
-  contracts: <FileSignature size={20} />,
-  reports: <BarChart3 size={20} />,
+  design: <Compass size={20} />,
+  construction: <HardHat size={20} />,
   "roles-permissions": <Shield size={20} />,
   attendance: <Clock size={20} />,
   leaves: <CalendarDays size={20} />,
-  design: <HardHat size={20} />,
 };
 
 const CHILD_ICONS: Record<string, React.ReactNode> = {
-  "project-list": <ClipboardList size={16} />,
-  "vendor-list": <Store size={16} />,
   permissions: <KeyRound size={16} />,
   roles: <UserCheck size={16} />,
   users: <Users size={16} />,
   clients: <Building2 size={16} />,
   employees: <Users size={16} />,
-  "vendor-contract": <FileSignature size={16} />,
-  "client-contract": <FileText size={16} />,
+  // Design
   "design-projects": <Compass size={16} />,
   "design-comments": <MessageSquare size={16} />,
   "design-vendors": <UserCog size={16} />,
@@ -82,6 +72,19 @@ const CHILD_ICONS: Record<string, React.ReactNode> = {
   "design-client-contract": <FileText size={16} />,
   "design-project-list": <ClipboardList size={16} />,
   "design-vendor-list": <FileSpreadsheet size={16} />,
+  // Construction (legacy modules)
+  "construction-projects": <Compass size={16} />,
+  "construction-comments": <MessageSquare size={16} />,
+  "construction-vendors": <UserCog size={16} />,
+  "construction-activity": <List size={16} />,
+  "construction-cashflow": <Banknote size={16} />,
+  "construction-prospects": <UserSearch size={16} />,
+  "construction-contracts": <FileSignature size={16} />,
+  "construction-reports": <BarChart3 size={16} />,
+  "construction-vendor-contract": <FileSignature size={16} />,
+  "construction-client-contract": <FileText size={16} />,
+  "construction-project-list": <ClipboardList size={16} />,
+  "construction-vendor-list": <Store size={16} />,
 };
 
 const MainLayout: React.FC<LayoutProps> = ({ children }) => {
@@ -107,12 +110,13 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
   );
 
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({
-    Reports: false,
     Stakeholders: false,
-    Contracts: false,
     Design: false,
     "Design-Contracts": false,
     "Design-Reports": false,
+    Construction: false,
+    "Construction-Contracts": false,
+    "Construction-Reports": false,
   });
 
   const toggleDropdown = (text: string) => {
