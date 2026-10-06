@@ -10,8 +10,18 @@ export const PAKISTAN_MOBILE_PLACEHOLDER = "3001234567";
 
 /** Strip to local 10 digits (without country code / leading 0). */
 export function toPakistanLocalDigits(value: string | undefined | null): string {
-  let digits = String(value || "").replace(/\D/g, "");
-  if (digits.startsWith("92") && digits.length > 10) {
+  const raw = String(value || "").trim();
+
+  // Values we store/display as E.164 (+92...) — always strip country code,
+  // even for partial input like "+923" while the user is still typing.
+  if (raw.startsWith("+92")) {
+    return raw.slice(3).replace(/\D/g, "").slice(0, 10);
+  }
+
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("0092")) {
+    digits = digits.slice(4);
+  } else if (digits.startsWith("92") && digits.length > 10) {
     digits = digits.slice(2);
   }
   if (digits.startsWith("0")) {

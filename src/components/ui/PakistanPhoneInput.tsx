@@ -2,7 +2,6 @@ import React from "react";
 import {
   PAKISTAN_COUNTRY_CODE,
   PAKISTAN_MOBILE_PLACEHOLDER,
-  toPakistanE164,
   toPakistanLocalDigits,
 } from "@/utils/helpers/common/phone";
 
@@ -34,7 +33,10 @@ export default function PakistanPhoneInput({
   const localDigits = toPakistanLocalDigits(value);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(toPakistanE164(event.target.value));
+    // Input field is local-only (10 digits). Keep only digits so country-code
+    // logic never re-absorbs typed digits like "3" into "+923" → "923".
+    const typedLocal = event.target.value.replace(/\D/g, "").slice(0, 10);
+    onChange(typedLocal ? `${PAKISTAN_COUNTRY_CODE}${typedLocal}` : "");
   };
 
   return (
@@ -51,7 +53,7 @@ export default function PakistanPhoneInput({
         name={name}
         type="tel"
         inputMode="numeric"
-        autoComplete="tel-national"
+        autoComplete="off"
         value={localDigits}
         onChange={handleChange}
         onBlur={onBlur}
