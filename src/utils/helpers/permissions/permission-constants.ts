@@ -127,6 +127,24 @@ export const PERMISSIONS = {
   DESIGN_REPORTS_PROJECT_LIST: "design_reports.project_list",
   DESIGN_REPORTS_VENDOR_LIST: "design_reports.vendor_list",
   DESIGN_REPORTS_VENDOR_FILTER: "design_reports.vendor_filter",
+
+  // Commerce module permissions
+  PURCHASES_CREATE: "purchases.create",
+  PURCHASES_READ: "purchases.read",
+  PURCHASES_UPDATE: "purchases.update",
+  PURCHASES_DELETE: "purchases.delete",
+
+  CUSTOMER_TYPES_CREATE: "customer_types.create",
+  CUSTOMER_TYPES_READ: "customer_types.read",
+  CUSTOMER_TYPES_UPDATE: "customer_types.update",
+  CUSTOMER_TYPES_DELETE: "customer_types.delete",
+
+  SALES_CREATE: "sales.create",
+  SALES_READ: "sales.read",
+  SALES_UPDATE: "sales.update",
+  SALES_DELETE: "sales.delete",
+
+  GHARPLANS_READ: "gharplans.read",
 } as const;
 
 export type PermissionCodename =

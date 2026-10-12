@@ -108,7 +108,7 @@ export default function DesignContractsListing() {
     "Sr No.",
     "Vendor",
     "Project",
-    "Material/Service",
+    "Job",
     "Description",
     "Amount",
     "Start Date",

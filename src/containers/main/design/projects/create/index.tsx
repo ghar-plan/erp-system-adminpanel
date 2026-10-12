@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import useDesignProjects from "../useHooks";
+import useDesignActivities from "../../activities/useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
 import {
   PAKISTAN_MOBILE_FORMAT_MESSAGE,
   validatePakistanMobile,
 } from "@/utils/helpers/common/phone";
 import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
+import { DesignType } from "@/utils/helpers/models/design/project.dto";
+import MilestonesTable from "../MilestonesTable";
 
 interface ProjectFormInputs {
   clientFullName: string;
@@ -19,26 +22,41 @@ interface ProjectFormInputs {
   supervisorContactNumber: string;
   managerName: string;
   managerContactNumber: string;
+  assistantName: string;
+  assistantContactNumber: string;
   siteName: string;
   region: string;
   subregion: string;
   startDate: string;
+  designType: string;
+  milestones: Array<{
+    id?: string;
+    deadline: string;
+    workStageIds: string[];
+    duration: string;
+    payment: string;
+  }>;
 }
 
 export default function DesignProjectCreate() {
   const navigate = useNavigate();
   const { createProject, getManagerOptions } = useDesignProjects();
+  const { getWorkStages } = useDesignActivities();
   const { isLoading } = useStore();
 
   const [managerOptions, setManagerOptions] = useState<
     Array<{ id: string; fullName: string; phone: string; source: string }>
   >([]);
+  const [workStages, setWorkStages] = useState<Array<{ id: string; name: string }>>(
+    [],
+  );
 
   const {
     register,
     handleSubmit,
     setValue,
     control,
+    watch,
     formState: { errors },
   } = useForm<ProjectFormInputs>({
     defaultValues: {
@@ -49,11 +67,25 @@ export default function DesignProjectCreate() {
       supervisorContactNumber: "",
       managerName: "",
       managerContactNumber: "",
+      assistantName: "",
+      assistantContactNumber: "",
+      designType: "",
+      milestones: [],
     },
+  });
+
+  const {
+    fields: milestoneFields,
+    append: appendMilestone,
+    remove: removeMilestone,
+  } = useFieldArray({
+    control,
+    name: "milestones",
   });
 
   useEffect(() => {
     getManagerOptions(setManagerOptions);
+    getWorkStages(setWorkStages);
   }, []);
 
   const handleManagerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -82,6 +114,19 @@ export default function DesignProjectCreate() {
     }
   };
 
+  const handleAssistantChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = managerOptions.find((person) => person.id === e.target.value);
+    if (selected) {
+      setValue("assistantName", selected.fullName, { shouldValidate: true });
+      setValue("assistantContactNumber", selected.phone || "", {
+        shouldValidate: true,
+      });
+    } else {
+      setValue("assistantName", "", { shouldValidate: true });
+      setValue("assistantContactNumber", "", { shouldValidate: true });
+    }
+  };
+
   const onSubmitForm = async (data: ProjectFormInputs) => {
     const payload: any = {
       clientFullName: data.clientFullName.trim(),
@@ -90,10 +135,20 @@ export default function DesignProjectCreate() {
       supervisorContactNumber: data.supervisorContactNumber.trim(),
       managerName: data.managerName.trim(),
       managerContactNumber: data.managerContactNumber.trim(),
+      assistantName: data.assistantName.trim() || null,
+      assistantContactNumber: data.assistantContactNumber.trim() || null,
       siteName: data.siteName,
       region: data.region,
       subregion: data.subregion,
       startDate: data.startDate,
+      designType: data.designType || null,
+      milestones: (data.milestones || []).map((milestone) => ({
+        ...(milestone.id ? { id: milestone.id } : {}),
+        deadline: milestone.deadline,
+        workStageIds: milestone.workStageIds || [],
+        duration: milestone.duration.trim(),
+        payment: Number(milestone.payment),
+      })),
     };
     if (data.clientEmail.trim()) {
       payload.clientEmail = data.clientEmail.trim();
@@ -218,7 +273,7 @@ export default function DesignProjectCreate() {
           <div>
             <h2 className="text-sm font-bold text-foreground">Project contacts</h2>
             <p className="text-xs text-muted-foreground mt-1">
-              Architect and CAD Operator are selected from Employees.
+              Architect, CAD Operator, and Assistant are selected from Employees.
             </p>
           </div>
 
@@ -354,6 +409,64 @@ export default function DesignProjectCreate() {
 
           <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
             <div>
+              <label className="mb-2 block ui-form-label">Assistant</label>
+              <input type="hidden" {...register("assistantName")} />
+              <select
+                className={`common-input bg-card ${errors.assistantName ? "border-red-500 focus:border-red-500" : ""}`}
+                defaultValue=""
+                onChange={handleAssistantChange}
+              >
+                <option value="">Select assistant (optional)</option>
+                {managerOptions.map((person) => (
+                  <option key={`assistant-${person.source}-${person.id}`} value={person.id}>
+                    {person.fullName}
+                  </option>
+                ))}
+              </select>
+              {errors.assistantName && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.assistantName.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="mb-2 block ui-form-label">
+                Assistant Contact Number
+              </label>
+              <Controller
+                name="assistantContactNumber"
+                control={control}
+                rules={{
+                  validate: (value) => {
+                    if (!value?.trim()) return true;
+                    return (
+                      validatePakistanMobile(value) === true ||
+                      PAKISTAN_MOBILE_FORMAT_MESSAGE
+                    );
+                  },
+                }}
+                render={({ field }) => (
+                  <PakistanPhoneInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    placeholder="Auto-filled"
+                    readOnly
+                    hasError={!!errors.assistantContactNumber}
+                  />
+                )}
+              />
+              {errors.assistantContactNumber && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.assistantContactNumber.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
+            <div>
               <label className="mb-2 block ui-form-label">
                 Site Name <span className="text-red-500">*</span>
               </label>
@@ -427,6 +540,41 @@ export default function DesignProjectCreate() {
               )}
             </div>
           </div>
+
+          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
+            <div>
+              <label className="mb-2 block ui-form-label">Design Type</label>
+              <select
+                className={`common-input bg-card ${errors.designType ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("designType")}
+              >
+                <option value="">Select Design Type (optional)</option>
+                <option value={DesignType.RESIDENTIAL}>
+                  {DesignType.RESIDENTIAL}
+                </option>
+                <option value={DesignType.OTHERS}>
+                  {DesignType.OTHERS}
+                </option>
+              </select>
+              {errors.designType && (
+                <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                  {errors.designType.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <MilestonesTable
+            register={register}
+            control={control}
+            errors={errors}
+            fields={milestoneFields}
+            append={appendMilestone}
+            remove={removeMilestone}
+            setValue={setValue}
+            watch={watch}
+            workStages={workStages}
+          />
 
         </div>
 

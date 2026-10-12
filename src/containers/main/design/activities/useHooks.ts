@@ -20,7 +20,7 @@ const useDesignActivities = () => {
     const response = await DesignJobs_APIS.create({ name: name.trim() });
     const { status = false, message = "", data } = response || {};
     if (status) {
-      successToaster(message || "Material/Service created successfully");
+      successToaster(message || "Job created successfully");
       return data;
     }
     return null;
@@ -30,7 +30,7 @@ const useDesignActivities = () => {
     const response = await DesignJobs_APIS.update(id, { name: name.trim() });
     const { status = false, message = "", data } = response || {};
     if (status) {
-      successToaster(message || "Material/Service updated successfully");
+      successToaster(message || "Job updated successfully");
       return data;
     }
     return null;
@@ -39,13 +39,13 @@ const useDesignActivities = () => {
   const deleteJob = async (id: string, name: string) => {
     const result = await confirmationPopup(
       `Delete ${name}`,
-      "Are you sure you want to delete this material/service?",
+      "Are you sure you want to delete this job?",
     );
     if (!result.isConfirmed) return false;
     const response = await DesignJobs_APIS.delete(id);
     const { status = false, message = "" } = response || {};
     if (status) {
-      successToaster(message || "Material/Service deleted successfully");
+      successToaster(message || "Job deleted successfully");
       return true;
     }
     return false;

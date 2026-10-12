@@ -217,9 +217,8 @@ export default function DesignProjectListing() {
             className="common-input h-10 w-full sm:w-44 text-sm bg-card"
           >
             <option value="">All types</option>
-            <option value={DesignType.GREY_STRUCTURE}>Grey Structure</option>
-            <option value={DesignType.FINISHING}>Finishing</option>
-            <option value={DesignType.RENOVATION}>Renovation</option>
+            <option value={DesignType.RESIDENTIAL}>Residential</option>
+            <option value={DesignType.OTHERS}>Others</option>
           </select>
         </div>
 

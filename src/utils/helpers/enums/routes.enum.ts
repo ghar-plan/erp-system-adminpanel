@@ -71,4 +71,17 @@ export enum siteRoutes {
   designClientContractsEdit = "/design/client-contracts/edit/:id",
   designReportsProjectList = "/design/reports/project-list",
   designReportsVendorList = "/design/reports/vendor-list",
+
+  // Commerce module routes
+  purchases = "/purchases",
+  purchasesCreate = "/purchases/create",
+  purchasesEdit = "/purchases/edit/:id",
+  purchasesView = "/purchases/view/:id",
+  customerTypes = "/customer-types",
+  customerTypesCreate = "/customer-types/create",
+  customerTypesEdit = "/customer-types/edit/:id",
+  sales = "/sales",
+  salesCreate = "/sales/create",
+  salesEdit = "/sales/edit/:id",
+  salesView = "/sales/view/:id",
 }

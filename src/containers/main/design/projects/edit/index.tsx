@@ -17,6 +17,8 @@ import {
 } from "@/utils/helpers/common/phone";
 import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
 import PaymentStagesTable from "../PaymentStagesTable";
+import MilestonesTable from "../MilestonesTable";
+import useDesignActivities from "../../activities/useHooks";
 
 interface ProjectFormInputs {
   clientFullName: string;
@@ -26,6 +28,8 @@ interface ProjectFormInputs {
   supervisorContactNumber: string;
   managerName: string;
   managerContactNumber: string;
+  assistantName: string;
+  assistantContactNumber: string;
   siteName: string;
   region: string;
   subregion: string;
@@ -39,20 +43,32 @@ interface ProjectFormInputs {
     amount: string;
     expectedDate: string;
   }>;
+  milestones: Array<{
+    id?: string;
+    deadline: string;
+    workStageIds: string[];
+    duration: string;
+    payment: string;
+  }>;
 }
 
 export default function DesignProjectEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getProjectById, updateProject, getManagerOptions } = useDesignProjects();
+  const { getWorkStages } = useDesignActivities();
   const { isLoading } = useStore();
 
   const [hasClient, setHasClient] = useState(false);
   const [selectedManagerId, setSelectedManagerId] = useState("");
   const [selectedSupervisorId, setSelectedSupervisorId] = useState("");
+  const [selectedAssistantId, setSelectedAssistantId] = useState("");
   const [managerOptions, setManagerOptions] = useState<
     Array<{ id: string; fullName: string; phone: string; source: string }>
   >([]);
+  const [workStages, setWorkStages] = useState<Array<{ id: string; name: string }>>(
+    [],
+  );
 
   const {
     register,
@@ -65,6 +81,7 @@ export default function DesignProjectEdit() {
   } = useForm<ProjectFormInputs>({
     defaultValues: {
       paymentStages: [],
+      milestones: [],
     },
   });
 
@@ -76,6 +93,15 @@ export default function DesignProjectEdit() {
   } = useFieldArray({
     control,
     name: "paymentStages",
+  });
+
+  const {
+    fields: milestoneFields,
+    append: appendMilestone,
+    remove: removeMilestone,
+  } = useFieldArray({
+    control,
+    name: "milestones",
   });
 
   const paymentPlan = watch("paymentPlan");
@@ -127,6 +153,7 @@ export default function DesignProjectEdit() {
 
   useEffect(() => {
     getManagerOptions(setManagerOptions);
+    getWorkStages(setWorkStages);
   }, []);
 
   useEffect(() => {
@@ -141,6 +168,8 @@ export default function DesignProjectEdit() {
           supervisorContactNumber: project.supervisorContactNumber || "",
           managerName: project.managerName || "",
           managerContactNumber: project.managerContactNumber || "",
+          assistantName: project.assistantName || "",
+          assistantContactNumber: project.assistantContactNumber || "",
           siteName: project.siteName,
           region: project.region,
           subregion: project.subregion,
@@ -174,6 +203,26 @@ export default function DesignProjectEdit() {
                 ? String(stage.expectedDate).slice(0, 10)
                 : "",
             })),
+          milestones: (project.milestones || [])
+            .slice()
+            .sort(
+              (a: any, b: any) =>
+                Number(a.sortOrder || 0) - Number(b.sortOrder || 0),
+            )
+            .map((milestone: any) => ({
+              id: milestone.id,
+              deadline: milestone.deadline
+                ? String(milestone.deadline).slice(0, 10)
+                : "",
+              workStageIds: (milestone.workStages || []).map(
+                (stage: any) => stage.id,
+              ),
+              duration: milestone.duration || "",
+              payment:
+                milestone.payment !== null && milestone.payment !== undefined
+                  ? String(Number(milestone.payment))
+                  : "",
+            })),
         });
       });
     }
@@ -198,6 +247,20 @@ export default function DesignProjectEdit() {
     );
     if (matched) {
       setSelectedSupervisorId(matched.id);
+    }
+  }, [managerOptions]);
+
+  useEffect(() => {
+    const assistantName = watch("assistantName");
+    if (!assistantName || !managerOptions.length) {
+      setSelectedAssistantId("");
+      return;
+    }
+    const matched = managerOptions.find(
+      (person) => person.fullName === assistantName,
+    );
+    if (matched) {
+      setSelectedAssistantId(matched.id);
     }
   }, [managerOptions]);
 
@@ -231,6 +294,21 @@ export default function DesignProjectEdit() {
     }
   };
 
+  const handleAssistantChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setSelectedAssistantId(value);
+    const selected = managerOptions.find((person) => person.id === value);
+    if (selected) {
+      setValue("assistantName", selected.fullName, { shouldValidate: true });
+      setValue("assistantContactNumber", selected.phone || "", {
+        shouldValidate: true,
+      });
+    } else {
+      setValue("assistantName", "", { shouldValidate: true });
+      setValue("assistantContactNumber", "", { shouldValidate: true });
+    }
+  };
+
   const onSubmitForm = async (data: ProjectFormInputs) => {
     if (id) {
       const payload: any = {
@@ -240,12 +318,21 @@ export default function DesignProjectEdit() {
         supervisorContactNumber: data.supervisorContactNumber.trim(),
         managerName: data.managerName.trim(),
         managerContactNumber: data.managerContactNumber.trim(),
+        assistantName: data.assistantName.trim() || null,
+        assistantContactNumber: data.assistantContactNumber.trim() || null,
         siteName: data.siteName,
         region: data.region,
         subregion: data.subregion,
         startDate: data.startDate,
         designType: data.designType || null,
         paymentPlan: data.paymentPlan || null,
+        milestones: (data.milestones || []).map((milestone) => ({
+          ...(milestone.id ? { id: milestone.id } : {}),
+          deadline: milestone.deadline,
+          workStageIds: milestone.workStageIds || [],
+          duration: milestone.duration.trim(),
+          payment: Number(milestone.payment),
+        })),
       };
       if (data.clientEmail.trim()) {
         payload.clientEmail = data.clientEmail.trim();
@@ -397,7 +484,7 @@ export default function DesignProjectEdit() {
             <div>
               <h2 className="text-sm font-bold text-foreground">Project contacts</h2>
               <p className="text-xs text-muted-foreground mt-1">
-                Architect and CAD Operator are selected from Employees.
+                Architect, CAD Operator, and Assistant are selected from Employees.
               </p>
             </div>
 
@@ -533,6 +620,64 @@ export default function DesignProjectEdit() {
 
             <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               <div>
+                <label className="mb-2 block ui-form-label">Assistant</label>
+                <input type="hidden" {...register("assistantName")} />
+                <select
+                  className={`common-input bg-card ${errors.assistantName ? "border-red-500 focus:border-red-500" : ""}`}
+                  value={selectedAssistantId}
+                  onChange={handleAssistantChange}
+                >
+                  <option value="">Select assistant (optional)</option>
+                  {managerOptions.map((person) => (
+                    <option key={`assistant-${person.source}-${person.id}`} value={person.id}>
+                      {person.fullName}
+                    </option>
+                  ))}
+                </select>
+                {errors.assistantName && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.assistantName.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  Assistant Contact Number
+                </label>
+                <Controller
+                  name="assistantContactNumber"
+                  control={control}
+                  rules={{
+                    validate: (value) => {
+                      if (!value?.trim()) return true;
+                      return (
+                        validatePakistanMobile(value) === true ||
+                        PAKISTAN_MOBILE_FORMAT_MESSAGE
+                      );
+                    },
+                  }}
+                  render={({ field }) => (
+                    <PakistanPhoneInput
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      placeholder="Auto-filled"
+                      readOnly
+                      hasError={!!errors.assistantContactNumber}
+                    />
+                  )}
+                />
+                {errors.assistantContactNumber && (
+                  <p className="mt-1.5 text-xs text-red-500 font-semibold">
+                    {errors.assistantContactNumber.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
+              <div>
                 <label className="mb-2 block ui-form-label">
                   Site Name <span className="text-red-500">*</span>
                 </label>
@@ -619,14 +764,11 @@ export default function DesignProjectEdit() {
                   <option value="">
                     Select Design Type (optional)
                   </option>
-                  <option value={DesignType.GREY_STRUCTURE}>
-                    {DesignType.GREY_STRUCTURE}
+                  <option value={DesignType.RESIDENTIAL}>
+                    {DesignType.RESIDENTIAL}
                   </option>
-                  <option value={DesignType.FINISHING}>
-                    {DesignType.FINISHING}
-                  </option>
-                  <option value={DesignType.RENOVATION}>
-                    {DesignType.RENOVATION}
+                  <option value={DesignType.OTHERS}>
+                    {DesignType.OTHERS}
                   </option>
                 </select>
                 {errors.designType && (
@@ -737,6 +879,18 @@ export default function DesignProjectEdit() {
                 )}
               </div>
             )}
+
+            <MilestonesTable
+              register={register}
+              control={control}
+              errors={errors}
+              fields={milestoneFields}
+              append={appendMilestone}
+              remove={removeMilestone}
+              setValue={setValue}
+              watch={watch}
+              workStages={workStages}
+            />
 
         </div>
 

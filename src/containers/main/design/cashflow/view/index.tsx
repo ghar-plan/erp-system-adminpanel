@@ -426,7 +426,7 @@ export default function DesignCashflowView() {
                 <DetailItem
                   icon={<Briefcase size={20} />}
                   iconClass="bg-primary/10 text-primary"
-                  label="Material/Service"
+                  label="Job"
                   value={entry.job?.name}
                 />
                 <DetailItem

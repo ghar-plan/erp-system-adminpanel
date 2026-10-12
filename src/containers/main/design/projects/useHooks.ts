@@ -28,10 +28,19 @@ const useDesignProjects = () => {
     supervisorContactNumber?: string;
     managerName?: string;
     managerContactNumber?: string;
+    assistantName?: string | null;
+    assistantContactNumber?: string | null;
     paymentStages?: Array<{
       stage: string;
       amount: number | string;
       expectedDate: string;
+    }> | null;
+    milestones?: Array<{
+      id?: string;
+      deadline: string;
+      workStageIds: string[];
+      duration: string;
+      payment: number | string;
     }> | null;
   }) => ({
     siteName: data.siteName,
@@ -79,6 +88,25 @@ const useDesignProjects = () => {
       : {}),
     ...(data.managerName ? { managerName: data.managerName.trim() } : {}),
     ...(data.managerContactNumber ? { managerContactNumber: data.managerContactNumber.trim() } : {}),
+    ...(Object.prototype.hasOwnProperty.call(data, "assistantName")
+      ? { assistantName: data.assistantName?.trim() || null }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(data, "assistantContactNumber")
+      ? { assistantContactNumber: data.assistantContactNumber?.trim() || null }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(data, "milestones")
+      ? {
+          milestones: Array.isArray(data.milestones)
+            ? data.milestones.map((milestone) => ({
+                ...(milestone.id ? { id: milestone.id } : {}),
+                deadline: milestone.deadline,
+                workStageIds: milestone.workStageIds || [],
+                duration: String(milestone.duration || "").trim(),
+                payment: Number(milestone.payment),
+              }))
+            : [],
+        }
+      : {}),
   });
 
   const createProject = async (data: {
@@ -98,6 +126,8 @@ const useDesignProjects = () => {
     supervisorContactNumber: string;
     managerName: string;
     managerContactNumber: string;
+    assistantName?: string | null;
+    assistantContactNumber?: string | null;
   }) => {
     // Sanitize payload: remove null/empty mediaId to avoid UUID validation check error on NestJS backend
     const payload = buildProjectPayload(data);

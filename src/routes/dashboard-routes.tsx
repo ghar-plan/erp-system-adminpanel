@@ -71,6 +71,19 @@ import DesignClientContractEdit from "@/containers/main/design/client-contracts/
 import DesignProjectLedger from "@/containers/main/design/reports/projectList/listing";
 import DesignVendorListReport from "@/containers/main/design/reports/vendorList/listing";
 
+// Commerce module
+import PurchasesListing from "@/containers/main/purchases/listing";
+import PurchaseCreate from "@/containers/main/purchases/create";
+import PurchaseEdit from "@/containers/main/purchases/edit";
+import PurchaseView from "@/containers/main/purchases/view";
+import CustomerTypesListing from "@/containers/main/customer-types/listing";
+import CustomerTypeCreate from "@/containers/main/customer-types/create";
+import CustomerTypeEdit from "@/containers/main/customer-types/edit";
+import SalesListing from "@/containers/main/sales/listing";
+import SaleCreate from "@/containers/main/sales/create";
+import SaleEdit from "@/containers/main/sales/edit";
+import SaleView from "@/containers/main/sales/view";
+
 function guard(
   element: ReactElement,
   permission?: string,
@@ -394,6 +407,52 @@ const DashboardRoutes = () => {
         <Route
           path={siteRoutes.designReportsVendorList}
           element={guard(<DesignVendorListReport />, PERMISSIONS.DESIGN_REPORTS_VENDOR_LIST)}
+        />
+
+        {/* Commerce module */}
+        <Route
+          path={siteRoutes.purchases}
+          element={guard(<PurchasesListing />, PERMISSIONS.PURCHASES_READ)}
+        />
+        <Route
+          path={siteRoutes.purchasesCreate}
+          element={guard(<PurchaseCreate />, PERMISSIONS.PURCHASES_CREATE)}
+        />
+        <Route
+          path={siteRoutes.purchasesView}
+          element={guard(<PurchaseView />, PERMISSIONS.PURCHASES_READ)}
+        />
+        <Route
+          path={siteRoutes.purchasesEdit}
+          element={guard(<PurchaseEdit />, PERMISSIONS.PURCHASES_UPDATE)}
+        />
+        <Route
+          path={siteRoutes.customerTypes}
+          element={guard(<CustomerTypesListing />, PERMISSIONS.CUSTOMER_TYPES_READ)}
+        />
+        <Route
+          path={siteRoutes.customerTypesCreate}
+          element={guard(<CustomerTypeCreate />, PERMISSIONS.CUSTOMER_TYPES_CREATE)}
+        />
+        <Route
+          path={siteRoutes.customerTypesEdit}
+          element={guard(<CustomerTypeEdit />, PERMISSIONS.CUSTOMER_TYPES_UPDATE)}
+        />
+        <Route
+          path={siteRoutes.sales}
+          element={guard(<SalesListing />, PERMISSIONS.SALES_READ)}
+        />
+        <Route
+          path={siteRoutes.salesCreate}
+          element={guard(<SaleCreate />, PERMISSIONS.SALES_CREATE)}
+        />
+        <Route
+          path={siteRoutes.salesView}
+          element={guard(<SaleView />, PERMISSIONS.SALES_READ)}
+        />
+        <Route
+          path={siteRoutes.salesEdit}
+          element={guard(<SaleEdit />, PERMISSIONS.SALES_UPDATE)}
         />
 
         <Route path={siteRoutes.unauthorized} element={<Unauthorized />} />

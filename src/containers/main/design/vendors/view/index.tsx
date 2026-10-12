@@ -469,7 +469,7 @@ export default function DesignVendorView() {
                           <h4 className="font-bold text-foreground text-sm flex items-center gap-2">
                             <Briefcase size={16} className="text-primary" />
                             {contract.project?.siteName || "Unknown Project"} -{" "}
-                            {contract.job?.name || "Unknown Material/Service"}
+                            {contract.job?.name || "Unknown Job"}
                           </h4>
                           <p className="text-xs text-muted-foreground line-clamp-2 max-w-md">
                             {contract.description || "No description provided."}
@@ -617,7 +617,7 @@ export default function DesignVendorView() {
                 <table className="min-w-full divide-y divide-border-main">
                   <thead className="bg-muted-foreground/5">
                     <tr>
-                      {["Date", "Project", "Material/Service / Items", "Amount"].map(
+                      {["Date", "Project", "Job / Items", "Amount"].map(
                         (col) => (
                           <th
                             key={col}

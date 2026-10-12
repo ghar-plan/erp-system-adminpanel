@@ -21,12 +21,17 @@ const MODULE_LABELS: Record<string, string> = {
 
   design_projects: "Design Projects",
   design_vendors: "Design Vendors",
-  design_activity: "Design Material/Services & Units",
+  design_activity: "Design Work Stages",
   design_cash_flow: "Design Cashflow",
   design_prospect: "Design Prospects",
   design_contracts: "Design Contracts",
   design_comments: "Design Comments",
   design_reports: "Design Reports",
+
+  purchases: "Purchases",
+  customer_types: "Customer Types",
+  sales: "Sales",
+  gharplans: "Gharplans",
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -176,6 +181,23 @@ const PERMISSION_LABELS: Record<string, string> = {
   "design_reports.project_list": "Design Project List",
   "design_reports.vendor_list": "Design Vendor List",
   "design_reports.vendor_filter": "Design Vendor filter",
+
+  "purchases.create": "Create purchase",
+  "purchases.read": "View purchases",
+  "purchases.update": "Edit purchase",
+  "purchases.delete": "Delete purchase",
+
+  "customer_types.create": "Create customer type",
+  "customer_types.read": "View customer types",
+  "customer_types.update": "Edit customer type",
+  "customer_types.delete": "Delete customer type",
+
+  "sales.create": "Create sale",
+  "sales.read": "View sales",
+  "sales.update": "Edit sale",
+  "sales.delete": "Delete sale",
+
+  "gharplans.read": "View Ghar Plans products",
 };
 
 export function toPermissionCodename(permission: {

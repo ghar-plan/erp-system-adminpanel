@@ -79,7 +79,7 @@ export default function CashOutForm({
   const isNoVendor = isMiscellaneous || isTransportation;
 
   React.useEffect(() => {
-    register("jobId", { required: "Material/Service is required" });
+    register("jobId", { required: "Job is required" });
   }, [register]);
 
   React.useEffect(() => {
@@ -265,7 +265,7 @@ export default function CashOutForm({
 
           <div>
             <label className="mb-2 block ui-form-label">
-              SELECT MATERIAL/SERVICE
+              SELECT JOB
             </label>
             <TypeaheadSelect
               options={jobs.map((job) => ({
@@ -279,9 +279,9 @@ export default function CashOutForm({
                   shouldDirty: true,
                 });
               }}
-              placeholder="Select a Material/Service"
-              searchPlaceholder="Search material/service..."
-              emptyText="No material/service found"
+              placeholder="Select a Job"
+              searchPlaceholder="Search job..."
+              emptyText="No job found"
               error={errors.jobId?.message}
             />
           </div>

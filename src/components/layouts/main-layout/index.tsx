@@ -32,6 +32,9 @@ import {
   Wallet,
   UserPlus,
   FileSpreadsheet,
+  ShoppingCart,
+  Tags,
+  ReceiptText,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
@@ -48,6 +51,7 @@ const MENU_ICONS: Record<string, React.ReactNode> = {
   dashboard: <LayoutDashboard size={20} />,
   design: <Compass size={20} />,
   construction: <HardHat size={20} />,
+  commerce: <ShoppingCart size={20} />,
   "roles-permissions": <Shield size={20} />,
   attendance: <Clock size={20} />,
   leaves: <CalendarDays size={20} />,
@@ -85,6 +89,10 @@ const CHILD_ICONS: Record<string, React.ReactNode> = {
   "construction-client-contract": <FileText size={16} />,
   "construction-project-list": <ClipboardList size={16} />,
   "construction-vendor-list": <Store size={16} />,
+  // Commerce
+  purchases: <ReceiptText size={16} />,
+  "customer-types": <Tags size={16} />,
+  sales: <ShoppingCart size={16} />,
 };
 
 const MainLayout: React.FC<LayoutProps> = ({ children }) => {

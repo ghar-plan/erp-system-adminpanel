@@ -2,6 +2,8 @@ export enum DesignType {
   GREY_STRUCTURE = "Grey Structure Projects",
   FINISHING = "Finishing Projects",
   RENOVATION = "Renovation Projects",
+  RESIDENTIAL = "Residential",
+  OTHERS = "Others",
 }
 
 export enum PaymentPlan {
@@ -24,6 +26,8 @@ export const designTypeLabel = (type?: string | null) => {
   if (type === DesignType.GREY_STRUCTURE) return "Grey Structure";
   if (type === DesignType.FINISHING) return "Finishing";
   if (type === DesignType.RENOVATION) return "Renovation";
+  if (type === DesignType.RESIDENTIAL) return "Residential";
+  if (type === DesignType.OTHERS) return "Others";
   return type || "--";
 };
 
@@ -71,6 +75,23 @@ export interface Project {
   markupPercentage?: number | string | null;
   amount?: number | string | null;
   paymentStages?: ProjectPaymentStage[];
+  milestones?: Array<{
+    id?: string;
+    deadline?: string;
+    duration?: string;
+    payment?: number | string;
+    sortOrder?: number;
+    workStages?: Array<{ id: string; name: string }>;
+  }>;
+  milestoneHistories?: Array<{
+    id?: string;
+    action?: string;
+    field?: string | null;
+    oldValue?: string | null;
+    newValue?: string | null;
+    created_at?: string;
+    changedBy?: { id?: string; fullName?: string } | null;
+  }>;
   mediaId?: string | null;
   media?: {
     id: string;
@@ -82,6 +103,8 @@ export interface Project {
   supervisorContactNumber?: string | null;
   managerName?: string | null;
   managerContactNumber?: string | null;
+  assistantName?: string | null;
+  assistantContactNumber?: string | null;
   status?: ProjectStatus | string | null;
   clientUserId?: string | null;
   client?: {

@@ -259,7 +259,7 @@ export default function DesignProjectLedger() {
                     Vendor
                   </th>
                   <th className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                    Material/Service
+                    Job
                   </th>
                   <th className="px-6 py-4 text-xs font-bold text-right text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                     Outflow (PKR)

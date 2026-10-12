@@ -55,7 +55,7 @@ export const menuConfig: MenuGroup[] = [
         permission: PERMISSIONS.DESIGN_VENDORS_READ,
       },
       {
-        title: "Material/Services & Stages",
+        title: "Work Stages",
         path: siteRoutes.designActivity,
         icon: "design-activity",
         permission: PERMISSIONS.DESIGN_ACTIVITY_READ,
@@ -208,6 +208,31 @@ export const menuConfig: MenuGroup[] = [
             permission: PERMISSIONS.REPORTS_VENDOR_LIST,
           },
         ],
+      },
+    ],
+  },
+  {
+    key: "commerce",
+    text: "Commerce",
+    path: siteRoutes.purchases,
+    children: [
+      {
+        title: "Purchases",
+        path: siteRoutes.purchases,
+        icon: "purchases",
+        permission: PERMISSIONS.PURCHASES_READ,
+      },
+      {
+        title: "Customer Types",
+        path: siteRoutes.customerTypes,
+        icon: "customer-types",
+        permission: PERMISSIONS.CUSTOMER_TYPES_READ,
+      },
+      {
+        title: "Sales",
+        path: siteRoutes.sales,
+        icon: "sales",
+        permission: PERMISSIONS.SALES_READ,
       },
     ],
   },

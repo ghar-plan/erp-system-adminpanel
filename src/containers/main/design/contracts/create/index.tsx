@@ -193,12 +193,12 @@ export default function DesignContractCreate() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-foreground">Material/Service</label>
+              <label className="mb-2 block text-sm font-semibold text-foreground">Job</label>
               <select
                 className={`common-input w-full ${errors.jobId ? "border-red-500 focus:border-red-500" : ""}`}
-                {...register("jobId", { required: "Material/Service is required" })}
+                {...register("jobId", { required: "Job is required" })}
               >
-                <option value="">Select Material/Service</option>
+                <option value="">Select Job</option>
                 {jobs.map((job) => (
                   <option key={job.id} value={job.id}>
                     {job.name}

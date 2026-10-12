@@ -419,7 +419,7 @@ export default function CashOutForm({
               <option value="">Select Category</option>
               <option value="Materials">Materials</option>
               <option value="Labour">Labour</option>
-              <option value="Asserts">Asserts</option>
+              <option value="Assets">Assets</option>
               <option value="Overheads">Overheads</option>
               <option value="Machinery">Machinery</option>
               <option value="Other">Other</option>

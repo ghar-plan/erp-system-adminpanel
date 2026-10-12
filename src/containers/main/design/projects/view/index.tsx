@@ -272,6 +272,21 @@ export default function DesignProjectView() {
 
             <hr className="border-border-main" />
 
+            <InfoSection title="Assistant Information">
+              <InfoField
+                icon={<UserRound size={20} />}
+                label="Assistant"
+                value={project.assistantName}
+              />
+              <InfoField
+                icon={<Phone size={20} />}
+                label="Assistant Mobile Number"
+                value={project.assistantContactNumber}
+              />
+            </InfoSection>
+
+            <hr className="border-border-main" />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex items-start gap-3">
                 <div className="p-2.5 rounded-lg bg-info-bg text-info-text">
@@ -467,6 +482,142 @@ export default function DesignProjectView() {
                 </div>
               </div>
             ) : null}
+
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h3 className="text-sm font-bold text-foreground">Milestones</h3>
+                <span className="text-xs font-semibold text-muted-foreground">
+                  Total:{" "}
+                  {formatProjectAmount(
+                    (project.milestones || []).reduce(
+                      (sum, row) => sum + Number(row.payment || 0),
+                      0,
+                    ),
+                  )}
+                </span>
+              </div>
+              {(project.milestones || []).length > 0 ? (
+                <div className="overflow-x-auto rounded-xl border border-border-main">
+                  <table className="w-full min-w-[720px] text-sm">
+                    <thead>
+                      <tr className="bg-muted-foreground/5 border-b border-border-main">
+                        <th className="px-3 py-2.5 text-left text-xs font-bold text-foreground w-16">
+                          S/ No.
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-bold text-foreground">
+                          Deadline
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-bold text-foreground">
+                          Work Stages
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-bold text-foreground">
+                          Duration
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-bold text-foreground">
+                          Payment
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...(project.milestones || [])]
+                        .sort(
+                          (a, b) =>
+                            Number(a.sortOrder || 0) - Number(b.sortOrder || 0),
+                        )
+                        .map((milestone, index) => (
+                          <tr
+                            key={milestone.id || `milestone-${index}`}
+                            className="border-b border-border-main last:border-b-0"
+                          >
+                            <td className="px-3 py-2.5 text-foreground font-semibold">
+                              {index + 1}
+                            </td>
+                            <td className="px-3 py-2.5 text-foreground">
+                              {milestone.deadline
+                                ? new Date(milestone.deadline).toLocaleDateString(
+                                    "en-GB",
+                                    {
+                                      day: "numeric",
+                                      month: "long",
+                                      year: "numeric",
+                                    },
+                                  )
+                                : "--"}
+                            </td>
+                            <td className="px-3 py-2.5 text-foreground">
+                              {(milestone.workStages || [])
+                                .map((stage) => stage.name)
+                                .join(", ") || "--"}
+                            </td>
+                            <td className="px-3 py-2.5 text-foreground">
+                              {milestone.duration || "--"}
+                            </td>
+                            <td className="px-3 py-2.5 text-foreground">
+                              {formatProjectAmount(milestone.payment)}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  No milestones recorded for this project.
+                </p>
+              )}
+
+              <div className="pt-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                  Milestone Change History
+                </h4>
+                {(project.milestoneHistories || []).length > 0 ? (
+                  <div className="space-y-2 max-h-72 overflow-y-auto">
+                    {(project.milestoneHistories || []).map((history) => (
+                      <div
+                        key={history.id}
+                        className="rounded-xl border border-border-main bg-panel-bg px-3 py-2.5"
+                      >
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-foreground capitalize">
+                            {history.action}
+                            {history.field ? ` · ${history.field}` : ""}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">
+                            {history.created_at
+                              ? new Date(history.created_at).toLocaleString("en-GB")
+                              : "--"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          By {history.changedBy?.fullName || "System"}
+                        </p>
+                        {history.oldValue || history.newValue ? (
+                          <p className="text-xs text-foreground mt-1">
+                            {history.oldValue ? (
+                              <>
+                                <span className="text-muted-foreground">From:</span>{" "}
+                                {history.oldValue}
+                              </>
+                            ) : null}
+                            {history.oldValue && history.newValue ? " → " : null}
+                            {history.newValue ? (
+                              <>
+                                <span className="text-muted-foreground">To:</span>{" "}
+                                {history.newValue}
+                              </>
+                            ) : null}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    No milestone changes recorded yet.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </AccordionSection>
 
