@@ -24,7 +24,8 @@ type WorkStageOption = { id: string; name: string };
 
 type MilestonesTableProps = {
   register: UseFormRegister<any>;
-  control: Control<any>;
+  // RHF Control is invariant; callers pass typed Control via cast.
+  control: Control<any, any, any>;
   errors: FieldErrors<any>;
   fields: UseFieldArrayReturn<any, "milestones", "id">["fields"];
   append: UseFieldArrayReturn<any, "milestones", "id">["append"];

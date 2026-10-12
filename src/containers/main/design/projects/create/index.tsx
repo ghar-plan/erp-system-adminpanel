@@ -566,7 +566,7 @@ export default function DesignProjectCreate() {
 
           <MilestonesTable
             register={register}
-            control={control}
+            control={control as any}
             errors={errors}
             fields={milestoneFields}
             append={appendMilestone}

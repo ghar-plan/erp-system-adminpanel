@@ -882,7 +882,7 @@ export default function DesignProjectEdit() {
 
             <MilestonesTable
               register={register}
-              control={control}
+              control={control as any}
               errors={errors}
               fields={milestoneFields}
               append={appendMilestone}
