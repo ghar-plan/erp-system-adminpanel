@@ -144,6 +144,11 @@ export const PERMISSIONS = {
   SALES_UPDATE: "sales.update",
   SALES_DELETE: "sales.delete",
 
+  FIXED_COSTS_CREATE: "fixed_costs.create",
+  FIXED_COSTS_READ: "fixed_costs.read",
+  FIXED_COSTS_UPDATE: "fixed_costs.update",
+  FIXED_COSTS_DELETE: "fixed_costs.delete",
+
   GHARPLANS_READ: "gharplans.read",
 } as const;
 

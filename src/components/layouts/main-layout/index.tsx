@@ -35,6 +35,7 @@ import {
   ShoppingCart,
   Tags,
   ReceiptText,
+  Landmark,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
@@ -93,6 +94,7 @@ const CHILD_ICONS: Record<string, React.ReactNode> = {
   purchases: <ReceiptText size={16} />,
   "customer-types": <Tags size={16} />,
   sales: <ShoppingCart size={16} />,
+  "fixed-costs": <Landmark size={16} />,
 };
 
 const MainLayout: React.FC<LayoutProps> = ({ children }) => {

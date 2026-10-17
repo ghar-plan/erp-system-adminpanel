@@ -234,6 +234,12 @@ export const menuConfig: MenuGroup[] = [
         icon: "sales",
         permission: PERMISSIONS.SALES_READ,
       },
+      {
+        title: "Fixed Costs",
+        path: siteRoutes.fixedCosts,
+        icon: "fixed-costs",
+        permission: PERMISSIONS.FIXED_COSTS_READ,
+      },
     ],
   },
   {

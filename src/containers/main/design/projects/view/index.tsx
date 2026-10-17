@@ -124,10 +124,10 @@ export default function DesignProjectView() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    profile: true,
+    timeline: true,
+    profile: false,
     clientContract: false,
     vendorContracts: false,
-    timeline: false,
   });
 
   useEffect(() => {
@@ -215,6 +215,19 @@ export default function DesignProjectView() {
       <hr className="border-border-main" />
 
       <div className="space-y-4 animate-slide-up">
+        <AccordionSection
+          title="Project Cashflow"
+          description="Cash in and cash out activity for this project."
+          open={!!openSections.timeline}
+          onToggle={() => toggleSection("timeline")}
+        >
+          <ProjectTimeline
+            projectId={project.id}
+            cashflowsIn={project.cashflowsIn}
+            cashflowsOut={project.cashflowsOut}
+          />
+        </AccordionSection>
+
         <AccordionSection
           title="Project Profile"
           description="Basic information and location indicators."
@@ -761,19 +774,6 @@ export default function DesignProjectView() {
               No vendor contracts have been assigned to this project yet.
             </p>
           )}
-        </AccordionSection>
-
-        <AccordionSection
-          title="Project Cashflow"
-          description="Cash in and cash out activity for this project."
-          open={!!openSections.timeline}
-          onToggle={() => toggleSection("timeline")}
-        >
-          <ProjectTimeline
-            projectId={project.id}
-            cashflowsIn={project.cashflowsIn}
-            cashflowsOut={project.cashflowsOut}
-          />
         </AccordionSection>
       </div>
     </div>

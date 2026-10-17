@@ -23,7 +23,7 @@ interface Prospect {
   phone: string;
   email: string;
   notes: string;
-  status: "New" | "Contacted" | "Qualified" | "Lost" | "Converted";
+  status: "New" | "Contacted" | "Qualified" | "Negotiation" | "Lost" | "Converted";
   prospectType?: "Construction Prospect" | "Design Prospect";
   project?: string;
   leadSource?: string;
@@ -90,6 +90,8 @@ export default function ProspectView() {
       return "bg-warning-bg text-warning-text border border-panel-border";
     } else if (status === "Qualified") {
       return "bg-success-bg text-success-text border border-panel-border";
+    } else if (status === "Negotiation") {
+      return "bg-info-bg text-info-text border border-panel-border";
     } else if (status === "Lost") {
       return "bg-danger-bg text-danger-text border border-panel-border";
     } else if (status === "Converted") {
@@ -305,6 +307,7 @@ export default function ProspectView() {
                   <option value="New">New</option>
                   <option value="Contacted">Contacted</option>
                   <option value="Qualified">Qualified</option>
+                  <option value="Negotiation">Negotiation</option>
                   <option value="Lost">Lost</option>
                   <option value="Converted">Converted</option>
                 </select>

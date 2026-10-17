@@ -84,4 +84,8 @@ export enum siteRoutes {
   salesCreate = "/sales/create",
   salesEdit = "/sales/edit/:id",
   salesView = "/sales/view/:id",
+  fixedCosts = "/fixed-costs",
+  fixedCostsCreate = "/fixed-costs/create",
+  fixedCostsEdit = "/fixed-costs/edit/:id",
+  fixedCostsView = "/fixed-costs/view/:id",
 }

@@ -83,6 +83,10 @@ import SalesListing from "@/containers/main/sales/listing";
 import SaleCreate from "@/containers/main/sales/create";
 import SaleEdit from "@/containers/main/sales/edit";
 import SaleView from "@/containers/main/sales/view";
+import FixedCostsListing from "@/containers/main/fixed-costs/listing";
+import FixedCostCreate from "@/containers/main/fixed-costs/create";
+import FixedCostEdit from "@/containers/main/fixed-costs/edit";
+import FixedCostView from "@/containers/main/fixed-costs/view";
 
 function guard(
   element: ReactElement,
@@ -453,6 +457,22 @@ const DashboardRoutes = () => {
         <Route
           path={siteRoutes.salesEdit}
           element={guard(<SaleEdit />, PERMISSIONS.SALES_UPDATE)}
+        />
+        <Route
+          path={siteRoutes.fixedCosts}
+          element={guard(<FixedCostsListing />, PERMISSIONS.FIXED_COSTS_READ)}
+        />
+        <Route
+          path={siteRoutes.fixedCostsCreate}
+          element={guard(<FixedCostCreate />, PERMISSIONS.FIXED_COSTS_CREATE)}
+        />
+        <Route
+          path={siteRoutes.fixedCostsView}
+          element={guard(<FixedCostView />, PERMISSIONS.FIXED_COSTS_READ)}
+        />
+        <Route
+          path={siteRoutes.fixedCostsEdit}
+          element={guard(<FixedCostEdit />, PERMISSIONS.FIXED_COSTS_UPDATE)}
         />
 
         <Route path={siteRoutes.unauthorized} element={<Unauthorized />} />

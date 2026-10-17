@@ -197,6 +197,11 @@ const PERMISSION_LABELS: Record<string, string> = {
   "sales.update": "Edit sale",
   "sales.delete": "Delete sale",
 
+  "fixed_costs.create": "Create fixed cost",
+  "fixed_costs.read": "View fixed costs",
+  "fixed_costs.update": "Edit fixed cost",
+  "fixed_costs.delete": "Delete fixed cost",
+
   "gharplans.read": "View Ghar Plans products",
 };
 

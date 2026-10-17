@@ -23,7 +23,7 @@ interface Prospect {
   phone: string;
   email: string;
   notes: string;
-  status: "New" | "Contacted" | "Qualified" | "Lost" | "Converted";
+  status: "New" | "Contacted" | "Qualified" | "Negotiation" | "Lost" | "Converted";
   prospectType?: "Construction Prospect" | "Design Prospect" | null;
   project?: string;
   leadSource?: string;
@@ -125,6 +125,9 @@ export default function ProspectsListing() {
     } else if (status === "Qualified") {
       classes =
         "bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400";
+    } else if (status === "Negotiation") {
+      classes =
+        "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-400";
     } else if (status === "Lost") {
       classes = "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400";
     } else if (status === "Converted") {
@@ -261,6 +264,7 @@ export default function ProspectsListing() {
             <option value="New">New</option>
             <option value="Contacted">Contacted</option>
             <option value="Qualified">Qualified</option>
+            <option value="Negotiation">Negotiation</option>
             <option value="Lost">Lost</option>
             <option value="Converted">Converted</option>
           </select>

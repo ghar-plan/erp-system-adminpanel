@@ -17,7 +17,7 @@ interface ProspectFormInputs {
   phone: string;
   email: string;
   notes: string;
-  status: "New" | "Contacted" | "Qualified" | "Lost" | "Converted";
+  status: "New" | "Contacted" | "Qualified" | "Negotiation" | "Lost" | "Converted";
   prospectType: DesignProspectType | "";
   project: string;
   leadSource: string;
@@ -223,6 +223,7 @@ export default function DesignProspectCreate() {
               <option value="">Select Lead Source</option>
               <option value="Facebook">Facebook</option>
               <option value="Instagram">Instagram</option>
+              <option value="YouTube">YouTube</option>
               <option value="LinkedIn">LinkedIn</option>
               <option value="Google / Search">Google / Search</option>
               <option value="Referral">Referral</option>
@@ -244,6 +245,7 @@ export default function DesignProspectCreate() {
               <option value="New">New</option>
               <option value="Contacted">Contacted</option>
               <option value="Qualified">Qualified</option>
+              <option value="Negotiation">Negotiation</option>
               <option value="Lost">Lost</option>
               <option value="Converted">Converted</option>
             </select>

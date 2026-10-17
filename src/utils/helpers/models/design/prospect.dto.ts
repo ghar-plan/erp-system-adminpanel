@@ -24,6 +24,7 @@ export enum DesignProspectStatus {
   NEW = "New",
   CONTACTED = "Contacted",
   QUALIFIED = "Qualified",
+  NEGOTIATION = "Negotiation",
   LOST = "Lost",
   CONVERTED = "Converted",
 }

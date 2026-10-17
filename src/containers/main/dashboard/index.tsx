@@ -1,7 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Wallet,
   DollarSign,
   TrendingUp,
   TrendingDown,
@@ -14,19 +13,54 @@ import {
 } from "lucide-react";
 import useDashboard from "./useHooks";
 import { Can } from "@/components/auth/Can";
+import Button from "@/components/ui/Button";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
 export default function Dashboard() {
-  const { stats, getStats } = useDashboard();
+  const { stats, analytics, getStats, getAnalytics } = useDashboard();
+
+  const [draftStartDate, setDraftStartDate] = useState("");
+  const [draftEndDate, setDraftEndDate] = useState("");
+  const [appliedStartDate, setAppliedStartDate] = useState("");
+  const [appliedEndDate, setAppliedEndDate] = useState("");
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   useEffect(() => {
     getStats();
+    loadAnalytics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const loadAnalytics = async (startDate?: string, endDate?: string) => {
+    setAnalyticsLoading(true);
+    try {
+      await getAnalytics({
+        ...(startDate ? { startDate } : {}),
+        ...(endDate ? { endDate } : {}),
+      });
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  const handleApplyFilters = () => {
+    setAppliedStartDate(draftStartDate);
+    setAppliedEndDate(draftEndDate);
+    loadAnalytics(draftStartDate || undefined, draftEndDate || undefined);
+  };
+
+  const handleResetFilters = () => {
+    setDraftStartDate("");
+    setDraftEndDate("");
+    setAppliedStartDate("");
+    setAppliedEndDate("");
+    loadAnalytics();
+  };
+
   const formatCurrency = (value: number) => {
-    return `PKR ${Number(value).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+    return `PKR ${Math.round(Number(value) || 0).toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     })}`;
   };
 
@@ -42,11 +76,18 @@ export default function Dashboard() {
     }
   };
 
-  const totalCashIn = stats?.totalCashIn ?? stats?.totalRevenue ?? 0;
-  const totalCashOut = stats?.totalCashOut ?? stats?.totalCosts ?? 0;
-  const totalCost = stats?.totalCost ?? totalCashOut;
-  const netProfit = stats?.netProfit ?? 0;
+  const totalCashIn =
+    analytics?.totalCashIn ?? stats?.totalCashIn ?? stats?.totalRevenue ?? 0;
+  const totalCashOut =
+    analytics?.totalCashOut ?? stats?.totalCashOut ?? stats?.totalCosts ?? 0;
+  const totalCost = analytics?.totalCost ?? stats?.totalCost ?? totalCashOut;
+  const netProfit = analytics?.netProfit ?? stats?.netProfit ?? 0;
   const netIsPositive = netProfit >= 0;
+
+  const hasDateFilter = !!(appliedStartDate || appliedEndDate);
+  const rangeLabel = hasDateFilter
+    ? `${appliedStartDate || "…"} → ${appliedEndDate || "…"}`
+    : "All time";
 
   return (
     <div className="space-y-8 pb-8">
@@ -61,82 +102,157 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 animate-fade-in">
-        <div className="bg-card rounded-xl border border-border-main p-6 flex flex-col justify-between shadow-2xs relative overflow-hidden transition-all duration-300 hover:shadow-xs hover:border-primary/20">
-          <div className="flex items-center justify-between">
-            <div className="w-11 h-11 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-              <ArrowDownCircle size={20} className="stroke-[2]" />
-            </div>
-          </div>
-          <div className="mt-6">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest block">
-              Total Cash In
-            </span>
-            <h2 className="text-2xl font-semibold text-foreground mt-1.5 tracking-tight">
-              {formatCurrency(totalCashIn)}
-            </h2>
-            <p className="text-[11px] text-muted-foreground mt-2">Construction only</p>
-          </div>
-        </div>
-
-        <div className="bg-card rounded-xl border border-border-main p-6 flex flex-col justify-between shadow-2xs relative overflow-hidden transition-all duration-300 hover:shadow-xs hover:border-primary/20">
-          <div className="flex items-center justify-between">
-            <div className="w-11 h-11 bg-amber-500/10 rounded-lg flex items-center justify-center text-amber-600">
-              <ArrowUpCircle size={20} className="stroke-[2]" />
-            </div>
-          </div>
-          <div className="mt-6">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest block">
-              Total Cash Out
-            </span>
-            <h2 className="text-2xl font-semibold text-foreground mt-1.5 tracking-tight">
-              {formatCurrency(totalCashOut)}
-            </h2>
-            <p className="text-[11px] text-muted-foreground mt-2">Construction only</p>
-          </div>
-        </div>
-
-        <div className="bg-card rounded-xl border border-border-main p-6 flex flex-col justify-between shadow-2xs relative overflow-hidden transition-all duration-300 hover:shadow-xs hover:border-primary/20">
-          <div className="flex items-center justify-between">
-            <div className="w-11 h-11 bg-orange-500/10 rounded-lg flex items-center justify-center text-orange-600">
-              <DollarSign size={20} className="stroke-[2]" />
-            </div>
-          </div>
-          <div className="mt-6">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest block">
-              Total Cost
-            </span>
-            <h2 className="text-2xl font-semibold text-foreground mt-1.5 tracking-tight">
-              {formatCurrency(totalCost)}
-            </h2>
-            <p className="text-[11px] text-muted-foreground mt-2">Construction only</p>
-          </div>
-        </div>
-
-        <div className="bg-card rounded-xl border border-border-main p-6 flex flex-col justify-between shadow-2xs relative overflow-hidden transition-all duration-300 hover:shadow-xs hover:border-primary/20">
-          <div className="flex items-center justify-between">
-            <div
-              className={`w-11 h-11 rounded-lg flex items-center justify-center ${netIsPositive ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"}`}
-            >
-              {netIsPositive ? (
-                <TrendingUp size={20} className="stroke-[2]" />
-              ) : (
-                <TrendingDown size={20} className="stroke-[2]" />
-              )}
-            </div>
-          </div>
-          <div className="mt-6">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest block">
-              Net Profit
-            </span>
-            <h2
-              className={`text-2xl font-semibold mt-1.5 tracking-tight ${netIsPositive ? "text-foreground" : "text-red-600"}`}
-            >
-              {formatCurrency(netProfit)}
-            </h2>
-            <p className="text-[11px] text-muted-foreground mt-2">
-              Construction cash in − cash out
+      {/* Analytics */}
+      <div className="space-y-4 animate-fade-in">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+          <div>
+            <h2 className="text-base font-bold text-foreground">Analytics</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Cashflow metrics for the selected date range ({rangeLabel}).
             </p>
+          </div>
+
+          <div className="bg-muted-foreground/5 border border-border-main p-3 sm:p-4 rounded-xl shadow-xs flex flex-wrap items-end gap-3 w-full lg:w-auto">
+            <div className="flex flex-col items-start gap-1 min-w-[150px] flex-1 sm:flex-initial">
+              <label
+                htmlFor="analytics-start-date"
+                className="text-xs text-foreground font-medium"
+              >
+                Start Date
+              </label>
+              <input
+                id="analytics-start-date"
+                type="date"
+                value={draftStartDate}
+                max={draftEndDate || undefined}
+                onChange={(e) => setDraftStartDate(e.target.value)}
+                className="common-input text-sm h-10 w-full sm:w-44"
+              />
+            </div>
+            <div className="flex flex-col items-start gap-1 min-w-[150px] flex-1 sm:flex-initial">
+              <label
+                htmlFor="analytics-end-date"
+                className="text-xs text-foreground font-medium"
+              >
+                End Date
+              </label>
+              <input
+                id="analytics-end-date"
+                type="date"
+                value={draftEndDate}
+                min={draftStartDate || undefined}
+                onChange={(e) => setDraftEndDate(e.target.value)}
+                className="common-input text-sm h-10 w-full sm:w-44"
+              />
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
+              <Button
+                variant="primary"
+                onClick={handleApplyFilters}
+                disabled={analyticsLoading}
+                className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+              >
+                Apply
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleResetFilters}
+                disabled={analyticsLoading}
+                className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
+              >
+                Reset
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 transition-opacity ${
+            analyticsLoading ? "opacity-60" : ""
+          }`}
+        >
+          <div className="bg-card rounded-xl border border-border-main p-6 flex flex-col justify-between shadow-2xs relative overflow-hidden transition-all duration-300 hover:shadow-xs hover:border-primary/20">
+            <div className="flex items-center justify-between">
+              <div className="w-11 h-11 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
+                <ArrowDownCircle size={20} className="stroke-[2]" />
+              </div>
+            </div>
+            <div className="mt-6">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest block">
+                Total Cash In
+              </span>
+              <h2 className="text-2xl font-semibold text-foreground mt-1.5 tracking-tight">
+                {formatCurrency(totalCashIn)}
+              </h2>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Construction only
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-card rounded-xl border border-border-main p-6 flex flex-col justify-between shadow-2xs relative overflow-hidden transition-all duration-300 hover:shadow-xs hover:border-primary/20">
+            <div className="flex items-center justify-between">
+              <div className="w-11 h-11 bg-amber-500/10 rounded-lg flex items-center justify-center text-amber-600">
+                <ArrowUpCircle size={20} className="stroke-[2]" />
+              </div>
+            </div>
+            <div className="mt-6">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest block">
+                Total Cash Out
+              </span>
+              <h2 className="text-2xl font-semibold text-foreground mt-1.5 tracking-tight">
+                {formatCurrency(totalCashOut)}
+              </h2>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Construction only
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-card rounded-xl border border-border-main p-6 flex flex-col justify-between shadow-2xs relative overflow-hidden transition-all duration-300 hover:shadow-xs hover:border-primary/20">
+            <div className="flex items-center justify-between">
+              <div className="w-11 h-11 bg-orange-500/10 rounded-lg flex items-center justify-center text-orange-600">
+                <DollarSign size={20} className="stroke-[2]" />
+              </div>
+            </div>
+            <div className="mt-6">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest block">
+                Total Cost
+              </span>
+              <h2 className="text-2xl font-semibold text-foreground mt-1.5 tracking-tight">
+                {formatCurrency(totalCost)}
+              </h2>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Construction only
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-card rounded-xl border border-border-main p-6 flex flex-col justify-between shadow-2xs relative overflow-hidden transition-all duration-300 hover:shadow-xs hover:border-primary/20">
+            <div className="flex items-center justify-between">
+              <div
+                className={`w-11 h-11 rounded-lg flex items-center justify-center ${netIsPositive ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"}`}
+              >
+                {netIsPositive ? (
+                  <TrendingUp size={20} className="stroke-[2]" />
+                ) : (
+                  <TrendingDown size={20} className="stroke-[2]" />
+                )}
+              </div>
+            </div>
+            <div className="mt-6">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest block">
+                Net Profit
+              </span>
+              <h2
+                className={`text-2xl font-semibold mt-1.5 tracking-tight ${netIsPositive ? "text-foreground" : "text-red-600"}`}
+              >
+                {formatCurrency(netProfit)}
+              </h2>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Construction cash in − cash out
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -222,6 +338,8 @@ export default function Dashboard() {
                     "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400",
                   Qualified:
                     "bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400",
+                  Negotiation:
+                    "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-400",
                   Lost: "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400",
                   Converted:
                     "bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400",
