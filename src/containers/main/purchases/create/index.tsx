@@ -60,6 +60,25 @@ export default function PurchaseCreate() {
   });
 
   const productId = watch("productId");
+  const quantity = watch("quantity");
+  const rate = watch("rate");
+
+  // Price = Per Item × Quantity
+  useEffect(() => {
+    const qty = Number(quantity);
+    const perItem = Number(rate);
+    if (
+      Number.isFinite(qty) &&
+      Number.isFinite(perItem) &&
+      qty > 0 &&
+      perItem > 0
+    ) {
+      const price = Number((qty * perItem).toFixed(2));
+      setValue("paymentMade", price, { shouldValidate: true });
+    } else if (quantity === "" || rate === "" || quantity === undefined || rate === undefined) {
+      setValue("paymentMade", "", { shouldValidate: false });
+    }
+  }, [quantity, rate, setValue]);
 
   const loadProductsForSelect = async (params: {
     name?: string;
@@ -113,13 +132,17 @@ export default function PurchaseCreate() {
   };
 
   const onSubmitForm = async (data: PurchaseFormInputs) => {
+    const quantity = Number(data.quantity);
+    const rate = Number(data.rate);
+    const price = Number((quantity * rate).toFixed(2));
+
     const payload = {
       supplierName: data.supplierName.trim(),
       productId: String(data.productId),
       productName: data.productName,
-      quantity: Number(data.quantity),
-      rate: Number(data.rate),
-      paymentMade: data.paymentMade === "" ? 0 : Number(data.paymentMade),
+      quantity,
+      rate,
+      paymentMade: price,
       sourcePayment: data.sourcePayment,
       date: data.date,
       ...(data.remarks ? { remarks: data.remarks.trim() } : {}),
@@ -223,9 +246,9 @@ export default function PurchaseCreate() {
             )}
           </div>
 
-          {/* Rate */}
+          {/* Per Item (unit price) */}
           <div>
-            <label className="mb-2 block ui-form-label">Rate</label>
+            <label className="mb-2 block ui-form-label">Per Item</label>
             <input
               type="number"
               step="0.01"
@@ -233,9 +256,12 @@ export default function PurchaseCreate() {
               placeholder="e.g. 1200"
               className={`common-input ${errors.rate ? "border-red-500 focus:border-red-500" : ""}`}
               {...register("rate", {
-                required: "Rate is required",
+                required: "Per item price is required",
                 valueAsNumber: true,
-                min: { value: 0.01, message: "Rate must be greater than 0" },
+                min: {
+                  value: 0.01,
+                  message: "Per item price must be greater than 0",
+                },
               })}
             />
             {errors.rate && (
@@ -245,18 +271,19 @@ export default function PurchaseCreate() {
             )}
           </div>
 
-          {/* Payment Made */}
+          {/* Price (auto: Per Item × Quantity) */}
           <div>
-            <label className="mb-2 block ui-form-label">Payment Made</label>
+            <label className="mb-2 block ui-form-label">Price</label>
             <input
               type="number"
               step="0.01"
               min="0"
-              placeholder="e.g. 50000"
-              className={`common-input ${errors.paymentMade ? "border-red-500 focus:border-red-500" : ""}`}
+              placeholder="Auto-calculated"
+              readOnly
+              className={`common-input bg-muted-foreground/5 cursor-not-allowed ${errors.paymentMade ? "border-red-500 focus:border-red-500" : ""}`}
               {...register("paymentMade", {
                 valueAsNumber: true,
-                min: { value: 0, message: "Payment made cannot be negative" },
+                min: { value: 0, message: "Price cannot be negative" },
               })}
             />
             {errors.paymentMade && (

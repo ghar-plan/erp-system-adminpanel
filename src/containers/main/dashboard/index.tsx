@@ -78,9 +78,9 @@ export default function Dashboard() {
 
   const totalCashIn =
     analytics?.totalCashIn ?? stats?.totalCashIn ?? stats?.totalRevenue ?? 0;
-  const totalCashOut =
-    analytics?.totalCashOut ?? stats?.totalCashOut ?? stats?.totalCosts ?? 0;
-  const totalCost = analytics?.totalCost ?? stats?.totalCost ?? totalCashOut;
+  const totalCashOut = analytics?.totalCashOut ?? stats?.totalCashOut ?? 0;
+  const totalCost =
+    analytics?.totalCost ?? stats?.totalCost ?? stats?.totalCosts ?? 0;
   const netProfit = analytics?.netProfit ?? stats?.netProfit ?? 0;
   const netIsPositive = netProfit >= 0;
 
@@ -204,7 +204,7 @@ export default function Dashboard() {
                 {formatCurrency(totalCashOut)}
               </h2>
               <p className="text-[11px] text-muted-foreground mt-2">
-                Construction only
+                Amount paid out
               </p>
             </div>
           </div>
@@ -223,7 +223,7 @@ export default function Dashboard() {
                 {formatCurrency(totalCost)}
               </h2>
               <p className="text-[11px] text-muted-foreground mt-2">
-                Construction only
+                Paid + remaining (committed)
               </p>
             </div>
           </div>

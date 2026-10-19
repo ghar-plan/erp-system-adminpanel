@@ -149,7 +149,7 @@ export default function PurchaseView() {
             </div>
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Rate
+                Per Item
               </label>
               <p className="text-sm font-semibold text-foreground mt-0.5">
                 {formatMoney(purchase?.rate)}
@@ -177,7 +177,7 @@ export default function PurchaseView() {
             </div>
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Payment Made
+                Price
               </label>
               <p className="text-sm font-semibold text-foreground mt-0.5">
                 {formatMoney(purchase?.paymentMade)}
