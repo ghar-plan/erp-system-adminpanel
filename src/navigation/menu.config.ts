@@ -240,8 +240,21 @@ export const menuConfig: MenuGroup[] = [
         icon: "fixed-costs",
         permission: PERMISSIONS.FIXED_COSTS_READ,
       },
+      {
+        title: "Stock",
+        path: siteRoutes.stocks,
+        icon: "stocks",
+        permission: PERMISSIONS.STOCKS_READ,
+      },
+      {
+        title: "Time Span",
+        path: siteRoutes.timeSpan,
+        icon: "time-span",
+        permission: PERMISSIONS.PRODUCT_LIFESPANS_READ,
+      },
     ],
   },
+
   {
     key: "roles-permissions",
     text: "Stakeholders",

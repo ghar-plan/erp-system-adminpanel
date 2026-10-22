@@ -1,16 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { PlusSquare, Loader2, Save } from "lucide-react";
 import ProductSearchSelect from "@/components/ui/ProductSearchSelect";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import usePurchases from "../useHooks";
+import useTimeSpan from "@/containers/main/time-span/useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
 import {
   CashOutPaymentSource,
   SOURCE_PAYMENT_OPTIONS,
   GharplansProduct,
 } from "@/utils/helpers/models/purchases/purchase.dto";
+import {
+  ProductLifespanAvailability,
+  computeExpiryFromLifespan,
+  formatLifespanLabel,
+} from "@/utils/helpers/models/product-lifespans/product-lifespan.dto";
 
 interface PurchaseFormInputs {
   supplierName: string;
@@ -33,9 +39,15 @@ export default function PurchaseCreate() {
   const navigate = useNavigate();
   const { createPurchase, getPurchaseById, updatePurchase, getProducts } =
     usePurchases();
+  const { getByProduct } = useTimeSpan();
   const { isLoading } = useStore();
 
   const [selectedProductName, setSelectedProductName] = useState("");
+  const [lifespan, setLifespan] = useState<ProductLifespanAvailability | null>(
+    null,
+  );
+  const expiryTouchedRef = useRef(false);
+  const loadedEditRef = useRef(false);
 
   const {
     register,
@@ -62,6 +74,7 @@ export default function PurchaseCreate() {
   const productId = watch("productId");
   const quantity = watch("quantity");
   const rate = watch("rate");
+  const date = watch("date");
 
   // Price = Per Item × Quantity
   useEffect(() => {
@@ -75,7 +88,12 @@ export default function PurchaseCreate() {
     ) {
       const price = Number((qty * perItem).toFixed(2));
       setValue("paymentMade", price, { shouldValidate: true });
-    } else if (quantity === "" || rate === "" || quantity === undefined || rate === undefined) {
+    } else if (
+      quantity === "" ||
+      rate === "" ||
+      quantity === undefined ||
+      rate === undefined
+    ) {
       setValue("paymentMade", "", { shouldValidate: false });
     }
   }, [quantity, rate, setValue]);
@@ -120,15 +138,57 @@ export default function PurchaseCreate() {
         if (data?.productName) {
           setSelectedProductName(data.productName);
         }
+        // Keep existing expiry on edit unless user changes product/date
+        expiryTouchedRef.current = !!data?.expiryDate;
+        loadedEditRef.current = true;
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isEditMode]);
 
+  // Load product time span
+  useEffect(() => {
+    if (!productId) {
+      setLifespan(null);
+      return;
+    }
+    getByProduct(String(productId)).then(setLifespan);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId]);
+
+  // Auto-fill expiry from time span when product/date changes (unless user edited expiry)
+  useEffect(() => {
+    if (!productId || !date || !lifespan) return;
+    if (lifespan.isLifetime) {
+      if (!expiryTouchedRef.current && !isEditMode) {
+        setValue("expiryDate", "");
+      }
+      return;
+    }
+
+    // On edit load, don't overwrite existing expiry until product/date changes after load
+    if (isEditMode && loadedEditRef.current && expiryTouchedRef.current) {
+      return;
+    }
+
+    const computed = computeExpiryFromLifespan(
+      date,
+      lifespan.years,
+      lifespan.months,
+      lifespan.days,
+    );
+    if (computed) {
+      setValue("expiryDate", computed, { shouldDirty: true });
+    }
+  }, [productId, date, lifespan, isEditMode, setValue]);
+
   const handleProductSelect = (id: string, name: string) => {
     setValue("productId", id, { shouldValidate: true });
     setValue("productName", name, { shouldValidate: true });
     setSelectedProductName(name);
+    // Allow auto-expiry for newly selected product
+    expiryTouchedRef.current = false;
+    loadedEditRef.current = false;
   };
 
   const onSubmitForm = async (data: PurchaseFormInputs) => {
@@ -160,9 +220,14 @@ export default function PurchaseCreate() {
     navigate(-1);
   };
 
+  const lifespanHint = lifespan
+    ? lifespan.isLifetime
+      ? "Lifetime product (no auto expiry)"
+      : `Time span: ${formatLifespanLabel(lifespan.years, lifespan.months, lifespan.days)}`
+    : null;
+
   return (
     <div>
-      {/* Header */}
       <div className="flex justify-between items-center gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <button
@@ -179,7 +244,6 @@ export default function PurchaseCreate() {
         </div>
       </div>
 
-      {/* Form Card Layout */}
       <form
         id="purchase-create-form"
         onSubmit={handleSubmit(onSubmitForm)}
@@ -188,7 +252,6 @@ export default function PurchaseCreate() {
         <hr className="border-border-main" />
 
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-          {/* Supplier Name */}
           <div>
             <label className="mb-2 block ui-form-label">
               Company / Supplier Name
@@ -208,7 +271,6 @@ export default function PurchaseCreate() {
             )}
           </div>
 
-          {/* Product Name */}
           <div>
             <label className="mb-2 block ui-form-label">Product Name</label>
             <ProductSearchSelect
@@ -224,7 +286,6 @@ export default function PurchaseCreate() {
             />
           </div>
 
-          {/* Quantity */}
           <div>
             <label className="mb-2 block ui-form-label">Quantity</label>
             <input
@@ -246,7 +307,6 @@ export default function PurchaseCreate() {
             )}
           </div>
 
-          {/* Per Item (unit price) */}
           <div>
             <label className="mb-2 block ui-form-label">Per Item</label>
             <input
@@ -271,7 +331,6 @@ export default function PurchaseCreate() {
             )}
           </div>
 
-          {/* Price (auto: Per Item × Quantity) */}
           <div>
             <label className="mb-2 block ui-form-label">Price</label>
             <input
@@ -293,7 +352,6 @@ export default function PurchaseCreate() {
             )}
           </div>
 
-          {/* Source Payment */}
           <div>
             <label className="mb-2 block ui-form-label">Source Payment</label>
             <select
@@ -316,13 +374,23 @@ export default function PurchaseCreate() {
             )}
           </div>
 
-          {/* Date */}
           <div>
             <label className="mb-2 block ui-form-label">Date</label>
             <input
               type="date"
               className={`common-input ${errors.date ? "border-red-500 focus:border-red-500" : ""}`}
-              {...register("date", { required: "Date is required" })}
+              {...register("date", {
+                required: "Date is required",
+                onChange: () => {
+                  // Allow recompute when purchase date changes
+                  if (!isEditMode) {
+                    expiryTouchedRef.current = false;
+                  } else {
+                    loadedEditRef.current = false;
+                    expiryTouchedRef.current = false;
+                  }
+                },
+              })}
             />
             {errors.date && (
               <p className="mt-1 text-xs text-danger-text font-semibold">
@@ -331,15 +399,24 @@ export default function PurchaseCreate() {
             )}
           </div>
 
-          {/* Expiry Date */}
           <div>
             <label className="mb-2 block ui-form-label">
               Expiry Date (Optional)
             </label>
-            <input type="date" className="common-input" {...register("expiryDate")} />
+            <input
+              type="date"
+              className="common-input"
+              {...register("expiryDate", {
+                onChange: () => {
+                  expiryTouchedRef.current = true;
+                },
+              })}
+            />
+            {lifespanHint ? (
+              <p className="mt-1 text-xs text-muted-foreground">{lifespanHint}</p>
+            ) : null}
           </div>
 
-          {/* Remarks */}
           <div className="md:col-span-2">
             <label className="mb-2 block ui-form-label">Remarks</label>
             <textarea
@@ -351,7 +428,6 @@ export default function PurchaseCreate() {
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex justify-end pt-4 border-t border-border-main/60">
           <button
             type="submit"

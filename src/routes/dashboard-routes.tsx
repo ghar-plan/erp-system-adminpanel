@@ -87,6 +87,8 @@ import FixedCostsListing from "@/containers/main/fixed-costs/listing";
 import FixedCostCreate from "@/containers/main/fixed-costs/create";
 import FixedCostEdit from "@/containers/main/fixed-costs/edit";
 import FixedCostView from "@/containers/main/fixed-costs/view";
+import StocksListing from "@/containers/main/stocks/listing";
+import TimeSpanListing from "@/containers/main/time-span/listing";
 
 function guard(
   element: ReactElement,
@@ -473,6 +475,14 @@ const DashboardRoutes = () => {
         <Route
           path={siteRoutes.fixedCostsEdit}
           element={guard(<FixedCostEdit />, PERMISSIONS.FIXED_COSTS_UPDATE)}
+        />
+        <Route
+          path={siteRoutes.stocks}
+          element={guard(<StocksListing />, PERMISSIONS.STOCKS_READ)}
+        />
+        <Route
+          path={siteRoutes.timeSpan}
+          element={guard(<TimeSpanListing />, PERMISSIONS.PRODUCT_LIFESPANS_READ)}
         />
 
         <Route path={siteRoutes.unauthorized} element={<Unauthorized />} />

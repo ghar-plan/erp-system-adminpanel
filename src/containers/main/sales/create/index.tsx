@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Controller, useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import useSales from "../useHooks";
+import useStocks from "@/containers/main/stocks/useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
 import { validatePakistanMobile } from "@/utils/helpers/common/phone";
 import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
@@ -19,6 +20,8 @@ import {
   customerTypeCategoryLabel,
 } from "@/utils/helpers/models/customer-types/customer-type.dto";
 import { computeSaleBalance } from "@/utils/helpers/models/sales/sale.dto";
+import { StockAvailability } from "@/utils/helpers/models/stocks/stock.dto";
+import { errorToaster } from "@/utils/helpers/common/alert-service";
 
 interface SaleFormInputs {
   customerTypeId: string;
@@ -48,11 +51,15 @@ export default function SaleCreate() {
     getProductRate,
     getProducts,
   } = useSales();
+  const { getStockByProduct } = useStocks();
   const { isLoading } = useStore();
 
   const [customerTypes, setCustomerTypes] = useState<CustomerType[]>([]);
   const [selectedProductName, setSelectedProductName] = useState("");
   const [loadingRate, setLoadingRate] = useState(false);
+  const [stockInfo, setStockInfo] = useState<StockAvailability | null>(null);
+  const [originalSaleQty, setOriginalSaleQty] = useState(0);
+  const [originalSaleProductId, setOriginalSaleProductId] = useState("");
 
   const {
     register,
@@ -136,6 +143,8 @@ export default function SaleCreate() {
         if (data?.productName) {
           setSelectedProductName(data.productName);
         }
+        setOriginalSaleQty(Number(data?.quantity) || 0);
+        setOriginalSaleProductId(String(data?.productId || ""));
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,6 +163,29 @@ export default function SaleCreate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerTypeId, productId]);
 
+  // Load stock when product changes
+  useEffect(() => {
+    if (!productId) {
+      setStockInfo(null);
+      return;
+    }
+    getStockByProduct(String(productId)).then(setStockInfo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId]);
+
+  /** Available for this sale: on-hand + this sale's qty when editing same product. */
+  const availableForSale = (() => {
+    const onHand = Number(stockInfo?.quantity ?? 0);
+    if (
+      isEditMode &&
+      productId &&
+      String(productId) === String(originalSaleProductId)
+    ) {
+      return onHand + originalSaleQty;
+    }
+    return onHand;
+  })();
+
   const handleProductSelect = (id: string, name: string) => {
     setValue("productId", id, { shouldValidate: true });
     setValue("productName", name, { shouldValidate: true });
@@ -161,12 +193,20 @@ export default function SaleCreate() {
   };
 
   const onSubmitForm = async (data: SaleFormInputs) => {
+    const qty = Number(data.quantity);
+    if (qty > availableForSale) {
+      errorToaster(
+        `Insufficient stock. Available: ${availableForSale}, requested: ${qty}`,
+      );
+      return;
+    }
+
     const payload: any = {
       customerTypeId: data.customerTypeId,
       date: data.date,
       productId: String(data.productId),
       productName: data.productName,
-      quantity: Number(data.quantity),
+      quantity: qty,
       rate: Number(data.rate),
       payment: data.payment === "" ? 0 : Number(data.payment),
       sourcePayment: data.sourcePayment,
@@ -330,14 +370,37 @@ export default function SaleCreate() {
               type="number"
               step="0.01"
               min="0.01"
+              max={availableForSale > 0 ? availableForSale : undefined}
               placeholder="e.g. 10"
               className={`common-input ${errors.quantity ? "border-red-500 focus:border-red-500" : ""}`}
               {...register("quantity", {
                 required: "Quantity is required",
                 valueAsNumber: true,
                 min: { value: 0.01, message: "Quantity must be greater than 0" },
+                validate: (value) => {
+                  const qty = Number(value);
+                  if (!productId) return true;
+                  if (qty > availableForSale) {
+                    return `Only ${availableForSale} unit(s) available in stock`;
+                  }
+                  return true;
+                },
               })}
             />
+            {productId ? (
+              <p
+                className={`mt-1 text-xs font-semibold ${
+                  availableForSale <= 0
+                    ? "text-danger-text"
+                    : "text-emerald-600"
+                }`}
+              >
+                Available stock: {availableForSale}
+                {stockInfo?.totalPurchased != null
+                  ? ` · Purchased: ${Number(stockInfo.totalPurchased)} · Sold: ${Number(stockInfo.totalSold)}`
+                  : ""}
+              </p>
+            ) : null}
             {errors.quantity && (
               <p className="mt-1 text-xs text-danger-text font-semibold">
                 {errors.quantity.message}

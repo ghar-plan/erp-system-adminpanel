@@ -88,4 +88,6 @@ export enum siteRoutes {
   fixedCostsCreate = "/fixed-costs/create",
   fixedCostsEdit = "/fixed-costs/edit/:id",
   fixedCostsView = "/fixed-costs/view/:id",
+  stocks = "/stocks",
+  timeSpan = "/time-span",
 }

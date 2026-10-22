@@ -149,6 +149,11 @@ export const PERMISSIONS = {
   FIXED_COSTS_UPDATE: "fixed_costs.update",
   FIXED_COSTS_DELETE: "fixed_costs.delete",
 
+  STOCKS_READ: "stocks.read",
+
+  PRODUCT_LIFESPANS_READ: "product_lifespans.read",
+  PRODUCT_LIFESPANS_UPDATE: "product_lifespans.update",
+
   GHARPLANS_READ: "gharplans.read",
 } as const;
 
