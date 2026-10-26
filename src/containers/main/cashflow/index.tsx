@@ -14,7 +14,6 @@ import { CanIf } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { FileText } from "lucide-react";
-import useEmployees from "@/containers/main/employees/useHooks";
 import useActivities from "@/containers/main/activities/useHooks";
 
 export default function Cashflow() {
@@ -40,7 +39,6 @@ export default function Cashflow() {
     exportCashflowPdf,
     downloadReceipt,
   } = useCashflow();
-  const { getAllEmployees } = useEmployees();
   const {
     getJobs,
     getWorkStages,
@@ -57,7 +55,6 @@ export default function Cashflow() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [workStages, setWorkStages] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
 
   // List states
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -117,7 +114,6 @@ export default function Cashflow() {
       canManageCash ? getJobs(setJobs) : Promise.resolve(),
       canManageCash ? getWorkStages(setWorkStages) : Promise.resolve(),
       canManageCash ? getUnits(setUnits) : Promise.resolve(),
-      canManageCash ? getAllEmployees(setEmployees) : Promise.resolve(),
     ]);
   };
 
@@ -390,7 +386,6 @@ export default function Cashflow() {
           <div ref={cashInFormRef} className="scroll-mt-4">
             <CashInForm
               projects={projects}
-              employees={employees}
               onSubmit={handleRecordPayment}
               submitting={submittingIn}
               editData={editDataIn}
@@ -407,7 +402,6 @@ export default function Cashflow() {
               jobs={jobs}
               workStages={workStages}
               units={units}
-              employees={employees}
               onSubmit={handleRecordExpense}
               submitting={submittingOut}
               editData={editDataOut}
@@ -423,7 +417,6 @@ export default function Cashflow() {
         <TransactionsTable
           transactions={transactions}
           projects={projects}
-          employees={employees}
           filterProject={filterProject}
           setFilterProject={setFilterProject}
           filterType={filterType}

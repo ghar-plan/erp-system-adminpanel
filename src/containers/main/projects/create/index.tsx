@@ -561,17 +561,17 @@ export default function Projects() {
             <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block ui-form-label">
-                  Design Type{" "}
+                  Construction Type{" "}
                   <span className="text-red-500">*</span>
                 </label>
                 <select
                   className={`common-input bg-card ${errors.constructionType ? "border-red-500 focus:border-red-500" : ""}`}
                   {...register("constructionType", {
-                    required: "Design Type is required",
+                    required: "Construction Type is required",
                   })}
                 >
                   <option value="" disabled>
-                    Select Design Type
+                    Select Construction Type
                   </option>
                   <option value={ConstructionType.GREY_STRUCTURE}>
                     {ConstructionType.GREY_STRUCTURE}

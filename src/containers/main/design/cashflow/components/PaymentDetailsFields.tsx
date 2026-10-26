@@ -15,6 +15,8 @@ import {
 } from "@/utils/helpers/models/cashflow/cashflow.dto";
 import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
 import { errorToaster } from "@/utils/helpers/common/alert-service";
+import { getLoggedInUserDisplayName } from "@/utils/helpers/common/logged-in-user";
+import { useAppSelector } from "@/store/hooks";
 import useDesignCashflow from "../useHooks";
 
 interface PaymentDetailsFieldsProps {
@@ -23,7 +25,6 @@ interface PaymentDetailsFieldsProps {
   watch: UseFormWatch<any>;
   setValue: UseFormSetValue<any>;
   narrow?: boolean;
-  employees?: Array<{ id: string; name: string }>;
   isCashOut?: boolean;
   totalAmount?: number;
 }
@@ -97,10 +98,11 @@ export default function PaymentDetailsFields({
   watch,
   setValue,
   narrow = false,
-  employees = [],
   isCashOut = false,
   totalAmount = 0,
 }: PaymentDetailsFieldsProps) {
+  const storeUser = useAppSelector((state) => state.sharedReducer.userData);
+  const loggedInName = getLoggedInUserDisplayName(storeUser);
   const paymentSource = watch("paymentSource");
   const paidAmount = watch("paidAmount");
   const remainingAmount = watch("remainingAmount");
@@ -108,6 +110,16 @@ export default function PaymentDetailsFields({
   const { uploadReceipt } = useDesignCashflow();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+
+  // Always lock Entered By to the logged-in user (create + update).
+  // Re-apply whenever form reset clears it (parent reset runs after mount).
+  useEffect(() => {
+    if (!loggedInName) return;
+    setValue("enteredBy", loggedInName, {
+      shouldValidate: true,
+      shouldDirty: false,
+    });
+  }, [loggedInName, setValue, paymentSource, paidAmount, receiptUrl]);
 
   // Auto calculate remainingAmount and suggest status when paidAmount or totalAmount or paymentSource changes for Cash Out
   useEffect(() => {
@@ -196,20 +208,24 @@ export default function PaymentDetailsFields({
           <label className="mb-2 block ui-form-label">
             Entered By <span className="text-red-500">*</span>
           </label>
-          <select
-            className={`common-input cursor-pointer ${errors.enteredBy ? "border-red-500 focus:border-red-500" : ""}`}
-            {...register("enteredBy", { required: "Entered By is required" })}
-          >
-            <option value="">Select employee</option>
-            {employees.map((emp) => (
-              <option key={emp.id} value={emp.name}>
-                {emp.name}
-              </option>
-            ))}
-          </select>
-          {getErrorMessage(errors.enteredBy) && (
+          <input
+            type="text"
+            readOnly
+            tabIndex={-1}
+            value={loggedInName}
+            className={`common-input bg-muted-foreground/10 cursor-not-allowed ${
+              errors.enteredBy ? "border-red-500 focus:border-red-500" : ""
+            }`}
+          />
+          <input
+            type="hidden"
+            {...register("enteredBy", {
+              required: "Entered By is required",
+            })}
+          />
+          {!loggedInName && (
             <p className="mt-1 text-xs text-danger-text font-semibold">
-              {getErrorMessage(errors.enteredBy)}
+              Unable to resolve logged-in user name
             </p>
           )}
         </div>

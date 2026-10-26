@@ -17,14 +17,14 @@ import {
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import useDesignCashflow from "../useHooks";
-import useEmployees from "@/containers/main/employees/useHooks";
+import { useAppSelector } from "@/store/hooks";
+import { getLoggedInUserDisplayName } from "@/utils/helpers/common/logged-in-user";
 
 interface ResolvePaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   transaction: any;
   onSuccess: () => void;
-  employees?: Array<{ id: string; name: string }>;
 }
 
 const INSTALLMENT_OPTIONS = [
@@ -52,13 +52,12 @@ export default function ResolvePaymentModal({
   onClose,
   transaction,
   onSuccess,
-  employees = [],
 }: ResolvePaymentModalProps) {
   const { recordInstallment, getInstallments } = useDesignCashflow();
-  const { getAllEmployees } = useEmployees();
+  const storeUser = useAppSelector((state) => state.sharedReducer.userData);
+  const loggedInName = getLoggedInUserDisplayName(storeUser);
 
   const [installments, setInstallments] = useState<any[]>([]);
-  const [employeeList, setEmployeeList] = useState<any[]>(employees);
   const [selectedInstallment, setSelectedInstallment] = useState<string>("2nd Installment");
   const [amount, setAmount] = useState<string>("");
   const [entryDate, setEntryDate] = useState<string>(
@@ -69,14 +68,6 @@ export default function ResolvePaymentModal({
   const [notes, setNotes] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (employees && employees.length > 0) {
-      setEmployeeList(employees);
-    } else {
-      getAllEmployees(setEmployeeList);
-    }
-  }, [employees]);
 
   // Calculate totals
   const totalAmount = Number(transaction?.amount || 0);
@@ -115,13 +106,13 @@ export default function ResolvePaymentModal({
         }
       });
       setAmount("");
-      setEnteredBy(transaction?.enteredBy || "");
+      setEnteredBy(loggedInName);
       setPaymentSource("Cash");
       setNotes("");
       setError(null);
       setEntryDate(new Date().toISOString().split("T")[0]);
     }
-  }, [isOpen, transaction?.id]);
+  }, [isOpen, transaction?.id, loggedInName]);
 
   const isFullOrAll =
     selectedInstallment === "Full / Final Payment (All Remaining)" ||
@@ -151,8 +142,8 @@ export default function ResolvePaymentModal({
     e.preventDefault();
     if (!transaction?.id) return;
 
-    if (!enteredBy) {
-      setError("Please select an employee in Entered By");
+    if (!enteredBy && !loggedInName) {
+      setError("Logged-in user name is required for Entered By");
       return;
     }
 
@@ -174,7 +165,7 @@ export default function ResolvePaymentModal({
         installment: selectedInstallment,
         amount: isFullOrAll ? remainingAmount : numericAmount,
         entryDate,
-        enteredBy,
+        enteredBy: enteredBy || loggedInName,
         paymentSource,
         notes,
         isFullPayment: isFullOrAll,
@@ -426,24 +417,18 @@ export default function ResolvePaymentModal({
                   </select>
                 </div>
 
-                {/* Entered By */}
+                {/* Entered By ? locked to logged-in user */}
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1">
                     <User size={12} /> Entered By <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={enteredBy}
-                    onChange={(e) => setEnteredBy(e.target.value)}
-                    className="common-input text-sm h-10 w-full bg-card cursor-pointer"
-                    required
-                  >
-                    <option value="">Select employee</option>
-                    {employeeList.map((emp) => (
-                      <option key={emp.id} value={emp.name}>
-                        {emp.name}
-                      </option>
-                    ))}
-                  </select>
+                  <input
+                    type="text"
+                    readOnly
+                    tabIndex={-1}
+                    value={enteredBy || loggedInName}
+                    className="common-input text-sm h-10 w-full bg-muted-foreground/10 cursor-not-allowed"
+                  />
                 </div>
 
                 {/* Notes */}

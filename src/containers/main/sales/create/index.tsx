@@ -102,11 +102,14 @@ export default function SaleCreate() {
   const selectedCustomerType = customerTypeOptions.find(
     (ct) => String(ct.id) === String(customerTypeId),
   );
-  // Walk-in uses the same name/telephone flow as regular Customer types
-  const isCustomerCategory =
-    selectedCustomerType?.category === CustomerTypeCategory.CUSTOMER ||
+  const isWalkIn =
     selectedCustomerType?.category === CustomerTypeCategory.WALK_IN ||
     String(customerTypeId) === WALK_IN_CUSTOMER_TYPE_ID;
+  // Show name/phone for Customer and Walk-in (required only for Customer)
+  const isCustomerCategory =
+    selectedCustomerType?.category === CustomerTypeCategory.CUSTOMER || isWalkIn;
+  const requiresCustomerDetails =
+    selectedCustomerType?.category === CustomerTypeCategory.CUSTOMER;
 
   const balance = computeSaleBalance(quantity, rate, payment);
 
@@ -220,8 +223,10 @@ export default function SaleCreate() {
     };
 
     if (isCustomerCategory) {
-      payload.customerName = data.customerName.trim();
-      payload.telephone = data.telephone.trim();
+      const name = data.customerName?.trim();
+      const phone = data.telephone?.trim();
+      if (name) payload.customerName = name;
+      if (phone) payload.telephone = phone;
     }
 
     if (isEditMode && id) {
@@ -303,17 +308,25 @@ export default function SaleCreate() {
             )}
           </div>
 
-          {/* Customer Name + Telephone - only for "customer" category */}
+          {/* Customer Name + Telephone — required for Customer, optional for Walk-in */}
           {isCustomerCategory ? (
             <>
               <div>
-                <label className="mb-2 block ui-form-label">Customer Name</label>
+                <label className="mb-2 block ui-form-label">
+                  Customer Name
+                  {requiresCustomerDetails ? null : (
+                    <span className="text-muted-foreground font-normal">
+                      {" "}
+                      (optional)
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. Ali Raza"
                   className={`common-input ${errors.customerName ? "border-red-500 focus:border-red-500" : ""}`}
                   {...register("customerName", {
-                    required: isCustomerCategory
+                    required: requiresCustomerDetails
                       ? "Customer name is required"
                       : false,
                   })}
@@ -326,15 +339,23 @@ export default function SaleCreate() {
               </div>
 
               <div>
-                <label className="mb-2 block ui-form-label">Telephone</label>
+                <label className="mb-2 block ui-form-label">
+                  Telephone
+                  {requiresCustomerDetails ? null : (
+                    <span className="text-muted-foreground font-normal">
+                      {" "}
+                      (optional)
+                    </span>
+                  )}
+                </label>
                 <Controller
                   name="telephone"
                   control={control}
                   rules={{
                     validate: (value) =>
-                      isCustomerCategory
+                      requiresCustomerDetails
                         ? validatePakistanMobile(value)
-                        : true,
+                        : validatePakistanMobile(value, { optional: true }),
                   }}
                   render={({ field }) => (
                     <PakistanPhoneInput

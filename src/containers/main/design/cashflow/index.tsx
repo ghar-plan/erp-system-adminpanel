@@ -9,7 +9,6 @@ import { CanIf } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { FileText } from "lucide-react";
-import useEmployees from "@/containers/main/employees/useHooks";
 import useDesignActivities from "@/containers/main/design/activities/useHooks";
 
 export default function DesignCashflow() {
@@ -36,7 +35,6 @@ export default function DesignCashflow() {
     exportCashflowPdf,
     downloadReceipt,
   } = useDesignCashflow();
-  const { getAllEmployees } = useEmployees();
   const { getJobs, getWorkStages } = useDesignActivities();
 
   const formsSectionRef = useRef<HTMLDivElement>(null);
@@ -48,7 +46,6 @@ export default function DesignCashflow() {
   const [vendors, setVendors] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [workStages, setWorkStages] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
 
   // List states
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -94,7 +91,6 @@ export default function DesignCashflow() {
       canLoadVendorOptions ? getVendors(setVendors) : Promise.resolve(),
       canManageCash ? getJobs(setJobs) : Promise.resolve(),
       canManageCash ? getWorkStages(setWorkStages) : Promise.resolve(),
-      canManageCash ? getAllEmployees(setEmployees) : Promise.resolve(),
     ]);
   };
 
@@ -335,7 +331,6 @@ export default function DesignCashflow() {
           <div ref={cashInFormRef} className="scroll-mt-4">
             <CashInForm
               projects={projects}
-              employees={employees}
               onSubmit={handleRecordPayment}
               submitting={submittingIn}
               editData={editDataIn}
@@ -351,7 +346,6 @@ export default function DesignCashflow() {
               vendors={vendors}
               jobs={jobs}
               workStages={workStages}
-              employees={employees}
               onSubmit={handleRecordExpense}
               submitting={submittingOut}
               editData={editDataOut}
@@ -367,7 +361,6 @@ export default function DesignCashflow() {
         <TransactionsTable
           transactions={transactions}
           projects={projects}
-          employees={employees}
           filterProject={filterProject}
           setFilterProject={setFilterProject}
           filterType={filterType}

@@ -7,6 +7,8 @@ import PaymentDetailsFields, {
   mapPaymentDetailsFromEdit,
 } from "./PaymentDetailsFields";
 import TypeaheadSelect from "@/containers/main/cashflow/components/TypeaheadSelect";
+import { useAppSelector } from "@/store/hooks";
+import { getLoggedInUserDisplayName } from "@/utils/helpers/common/logged-in-user";
 
 interface CashOutFormInputs {
   projectId: string;
@@ -33,7 +35,6 @@ interface CashOutFormProps {
   vendors: any[];
   jobs: any[];
   workStages: any[];
-  employees: Array<{ id: string; name: string }>;
   onSubmit: (data: CashOutFormInputs) => Promise<void>;
   submitting: boolean;
   editData?: any;
@@ -45,12 +46,13 @@ export default function CashOutForm({
   vendors,
   jobs,
   workStages,
-  employees,
   onSubmit,
   submitting,
   editData,
   onCancelEdit,
 }: CashOutFormProps) {
+  const storeUser = useAppSelector((state) => state.sharedReducer.userData);
+  const loggedInName = getLoggedInUserDisplayName(storeUser);
   const {
     register,
     handleSubmit,
@@ -69,6 +71,7 @@ export default function CashOutForm({
       items: "",
       amount: "",
       ...emptyPaymentDetails,
+      enteredBy: loggedInName,
     },
   });
 
@@ -107,6 +110,7 @@ export default function CashOutForm({
         items: editData.items || "",
         amount: total ? String(total) : "",
         ...mapPaymentDetailsFromEdit(editData),
+        enteredBy: loggedInName,
       });
     } else {
       reset({
@@ -118,12 +122,13 @@ export default function CashOutForm({
         items: "",
         amount: "",
         ...emptyPaymentDetails,
+        enteredBy: loggedInName,
       });
     }
-  }, [editData, reset]);
+  }, [editData, reset, loggedInName]);
 
   const handleFormSubmit = async (data: CashOutFormInputs) => {
-    await onSubmit(data);
+    await onSubmit({ ...data, enteredBy: loggedInName || data.enteredBy });
     reset({
       projectId: "",
       vendorMode: "vendor",
@@ -133,6 +138,7 @@ export default function CashOutForm({
       items: "",
       amount: "",
       ...emptyPaymentDetails,
+      enteredBy: loggedInName,
     });
   };
 
@@ -385,7 +391,6 @@ export default function CashOutForm({
           errors={errors}
           watch={watch}
           setValue={setValue}
-          employees={employees}
           isCashOut={true}
           totalAmount={Number(watch("amount") || 0)}
         />

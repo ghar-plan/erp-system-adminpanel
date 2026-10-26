@@ -6,6 +6,8 @@ import PaymentDetailsFields, {
   mapPaymentDetailsFromEdit,
 } from "./PaymentDetailsFields";
 import { TransactionStatus } from "@/utils/helpers/models/cashflow/cashflow.dto";
+import { useAppSelector } from "@/store/hooks";
+import { getLoggedInUserDisplayName } from "@/utils/helpers/common/logged-in-user";
 
 interface CashInFormInputs {
   projectId: string;
@@ -25,7 +27,6 @@ interface CashInFormInputs {
 
 interface CashInFormProps {
   projects: any[];
-  employees: Array<{ id: string; name: string }>;
   onSubmit: (data: CashInFormInputs) => Promise<void>;
   submitting: boolean;
   editData?: any;
@@ -34,12 +35,13 @@ interface CashInFormProps {
 
 export default function CashInForm({
   projects,
-  employees,
   onSubmit,
   submitting,
   editData,
   onCancelEdit,
 }: CashInFormProps) {
+  const storeUser = useAppSelector((state) => state.sharedReducer.userData);
+  const loggedInName = getLoggedInUserDisplayName(storeUser);
   const {
     register,
     handleSubmit,
@@ -53,6 +55,7 @@ export default function CashInForm({
       installment: "",
       amount: "",
       ...emptyPaymentDetails,
+      enteredBy: loggedInName,
       status: TransactionStatus.RESOLVED,
     },
   });
@@ -64,6 +67,7 @@ export default function CashInForm({
         installment: editData.installment || "",
         amount: editData.amount ? String(editData.amount) : "",
         ...mapPaymentDetailsFromEdit(editData),
+        enteredBy: loggedInName,
         status: editData?.status || TransactionStatus.RESOLVED,
       });
     } else {
@@ -72,18 +76,20 @@ export default function CashInForm({
         installment: "",
         amount: "",
         ...emptyPaymentDetails,
+        enteredBy: loggedInName,
         status: TransactionStatus.RESOLVED,
       });
     }
-  }, [editData, reset]);
+  }, [editData, reset, loggedInName]);
 
   const handleFormSubmit = async (data: CashInFormInputs) => {
-    await onSubmit(data);
+    await onSubmit({ ...data, enteredBy: loggedInName || data.enteredBy });
     reset({
       projectId: "",
       installment: "",
       amount: "",
       ...emptyPaymentDetails,
+      enteredBy: loggedInName,
       status: TransactionStatus.RESOLVED,
     });
   };
@@ -161,7 +167,6 @@ export default function CashInForm({
           errors={errors}
           watch={watch}
           setValue={setValue}
-          employees={employees}
           narrow
         />
 

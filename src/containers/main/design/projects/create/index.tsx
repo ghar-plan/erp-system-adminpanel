@@ -536,12 +536,12 @@ export default function DesignProjectCreate() {
 
           <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
             <div>
-              <label className="mb-2 block ui-form-label">Construction Type</label>
+              <label className="mb-2 block ui-form-label">Design Type</label>
               <select
                 className={`common-input bg-card ${errors.designType ? "border-red-500 focus:border-red-500" : ""}`}
                 {...register("designType")}
               >
-                <option value="">Select Construction Type (optional)</option>
+                <option value="">Select Design Type (optional)</option>
                 <option value={DesignType.RESIDENTIAL}>
                   {DesignType.RESIDENTIAL}
                 </option>

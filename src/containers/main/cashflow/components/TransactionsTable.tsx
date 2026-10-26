@@ -32,7 +32,6 @@ interface Transaction {
 interface TransactionsTableProps {
   transactions: Transaction[];
   projects: any[];
-  employees?: any[];
   filterProject: string;
   setFilterProject: (val: string) => void;
   filterType: string;
@@ -59,7 +58,6 @@ interface TransactionsTableProps {
 export default function TransactionsTable({
   transactions,
   projects,
-  employees = [],
   filterProject,
   setFilterProject,
   filterType,
@@ -563,7 +561,6 @@ export default function TransactionsTable({
             setSelectedResolveTx(null);
           }}
           transaction={selectedResolveTx}
-          employees={employees}
           onSuccess={() => {
             onRefresh?.();
           }}
