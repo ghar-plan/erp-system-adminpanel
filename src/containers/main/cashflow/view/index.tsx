@@ -35,8 +35,8 @@ const formatMoney = (value?: number | string | null) => {
     return "--";
   }
   return `PKR ${amount.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   })}`;
 };
 
@@ -297,7 +297,7 @@ export default function CashflowView() {
                   Payment Balance
                 </p>
                 <h3 className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                  Fully Settled (PKR 0.00 Due)
+                  Fully Settled (PKR 0 Due)
                 </h3>
               </div>
             </div>

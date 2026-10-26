@@ -119,7 +119,7 @@ export default function PaymentStagesTable({
                   <td className="px-3 py-2 align-top">
                     <input
                       type="text"
-                      inputMode="decimal"
+                      inputMode="numeric"
                       placeholder="e.g., 2000000"
                       className={`common-input h-9 text-sm ${
                         stageErrors?.[index]?.amount

@@ -245,22 +245,15 @@ export default function DesignProjectCreate() {
               <label className="mb-2 block ui-form-label">
                 Mobile Number <span className="text-red-500">*</span>
               </label>
-              <Controller
-                name="clientPhone"
-                control={control}
-                rules={{
+              <input
+                type="text"
+                placeholder="e.g., +923001234567"
+                className={`common-input ${errors.clientPhone ? "border-red-500 focus:border-red-500" : ""}`}
+                {...register("clientPhone", {
                   required: "Mobile number is required",
-                  validate: (value) => validatePakistanMobile(value),
-                }}
-                render={({ field }) => (
-                  <PakistanPhoneInput
-                    name={field.name}
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    hasError={!!errors.clientPhone}
-                  />
-                )}
+                  validate: (value) =>
+                    value.trim().length > 0 || "Mobile number is required",
+                })}
               />
               {errors.clientPhone && (
                 <p className="mt-1.5 text-xs text-red-500 font-semibold">
@@ -543,12 +536,12 @@ export default function DesignProjectCreate() {
 
           <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
             <div>
-              <label className="mb-2 block ui-form-label">Design Type</label>
+              <label className="mb-2 block ui-form-label">Construction Type</label>
               <select
                 className={`common-input bg-card ${errors.designType ? "border-red-500 focus:border-red-500" : ""}`}
                 {...register("designType")}
               >
-                <option value="">Select Design Type (optional)</option>
+                <option value="">Select Construction Type (optional)</option>
                 <option value={DesignType.RESIDENTIAL}>
                   {DesignType.RESIDENTIAL}
                 </option>

@@ -49,12 +49,4 @@ export const getPaymentTypeLabel = (paymentType?: string | null): string => {
   return match?.label ?? paymentType ?? "--";
 };
 
-export const formatMoney = (value?: number | string | null): string => {
-  if (value === null || value === undefined || value === "") return "--";
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return "--";
-  return `PKR ${amount.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-};
+export { formatMoney, formatMoneyNumber } from "@/utils/helpers/money";

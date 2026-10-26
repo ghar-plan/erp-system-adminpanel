@@ -7,12 +7,15 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
+import { PaymentPlan } from "@/utils/helpers/models/projects/project.dto";
 import useComments from "../../comments/useHooks";
 
 type TimelineProps = {
   projectId: string;
   cashflowsIn?: any[];
   cashflowsOut?: any[];
+  paymentPlan?: string | null;
+  markupPercentage?: number | string | null;
 };
 
 type TimelineEvent = {
@@ -29,8 +32,8 @@ const formatMoney = (value?: number | string | null) => {
     return "PKR 0";
   }
   return `PKR ${amount.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   })}`;
 };
 
@@ -55,6 +58,52 @@ const dateKeyFrom = (date: Date) => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const getEventDateTime = (
+  entryDateVal?: string | Date | null,
+  createdAtVal?: string | Date | null,
+): Date => {
+  const parsedEntry = parseDate(entryDateVal);
+  const parsedCreated = parseDate(createdAtVal);
+
+  if (!parsedEntry && !parsedCreated) {
+    return new Date(0);
+  }
+  if (!parsedEntry) {
+    return parsedCreated!;
+  }
+  if (!parsedCreated) {
+    return parsedEntry;
+  }
+
+  const hasEntryTime =
+    parsedEntry.getHours() !== 0 ||
+    parsedEntry.getMinutes() !== 0 ||
+    parsedEntry.getSeconds() !== 0 ||
+    parsedEntry.getMilliseconds() !== 0;
+
+  if (hasEntryTime) {
+    return parsedEntry;
+  }
+
+  const combined = new Date(parsedEntry);
+  combined.setHours(
+    parsedCreated.getHours(),
+    parsedCreated.getMinutes(),
+    parsedCreated.getSeconds(),
+    parsedCreated.getMilliseconds(),
+  );
+  return combined;
+};
+
+const formatTime = (date?: Date | null) => {
+  if (!date || Number.isNaN(date.getTime()) || date.getTime() === 0) return "";
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 };
 
 const formatHeadingDate = (key: string) => {
@@ -82,10 +131,18 @@ const Field = ({ label, value }: { label: string; value?: ReactNode }) => {
   );
 };
 
+const lineTotal = (item: any) =>
+  Number(item?.amount || 0) * Number(item?.quantity || 1);
+
+const isCreditOrPartial = (source?: string | null) =>
+  source === "Credit" || source === "Partial";
+
 export default function ProjectTimeline({
   projectId,
   cashflowsIn = [],
   cashflowsOut = [],
+  paymentPlan,
+  markupPercentage,
 }: TimelineProps) {
   const { fetchCommentsPage } = useComments();
   const [comments, setComments] = useState<any[]>([]);
@@ -99,8 +156,7 @@ export default function ProjectTimeline({
 
   const events = useMemo<TimelineEvent[]>(() => {
     const inEvents: TimelineEvent[] = cashflowsIn.map((item) => {
-      const occurredAt =
-        parseDate(item.entryDate) || parseDate(item.created_at) || new Date(0);
+      const occurredAt = getEventDateTime(item.entryDate, item.created_at);
       return {
         id: `in-${item.id}`,
         type: "CASH IN",
@@ -111,8 +167,7 @@ export default function ProjectTimeline({
     });
 
     const outEvents: TimelineEvent[] = cashflowsOut.map((item) => {
-      const occurredAt =
-        parseDate(item.entryDate) || parseDate(item.created_at) || new Date(0);
+      const occurredAt = getEventDateTime(item.entryDate, item.created_at);
       return {
         id: `out-${item.id}`,
         type: "CASH OUT",
@@ -136,7 +191,7 @@ export default function ProjectTimeline({
       });
 
     return [...inEvents, ...outEvents, ...commentEvents].sort(
-      (a, b) => a.occurredAt.getTime() - b.occurredAt.getTime(),
+      (a, b) => b.occurredAt.getTime() - a.occurredAt.getTime(),
     );
   }, [cashflowsIn, cashflowsOut, comments]);
 
@@ -151,10 +206,38 @@ export default function ProjectTimeline({
   }, [events]);
 
   const totalIn = cashflowsIn.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const totalOut = cashflowsOut.reduce(
-    (sum, item) => sum + Number(item.amount || 0) * Number(item.quantity || 1),
-    0,
-  );
+
+  // Money actually paid out (Cash / Advance / Partial paid portion, etc.)
+  const totalOut = cashflowsOut.reduce((sum, item) => {
+    if (item.paidAmount !== null && item.paidAmount !== undefined) {
+      return sum + Number(item.paidAmount || 0);
+    }
+    // Legacy rows without payment fields: treat non-credit/partial as fully paid
+    if (isCreditOrPartial(item.paymentSource)) {
+      return sum;
+    }
+    return sum + lineTotal(item);
+  }, 0);
+
+  // Unpaid Credit / Partial balances
+  const creditPartialPayments = cashflowsOut.reduce((sum, item) => {
+    if (!isCreditOrPartial(item.paymentSource)) return sum;
+    if (item.remainingAmount !== null && item.remainingAmount !== undefined) {
+      return sum + Number(item.remainingAmount || 0);
+    }
+    return sum + Math.max(0, lineTotal(item) - Number(item.paidAmount || 0));
+  }, 0);
+
+  // Total Cost = Total Cash Out + Credit/Partial Payments
+  const totalCost = Math.round(totalOut + creditPartialPayments);
+
+  const isCostPlus = paymentPlan === PaymentPlan.MARKUP;
+  const marginRate = Number(markupPercentage);
+  const profit =
+    isCostPlus && Number.isFinite(marginRate)
+      ? Math.round(totalCost * (marginRate / 100))
+      : null;
+
   const vendors = Array.from(
     new Set(
       cashflowsOut
@@ -162,6 +245,11 @@ export default function ProjectTimeline({
         .filter(Boolean),
     ),
   );
+
+  const summaryCols =
+    isCostPlus && profit !== null
+      ? "sm:grid-cols-2 lg:grid-cols-5"
+      : "sm:grid-cols-2 lg:grid-cols-4";
 
   return (
     <div className="bg-card border border-border-main rounded-xl p-6 shadow-xs">
@@ -172,7 +260,7 @@ export default function ProjectTimeline({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
+      <div className={`grid grid-cols-1 ${summaryCols} gap-3 mt-5`}>
         <div className="rounded-xl border border-border-main bg-panel-bg p-4">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Total Cash In
@@ -191,6 +279,26 @@ export default function ProjectTimeline({
             {cashflowsOut.length} payment{cashflowsOut.length === 1 ? "" : "s"}
           </p>
         </div>
+        <div className="rounded-xl border border-border-main bg-panel-bg p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Total Cost
+          </p>
+          <p className="text-lg font-bold text-foreground mt-1">{formatMoney(totalCost)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Cash out + credit/partial
+          </p>
+        </div>
+        {isCostPlus && profit !== null ? (
+          <div className="rounded-xl border border-border-main bg-panel-bg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Profit
+            </p>
+            <p className="text-lg font-bold text-primary mt-1">{formatMoney(profit)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Cost × {Number.isFinite(marginRate) ? marginRate : 0}% margin
+            </p>
+          </div>
+        ) : null}
         <div className="rounded-xl border border-border-main bg-panel-bg p-4">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Vendors Paid
@@ -232,7 +340,7 @@ export default function ProjectTimeline({
                     {formatHeadingDate(key)}
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    In {formatMoney(dayIn)} Â· Out {formatMoney(dayOut)}
+                    In {formatMoney(dayIn)} · Out {formatMoney(dayOut)}
                   </p>
                 </div>
 
@@ -253,6 +361,11 @@ export default function ProjectTimeline({
                               <span className="text-sm font-bold text-success-text">
                                 Cash In
                               </span>
+                              {formatTime(event.occurredAt) && (
+                                <span className="text-xs text-muted-foreground font-normal">
+                                  • {formatTime(event.occurredAt)}
+                                </span>
+                              )}
                             </div>
                             <span className="text-sm font-bold text-success-text">
                               {formatMoney(event.data.amount)}
@@ -303,6 +416,11 @@ export default function ProjectTimeline({
                               <span className="text-sm font-bold text-warning-text">
                                 Cash Out
                               </span>
+                              {formatTime(event.occurredAt) && (
+                                <span className="text-xs text-muted-foreground font-normal">
+                                  • {formatTime(event.occurredAt)}
+                                </span>
+                              )}
                             </div>
                             <span className="text-sm font-bold text-warning-text">
                               {formatMoney(total)}
@@ -359,9 +477,16 @@ export default function ProjectTimeline({
                         key={event.id}
                         className="rounded-xl border border-border-main bg-panel-bg p-4"
                       >
-                        <div className="flex items-center gap-2 mb-2">
-                          <MessageSquare size={16} className="text-primary" />
-                          <span className="text-sm font-bold text-foreground">Update</span>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <MessageSquare size={16} className="text-primary" />
+                            <span className="text-sm font-bold text-foreground">Update</span>
+                          </div>
+                          {formatTime(event.occurredAt) && (
+                            <span className="text-xs text-muted-foreground">
+                              {formatTime(event.occurredAt)}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mb-1">
                           {event.data.user?.fullName || event.data.user?.email || "User"}

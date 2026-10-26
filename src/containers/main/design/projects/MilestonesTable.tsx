@@ -130,7 +130,7 @@ function WorkStageMultiSelect({
             })
           ) : (
             <p className="text-xs text-muted-foreground px-2 py-1.5">
-              No work stages available. Add them under Design → Work Stages.
+              No work stages available. Add them under Design ? Work Stages.
             </p>
           )}
         </div>
@@ -300,7 +300,7 @@ export default function MilestonesTable({
                   <td className="px-3 py-2.5 align-top">
                     <input
                       type="text"
-                      inputMode="decimal"
+                      inputMode="numeric"
                       placeholder="e.g. 150000"
                       className={`common-input ${
                         milestoneErrors?.[index]?.payment
@@ -359,8 +359,8 @@ export default function MilestonesTable({
                 <td className="px-3 py-3 text-sm font-bold text-foreground" colSpan={2}>
                   PKR{" "}
                   {totalPayment.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
                   })}
                 </td>
               </tr>

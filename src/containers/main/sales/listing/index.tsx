@@ -4,7 +4,11 @@ import { Plus, Search, Eye, Pencil, Trash2, ShoppingCart } from "lucide-react";
 import useSales from "../useHooks";
 import { Sale } from "@/utils/helpers/models/sales/sale.dto";
 import { formatMoney } from "@/utils/helpers/models/purchases/purchase.dto";
-import { customerTypeCategoryLabel } from "@/utils/helpers/models/customer-types/customer-type.dto";
+import {
+  customerTypeCategoryLabel,
+  WALK_IN_CUSTOMER_TYPE,
+  WALK_IN_CUSTOMER_TYPE_ID,
+} from "@/utils/helpers/models/customer-types/customer-type.dto";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
@@ -173,11 +177,16 @@ export default function SalesListing() {
             className="common-input text-sm h-10 w-full sm:w-52 bg-card"
           >
             <option value="">All Customer Types</option>
-            {customerTypes.map((ct: any) => (
-              <option key={ct.id} value={ct.id}>
-                {ct.name} ({customerTypeCategoryLabel(ct.category)})
-              </option>
-            ))}
+            <option value={WALK_IN_CUSTOMER_TYPE.id}>
+              {WALK_IN_CUSTOMER_TYPE.name}
+            </option>
+            {customerTypes
+              .filter((ct: any) => String(ct.id) !== WALK_IN_CUSTOMER_TYPE_ID)
+              .map((ct: any) => (
+                <option key={ct.id} value={ct.id}>
+                  {ct.name} ({customerTypeCategoryLabel(ct.category)})
+                </option>
+              ))}
           </select>
         </div>
 

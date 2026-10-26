@@ -141,7 +141,7 @@ export default function CashInForm({
           <label className="mb-2 block ui-form-label">AMOUNT (PKR)</label>
           <input
             type="number"
-            step="0.01"
+            step="1"
             placeholder="Enter Amount"
             className="common-input"
             {...register("amount", {

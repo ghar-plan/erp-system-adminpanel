@@ -384,7 +384,7 @@ export default function TransactionsTable({
                             : "bg-warning-bg text-warning-text border-warning-text/10"
                         }`}
                       >
-                        {tx.type === "CASH IN" ? "↓" : "↑"}{" "}
+                        {tx.type === "CASH IN" ? "?" : "?"}{" "}
                         {tx.type === "CASH IN"
                           ? "CASH IN"
                           : "Cash Out / Service In"}
@@ -445,7 +445,7 @@ export default function TransactionsTable({
                     </td>
                     <td className="table-td font-bold text-foreground text-right whitespace-nowrap">
                       {tx?.amount !== undefined
-                        ? `PKR ${tx.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+                        ? `PKR ${tx.amount.toLocaleString("en-US", { minimumFractionDigits: 0 })}`
                         : "--"}
                     </td>
                     {showActions ? (

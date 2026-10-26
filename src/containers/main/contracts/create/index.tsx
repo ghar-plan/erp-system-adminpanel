@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Plus, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -238,7 +238,7 @@ export default function ContractCreate() {
                 <input
                   type="number"
                   placeholder="e.g. 150000"
-                  step="0.01"
+                  step="1"
                   min="0"
                   className={`common-input w-full ${errors.amount ? "border-red-500 focus:border-red-500" : ""}`}
                   {...register("amount", { 

@@ -1,10 +1,12 @@
 import { Purchases_APIS } from "@/libs/apis/purchases.api";
+import { PurchaseSuppliers_APIS } from "@/libs/apis/purchase-suppliers.api";
 import { Gharplans_APIS } from "@/libs/apis/gharplans.api";
 import { useNavigate } from "react-router-dom";
 import {
   successToaster,
   confirmationPopup,
 } from "@/utils/helpers/common/alert-service";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 
 const usePurchases = () => {
   const navigate = useNavigate();
@@ -38,7 +40,7 @@ const usePurchases = () => {
     const { status = false, message = "" } = response || {};
     if (status) {
       successToaster(message);
-      navigate("/purchases");
+      navigate(siteRoutes.purchasesList);
       return response;
     }
   };
@@ -48,7 +50,7 @@ const usePurchases = () => {
     const { status = false, message = "" } = response || {};
     if (status) {
       successToaster(message);
-      navigate("/purchases");
+      navigate(siteRoutes.purchasesList);
       return response;
     }
   };
@@ -88,6 +90,53 @@ const usePurchases = () => {
     }
   };
 
+  const getPurchaseSuppliers = async (setData: Function) => {
+    const response = await PurchaseSuppliers_APIS.getAll();
+    const { status = false, data = [] } = response || {};
+    if (status && data) {
+      setData(data);
+    } else {
+      setData([]);
+    }
+  };
+
+  const createPurchaseSupplier = async (name: string) => {
+    const response = await PurchaseSuppliers_APIS.create({ name: name.trim() });
+    const { status = false, message = "", data } = response || {};
+    if (status) {
+      successToaster(message || "Supplier created successfully");
+      return data;
+    }
+    return null;
+  };
+
+  const updatePurchaseSupplier = async (id: string, name: string) => {
+    const response = await PurchaseSuppliers_APIS.update(id, {
+      name: name.trim(),
+    });
+    const { status = false, message = "", data } = response || {};
+    if (status) {
+      successToaster(message || "Supplier updated successfully");
+      return data;
+    }
+    return null;
+  };
+
+  const deletePurchaseSupplier = async (id: string, name: string) => {
+    const result = await confirmationPopup(
+      `Delete ${name}`,
+      "Are you sure you want to delete this supplier?",
+    );
+    if (!result.isConfirmed) return false;
+    const response = await PurchaseSuppliers_APIS.delete(id);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message || "Supplier deleted successfully");
+      return true;
+    }
+    return false;
+  };
+
   return {
     getPurchases,
     getPurchaseById,
@@ -95,6 +144,10 @@ const usePurchases = () => {
     updatePurchase,
     deletePurchase,
     getProducts,
+    getPurchaseSuppliers,
+    createPurchaseSupplier,
+    updatePurchaseSupplier,
+    deletePurchaseSupplier,
   };
 };
 

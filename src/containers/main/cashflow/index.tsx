@@ -81,6 +81,7 @@ export default function Cashflow() {
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
   const [filterMiscellaneous, setFilterMiscellaneous] = useState("");
+  const [filterSource, setFilterSource] = useState("");
 
   // Helper date formatters
   const formatDate = (dateString: string | Date) => {
@@ -129,10 +130,11 @@ export default function Cashflow() {
     startDate?: string;
     endDate?: string;
     miscellaneous?: string;
+    source?: string;
     page: number;
     limit: number;
   }) => {
-    const { projectId, type, search, startDate, endDate, miscellaneous, page, limit } =
+    const { projectId, type, search, startDate, endDate, miscellaneous, source, page, limit } =
       currentFilters;
 
     const queryParams: any = {
@@ -145,6 +147,7 @@ export default function Cashflow() {
     if (startDate) queryParams.startDate = startDate;
     if (endDate) queryParams.endDate = endDate;
     if (miscellaneous) queryParams.miscellaneous = miscellaneous;
+    if (source) queryParams.paymentSource = source;
 
     await getCashflowCombinedList(setTransactions, queryParams, setTotalElements, setTotals);
   };
@@ -157,7 +160,15 @@ export default function Cashflow() {
   // Reset page to 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [filterProject, filterType, filterSearch, filterStartDate, filterEndDate, filterMiscellaneous]);
+  }, [
+    filterProject,
+    filterType,
+    filterSearch,
+    filterStartDate,
+    filterEndDate,
+    filterMiscellaneous,
+    filterSource,
+  ]);
 
   useEffect(() => {
     if (!canRead) return;
@@ -168,6 +179,7 @@ export default function Cashflow() {
       startDate: filterStartDate,
       endDate: filterEndDate,
       miscellaneous: filterMiscellaneous,
+      source: filterSource,
       page,
       limit,
     });
@@ -179,6 +191,7 @@ export default function Cashflow() {
     filterStartDate,
     filterEndDate,
     filterMiscellaneous,
+    filterSource,
     page,
     limit,
   ]);
@@ -191,6 +204,7 @@ export default function Cashflow() {
       startDate: filterStartDate,
       endDate: filterEndDate,
       miscellaneous: filterMiscellaneous,
+      source: filterSource,
       page,
       limit,
     });
@@ -227,23 +241,26 @@ export default function Cashflow() {
     setSubmittingOut(true);
 
     const isLabour = data.category === "Labour";
+    const isTransportation = data.vendorMode === "transportation";
     const isNoVendor =
       data.vendorMode === "miscellaneous" ||
-      data.vendorMode === "transportation" ||
+      isTransportation ||
       !data.vendorId;
     const vendorType =
-      data.vendorMode === "transportation"
+      isTransportation
         ? "transportation"
         : data.vendorMode === "miscellaneous" || !data.vendorId
           ? "miscellaneous"
           : "vendor";
     // DB stores unit price in `amount`; total shown in UI is quantity × price
-    // Labour: only total is entered → store as qty 1, unit price = total
-    const quantity = isLabour ? 1 : toMoneyNumber(data.quantity);
+    // Labour / Transportation: only total is entered → store as qty 1, unit price = total
+    const quantity = isLabour || isTransportation ? 1 : toMoneyNumber(data.quantity);
     const unitAmount = isLabour
       ? toMoneyNumber(data.amount)
-      : toMoneyNumber(data.price);
-    const total = isLabour
+      : isTransportation
+        ? toMoneyNumber(data.price || data.amount)
+        : toMoneyNumber(data.price);
+    const total = isLabour || isTransportation
       ? unitAmount
       : multiplyMoney(quantity, unitAmount);
 
@@ -272,12 +289,12 @@ export default function Cashflow() {
       vendorType,
       isMiscellaneous: vendorType === "miscellaneous",
       ...(isNoVendor ? { vendorId: null } : { vendorId: data.vendorId }),
-      jobId: data.jobId,
-      workStageId: data.workStageId,
-      items: data.items,
-      category: data.category,
+      jobId: isTransportation ? null : data.jobId || null,
+      workStageId: isTransportation ? null : data.workStageId || null,
+      items: data.items?.trim() || (isTransportation ? "Transportation" : ""),
+      category: data.category || (isTransportation ? "Overheads" : ""),
       quantity,
-      uom: isLabour ? "Job" : data.uom,
+      uom: isTransportation ? "Trip" : isLabour ? "Job" : data.uom,
       amount: unitAmount,
       ...paymentDetails,
     };
@@ -326,6 +343,7 @@ export default function Cashflow() {
     if (filterSearch) queryParams.search = filterSearch;
     if (filterStartDate) queryParams.startDate = filterStartDate;
     if (filterEndDate) queryParams.endDate = filterEndDate;
+    if (filterSource) queryParams.paymentSource = filterSource;
 
     await exportCashflowPdf(queryParams);
   };
@@ -418,6 +436,8 @@ export default function Cashflow() {
           setFilterEndDate={setFilterEndDate}
           filterMiscellaneous={filterMiscellaneous}
           setFilterMiscellaneous={setFilterMiscellaneous}
+          filterSource={filterSource}
+          setFilterSource={setFilterSource}
           exportData={handlePdfExport}
           formatDate={formatDate}
           onDelete={handleDelete}

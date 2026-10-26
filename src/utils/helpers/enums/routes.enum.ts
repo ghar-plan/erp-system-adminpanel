@@ -74,6 +74,7 @@ export enum siteRoutes {
 
   // Commerce module routes
   purchases = "/purchases",
+  purchasesList = "/purchases/list",
   purchasesCreate = "/purchases/create",
   purchasesEdit = "/purchases/edit/:id",
   purchasesView = "/purchases/view/:id",

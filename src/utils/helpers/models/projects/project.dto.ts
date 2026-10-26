@@ -34,21 +34,11 @@ export const sanitizePercentageInput = (value: string): string => {
 };
 
 export const sanitizeAmountInput = (value: string): string => {
-  const cleaned = value.replace(/[^0-9.]/g, "");
-  const [whole, ...decimals] = cleaned.split(".");
-  const decimal = decimals.join("").slice(0, 2);
-  return decimals.length > 0 ? `${whole}.${decimal}` : whole;
+  // Whole numbers only — strip any decimal portion
+  return value.replace(/[^0-9]/g, "");
 };
 
-export const formatProjectAmount = (value?: number | string | null): string => {
-  if (value === null || value === undefined || value === "") return "--";
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return "--";
-  return `PKR ${amount.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-};
+export { formatMoney as formatProjectAmount } from "@/utils/helpers/money";
 
 export interface ProjectPaymentStage {
   id?: string;

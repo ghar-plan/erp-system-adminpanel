@@ -17,3 +17,17 @@ export interface StockAvailability {
   totalSold: number;
   exists: boolean;
 }
+
+/** FIFO lot for a product (oldest purchaseDate is sold first). */
+export interface StockBatch {
+  id: string;
+  productId: string;
+  productName: string;
+  purchaseId: string | null;
+  purchaseDate: string;
+  expiryDate: string | null;
+  quantity: number;
+  remainingQuantity: number;
+  created_at?: string;
+  updated_at?: string;
+}

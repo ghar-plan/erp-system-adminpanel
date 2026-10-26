@@ -456,22 +456,15 @@ export default function DesignProjectEdit() {
                 <label className="mb-2 block ui-form-label">
                   Mobile Number <span className="text-red-500">*</span>
                 </label>
-                <Controller
-                  name="clientPhone"
-                  control={control}
-                  rules={{
+                <input
+                  type="text"
+                  placeholder="e.g., +923001234567"
+                  className={`common-input ${errors.clientPhone ? "border-red-500 focus:border-red-500" : ""}`}
+                  {...register("clientPhone", {
                     required: "Mobile number is required",
-                    validate: (value) => validatePakistanMobile(value),
-                  }}
-                  render={({ field }) => (
-                    <PakistanPhoneInput
-                      name={field.name}
-                      value={field.value}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      hasError={!!errors.clientPhone}
-                    />
-                  )}
+                    validate: (value) =>
+                      value.trim().length > 0 || "Mobile number is required",
+                  })}
                 />
                 {errors.clientPhone && (
                   <p className="mt-1.5 text-xs text-red-500 font-semibold">
@@ -824,7 +817,7 @@ export default function DesignProjectEdit() {
                 </label>
                 <input
                   type="text"
-                  inputMode="decimal"
+                  inputMode="numeric"
                   placeholder="e.g. 2500000"
                   className={`common-input ${errors.amount ? "border-red-500 focus:border-red-500" : ""}`}
                   {...amountField}
@@ -859,7 +852,7 @@ export default function DesignProjectEdit() {
                 <div className="relative">
                   <input
                     type="text"
-                    inputMode="decimal"
+                    inputMode="numeric"
                     placeholder="e.g. 12"
                     className={`common-input pr-10 ${errors.markupPercentage ? "border-red-500 focus:border-red-500" : ""}`}
                     {...markupPercentageField}

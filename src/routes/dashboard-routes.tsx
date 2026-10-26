@@ -415,9 +415,13 @@ const DashboardRoutes = () => {
           element={guard(<DesignVendorListReport />, PERMISSIONS.DESIGN_REPORTS_VENDOR_LIST)}
         />
 
-        {/* Commerce module */}
+        {/* Commerce module — /purchases lands on Record Purchase form */}
         <Route
           path={siteRoutes.purchases}
+          element={guard(<PurchaseCreate />, PERMISSIONS.PURCHASES_CREATE)}
+        />
+        <Route
+          path={siteRoutes.purchasesList}
           element={guard(<PurchasesListing />, PERMISSIONS.PURCHASES_READ)}
         />
         <Route

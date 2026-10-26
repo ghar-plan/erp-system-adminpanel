@@ -40,8 +40,18 @@ const getErrorMessage = (error: unknown): string | undefined => {
 const isImageReceipt = (url?: string) =>
   !!url && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url);
 
+export const getTodayDateInput = (): string => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export const emptyPaymentDetails = {
-  entryDate: "",
+  get entryDate(): string {
+    return getTodayDateInput();
+  },
   enteredBy: "",
   paymentSource: "",
   status: TransactionStatus.PENDING,
@@ -53,8 +63,11 @@ export const emptyPaymentDetails = {
   receiptUrl: "",
 };
 
-const toDateInputValue = (value?: string | Date | null) => {
+export const toDateInputValue = (value?: string | Date | null) => {
   if (!value) return "";
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10);
+  }
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return String(value).slice(0, 10);
@@ -66,7 +79,9 @@ const toDateInputValue = (value?: string | Date | null) => {
 };
 
 export const mapPaymentDetailsFromEdit = (editData: any) => ({
-  entryDate: toDateInputValue(editData?.date || editData?.entryDate),
+  entryDate:
+    toDateInputValue(editData?.date || editData?.entryDate) ||
+    getTodayDateInput(),
   enteredBy: editData?.enteredBy || "",
   paymentSource: editData?.paymentSource || "",
   status:
@@ -118,8 +133,8 @@ export default function PaymentDetailsFields({
     if (paymentSource === CashOutPaymentSource.PARTIAL) {
       const paid = Number(paidAmount) || 0;
       const total = Number(totalAmount) || 0;
-      const remaining = Math.max(0, Math.round((total - paid) * 100) / 100);
-      setValue("remainingAmount", remaining ? remaining.toFixed(2) : "0.00");
+      const remaining = Math.max(0, Math.round(total - paid));
+      setValue("remainingAmount", remaining ? String(remaining) : "0");
       if (paid > 0 && remaining <= 0) {
         setValue("status", TransactionStatus.RESOLVED);
       } else {
@@ -128,15 +143,15 @@ export default function PaymentDetailsFields({
     } else if (paymentSource === CashOutPaymentSource.CREDIT) {
       const total = Number(totalAmount) || 0;
       setValue("paidAmount", "0");
-      setValue("remainingAmount", total ? Number(total).toFixed(2) : "0.00");
+      setValue("remainingAmount", total ? Number(total) : "0");
       setValue("status", TransactionStatus.PENDING);
     } else if (
       paymentSource === CashOutPaymentSource.CASH ||
       paymentSource === CashOutPaymentSource.ADVANCE
     ) {
       const total = Number(totalAmount) || 0;
-      setValue("paidAmount", total ? Number(total).toFixed(2) : "");
-      setValue("remainingAmount", "0.00");
+      setValue("paidAmount", total ? Number(total) : "");
+      setValue("remainingAmount", "0");
       setValue("status", TransactionStatus.RESOLVED);
     }
   }, [paymentSource, paidAmount, totalAmount, isCashOut, setValue]);
@@ -270,7 +285,7 @@ export default function PaymentDetailsFields({
               </label>
               <input
                 type="number"
-                step="0.01"
+                step="1"
                 placeholder="e.g. 30000"
                 className={`common-input bg-card ${errors.paidAmount ? "border-red-500" : ""}`}
                 {...register("paidAmount", {
@@ -310,7 +325,7 @@ export default function PaymentDetailsFields({
                 tabIndex={-1}
                 value={
                   remainingAmount !== undefined && remainingAmount !== ""
-                    ? `PKR ${Number(remainingAmount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    ? `PKR ${Number(remainingAmount).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
                     : "--"
                 }
                 className="common-input bg-muted-foreground/10 text-foreground font-bold cursor-not-allowed"
@@ -318,13 +333,13 @@ export default function PaymentDetailsFields({
               <p className="mt-1 text-[11px] text-muted-foreground">
                 Auto-calculated (Total PKR{" "}
                 {Number(totalAmount || 0).toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
                 })}{" "}
                 &minus; Paid PKR{" "}
                 {Number(paidAmount || 0).toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
                 })}
                 )
               </p>
@@ -452,7 +467,7 @@ export default function PaymentDetailsFields({
                   Upload Receipt
                 </span>
                 <span className="text-[10px] text-muted-foreground mt-1">
-                  Optional · PNG, JPG, PDF up to 10MB
+                  Optional ? PNG, JPG, PDF up to 10MB
                 </span>
               </div>
             )}

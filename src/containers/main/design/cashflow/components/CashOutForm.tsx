@@ -105,7 +105,7 @@ export default function CashOutForm({
         jobId: editData.jobId || editData.job?.id || "",
         workStageId: editData.workStageId || editData.workStage?.id || "",
         items: editData.items || "",
-        amount: total ? Number(total).toFixed(2) : "",
+        amount: total ? Number(total) : "",
         ...mapPaymentDetailsFromEdit(editData),
       });
     } else {
@@ -353,7 +353,7 @@ export default function CashOutForm({
             </label>
             <input
               type="text"
-              inputMode="decimal"
+              inputMode="numeric"
               autoComplete="off"
               placeholder="Enter Amount"
               className={`common-input ${errors.amount ? "border-red-500 focus:border-red-500" : ""}`}

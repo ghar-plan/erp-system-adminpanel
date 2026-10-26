@@ -9,6 +9,9 @@ import Button from "@/components/ui/Button";
 import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { canAccessPurchasePrice } from "@/utils/helpers/permissions/purchase-price-access";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
+import useStore from "@/hooks/useStore";
 
 interface PurchaseFilters {
   search: string;
@@ -26,11 +29,13 @@ const emptyFilters: PurchaseFilters = {
 
 export default function PurchasesListing() {
   const { hasPermission } = usePermissions();
+  const { getUser } = useStore();
   const { getPurchases, deletePurchase } = usePurchases();
   const canView = hasPermission(PERMISSIONS.PURCHASES_READ);
   const canUpdate = hasPermission(PERMISSIONS.PURCHASES_UPDATE);
   const canDelete = hasPermission(PERMISSIONS.PURCHASES_DELETE);
   const showActions = canView || canUpdate || canDelete;
+  const canViewPurchasePrice = canAccessPurchasePrice(getUser()?.email);
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [totalElements, setTotalElements] = useState(0);
@@ -110,8 +115,7 @@ export default function PurchasesListing() {
     "Supplier",
     "Product",
     "Quantity",
-    "Per Item",
-    "Price",
+    ...(canViewPurchasePrice ? ["Per Item", "Price"] : []),
     "Source",
     "Date",
     ...(showActions ? ["Actions"] : []),
@@ -128,11 +132,11 @@ export default function PurchasesListing() {
         </div>
         <Can permission={PERMISSIONS.PURCHASES_CREATE}>
           <Link
-            to="/purchases/create"
+            to={siteRoutes.purchases}
             className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
           >
             <Plus size={18} />
-            Record Purchase
+            New Purchase
           </Link>
         </Can>
       </div>
@@ -238,8 +242,14 @@ export default function PurchasesListing() {
                       </td>
                       <td className="table-td">{purchase?.productName || "--"}</td>
                       <td className="table-td">{purchase?.quantity ?? "--"}</td>
-                      <td className="table-td">{formatMoney(purchase?.rate)}</td>
-                      <td className="table-td">{formatMoney(purchase?.paymentMade)}</td>
+                      {canViewPurchasePrice ? (
+                        <>
+                          <td className="table-td">{formatMoney(purchase?.rate)}</td>
+                          <td className="table-td">
+                            {formatMoney(purchase?.paymentMade)}
+                          </td>
+                        </>
+                      ) : null}
                       <td className="table-td">
                         <span
                           className={`px-2.5 py-1 text-xs font-bold tracking-wide rounded-md ${getSourceBadgeClass(purchase?.sourcePayment || "")}`}

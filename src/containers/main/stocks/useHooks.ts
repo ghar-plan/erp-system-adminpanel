@@ -1,5 +1,8 @@
 import { Stocks_APIS } from "@/libs/apis/stocks.api";
-import { StockAvailability } from "@/utils/helpers/models/stocks/stock.dto";
+import {
+  StockAvailability,
+  StockBatch,
+} from "@/utils/helpers/models/stocks/stock.dto";
 
 const useStocks = () => {
   const getStocks = async (
@@ -30,9 +33,22 @@ const useStocks = () => {
     return null;
   };
 
+  const getBatchesByProduct = async (
+    productId: string,
+  ): Promise<StockBatch[]> => {
+    if (!productId) return [];
+    const response = await Stocks_APIS.getBatchesByProduct(productId);
+    const { status = false, data = [] } = response || {};
+    if (status && Array.isArray(data)) {
+      return data as StockBatch[];
+    }
+    return [];
+  };
+
   return {
     getStocks,
     getStockByProduct,
+    getBatchesByProduct,
   };
 };
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Search, Package, Boxes } from "lucide-react";
+import { Search, Package, Boxes, ChevronDown, ChevronRight } from "lucide-react";
 import useStocks from "../useHooks";
-import { Stock } from "@/utils/helpers/models/stocks/stock.dto";
+import { Stock, StockBatch } from "@/utils/helpers/models/stocks/stock.dto";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
@@ -18,12 +18,30 @@ const emptyFilters: StockFilters = {
   limit: 10,
 };
 
+const formatDate = (value?: string | null) => {
+  if (!value) return "--";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
 export default function StocksListing() {
-  const { getStocks } = useStocks();
+  const { getStocks, getBatchesByProduct } = useStocks();
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [searchVal, setSearchVal] = useState("");
   const [filters, setFilters] = useState<StockFilters>(emptyFilters);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [batchesByProduct, setBatchesByProduct] = useState<
+    Record<string, StockBatch[]>
+  >({});
+  const [loadingBatchesFor, setLoadingBatchesFor] = useState<string | null>(
+    null,
+  );
 
   const fetchStocks = (currentFilters: StockFilters) => {
     const queryParams: any = {
@@ -41,12 +59,14 @@ export default function StocksListing() {
   const handleApplyFilters = () => {
     const updatedFilters = { ...filters, search: searchVal, page: 1 };
     setFilters(updatedFilters);
+    setExpandedId(null);
     fetchStocks(updatedFilters);
   };
 
   const handleResetFilters = () => {
     setSearchVal("");
     setFilters(emptyFilters);
+    setExpandedId(null);
     fetchStocks(emptyFilters);
   };
 
@@ -58,6 +78,7 @@ export default function StocksListing() {
       limit: pageInfo.limit,
     };
     setFilters(updatedFilters);
+    setExpandedId(null);
     fetchStocks(updatedFilters);
   };
 
@@ -66,11 +87,29 @@ export default function StocksListing() {
     if (!Number.isFinite(n)) return "--";
     return n.toLocaleString("en-US", {
       minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
+      maximumFractionDigits: 0,
     });
   };
 
+  const toggleBatches = async (item: Stock) => {
+    if (expandedId === item.id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(item.id);
+    if (batchesByProduct[item.productId]) return;
+
+    setLoadingBatchesFor(item.productId);
+    const batches = await getBatchesByProduct(item.productId);
+    setBatchesByProduct((prev) => ({
+      ...prev,
+      [item.productId]: batches,
+    }));
+    setLoadingBatchesFor(null);
+  };
+
   const columns = [
+    "",
     "Sr No.",
     "Product",
     "Available",
@@ -86,7 +125,8 @@ export default function StocksListing() {
             Stock
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Track available quantity from purchases and sales.
+            Track available quantity by purchase batch. Oldest stock is sold
+            first.
           </p>
         </div>
       </div>
@@ -111,10 +151,10 @@ export default function StocksListing() {
           </div>
           <div>
             <span className="text-[10px] font-bold text-muted-foreground block uppercase tracking-wider">
-              Tip
+              Batches
             </span>
             <span className="text-sm font-semibold text-foreground mt-0.5 block">
-              Purchases add stock · Sales reduce stock
+              Expand a row to see qty purchased vs left
             </span>
           </div>
         </div>
@@ -182,35 +222,109 @@ export default function StocksListing() {
                   {stocks.map((item, index) => {
                     const available = Number(item.quantity);
                     const lowStock = available <= 0;
+                    const isExpanded = expandedId === item.id;
+                    const batches = batchesByProduct[item.productId] || [];
+                    const loading = loadingBatchesFor === item.productId;
+
                     return (
-                      <tr
-                        key={item.id}
-                        className="hover:bg-muted-foreground/5 transition-colors"
-                      >
-                        <td className="table-td">
-                          {(filters.page - 1) * filters.limit + index + 1}
-                        </td>
-                        <td className="table-td font-semibold text-foreground">
-                          {item.productName || "--"}
-                        </td>
-                        <td className="table-td">
-                          <span
-                            className={`px-2.5 py-1 text-xs font-bold tracking-wide rounded-md ${
-                              lowStock
-                                ? "bg-danger-bg text-danger-text border border-panel-border"
-                                : "bg-success-bg text-success-text border border-panel-border"
-                            }`}
-                          >
-                            {formatQty(available)}
-                          </span>
-                        </td>
-                        <td className="table-td">
-                          {formatQty(item.totalPurchased)}
-                        </td>
-                        <td className="table-td">
-                          {formatQty(item.totalSold)}
-                        </td>
-                      </tr>
+                      <React.Fragment key={item.id}>
+                        <tr
+                          className="hover:bg-muted-foreground/5 transition-colors cursor-pointer"
+                          onClick={() => toggleBatches(item)}
+                        >
+                          <td className="table-td w-10 text-muted-foreground">
+                            {isExpanded ? (
+                              <ChevronDown size={16} />
+                            ) : (
+                              <ChevronRight size={16} />
+                            )}
+                          </td>
+                          <td className="table-td">
+                            {(filters.page - 1) * filters.limit + index + 1}
+                          </td>
+                          <td className="table-td font-semibold text-foreground">
+                            {item.productName || "--"}
+                          </td>
+                          <td className="table-td">
+                            <span
+                              className={`px-2.5 py-1 text-xs font-bold tracking-wide rounded-md ${
+                                lowStock
+                                  ? "bg-danger-bg text-danger-text border border-panel-border"
+                                  : "bg-success-bg text-success-text border border-panel-border"
+                              }`}
+                            >
+                              {formatQty(available)}
+                            </span>
+                          </td>
+                          <td className="table-td">
+                            {formatQty(item.totalPurchased)}
+                          </td>
+                          <td className="table-td">
+                            {formatQty(item.totalSold)}
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="bg-muted-foreground/[0.03]">
+                            <td colSpan={columns.length} className="px-6 py-4">
+                              {loading ? (
+                                <p className="text-sm text-muted-foreground">
+                                  Loading batches?
+                                </p>
+                              ) : batches.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                  No purchase batches for this product yet.
+                                </p>
+                              ) : (
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                    Purchase batches (oldest sold first)
+                                  </p>
+                                  <div className="overflow-x-auto rounded-lg border border-border-main">
+                                    <table className="min-w-full text-sm">
+                                      <thead className="bg-muted-foreground/5">
+                                        <tr>
+                                          <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                                            Purchased on
+                                          </th>
+                                          <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                                            Expires on
+                                          </th>
+                                          <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                                            Qty purchased
+                                          </th>
+                                          <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                                            Qty left in stock
+                                          </th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-border-main">
+                                        {batches.map((batch) => (
+                                          <tr key={batch.id}>
+                                            <td className="px-3 py-2">
+                                              {formatDate(batch.purchaseDate)}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                              {formatDate(batch.expiryDate)}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                              {formatQty(batch.quantity)}
+                                            </td>
+                                            <td className="px-3 py-2 font-semibold">
+                                              {formatQty(
+                                                batch.remainingQuantity,
+                                              )}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>

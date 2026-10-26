@@ -32,5 +32,5 @@ export const computeSaleBalance = (
   const qty = Number(quantity) || 0;
   const r = Number(rate) || 0;
   const p = Number(payment) || 0;
-  return Math.round((qty * r - p) * 100) / 100;
+  return Math.round(qty * r - p);
 };

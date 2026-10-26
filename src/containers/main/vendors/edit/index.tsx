@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Save } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Save, Search, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Controller, useForm } from "react-hook-form";
 import useVendors from "../useHooks";
@@ -9,7 +9,7 @@ import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
 
 interface VendorFormInputs {
   vendorName: string;
-  jobDescription: string;
+  jobDescription?: string;
   vendorType: "vendorMaterial" | "vendorLabour" | "Both";
   address: string;
   phone: string;
@@ -22,6 +22,7 @@ export default function VendorEdit() {
   const { getVendorById, updateVendor, getMaterials } = useVendors();
   const [materials, setMaterials] = useState<{ id: string; name: string }[]>([]);
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
+  const [materialSearch, setMaterialSearch] = useState("");
 
   const {
     register,
@@ -42,7 +43,7 @@ export default function VendorEdit() {
       getVendorById(id, (vendor: any) => {
         reset({
           vendorName: vendor.vendorName,
-          jobDescription: vendor.jobDescription,
+          jobDescription: vendor.jobDescription || "",
           vendorType: vendor.vendorType,
           address: vendor.address || "",
           phone: vendor.phone || "",
@@ -54,6 +55,14 @@ export default function VendorEdit() {
       });
     }
   }, [id]);
+
+  const filteredMaterials = useMemo(() => {
+    if (!materialSearch.trim()) return materials;
+    const query = materialSearch.trim().toLowerCase();
+    return materials.filter((material) =>
+      material.name.toLowerCase().includes(query),
+    );
+  }, [materials, materialSearch]);
 
   const toggleMaterial = (materialId: string) => {
     setSelectedMaterialIds((prev) =>
@@ -67,7 +76,7 @@ export default function VendorEdit() {
     if (id) {
       const payload = {
         vendorName: data.vendorName,
-        jobDescription: data.jobDescription,
+        jobDescription: data.jobDescription?.trim() || null,
         vendorType: data.vendorType,
         phone: data.phone.trim(),
         ...(data.address ? { address: data.address } : {}),
@@ -199,16 +208,57 @@ export default function VendorEdit() {
           </div>
 
           {showMaterials ? (
-            <div>
-              <label className="mb-2 block ui-form-label">Materials Supplied</label>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <label className="block ui-form-label mb-0">
+                  Materials Supplied
+                  {selectedMaterialIds.length > 0 && (
+                    <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                      ({selectedMaterialIds.length} selected)
+                    </span>
+                  )}
+                </label>
+              </div>
+
+              <div className="relative w-full">
+                <Search
+                  className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground/80 pointer-events-none"
+                  size={16}
+                />
+                <input
+                  type="text"
+                  placeholder="Search materials..."
+                  value={materialSearch}
+                  onChange={(e) => setMaterialSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.preventDefault();
+                  }}
+                  className="common-input pl-10 pr-9 text-sm h-10 w-full"
+                />
+                {materialSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setMaterialSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    title="Clear search"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+
               <div className="rounded-xl border border-border-main p-4 bg-muted-foreground/5 max-h-56 overflow-y-auto">
                 {materials.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     No materials yet. Use Create Material on the vendors page to add some.
                   </p>
+                ) : filteredMaterials.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No materials found matching "{materialSearch}".
+                  </p>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {materials.map((material) => (
+                    {filteredMaterials.map((material) => (
                       <label
                         key={material.id}
                         className="flex items-center gap-2 text-sm text-foreground cursor-pointer"
@@ -229,20 +279,15 @@ export default function VendorEdit() {
           ) : null}
 
           <div>
-            <label className="mb-2 block ui-form-label">Job Description</label>
+            <label className="mb-2 block ui-form-label">
+              Job Description <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+            </label>
             <textarea
-              placeholder="e.g., Electrician"
+              placeholder="e.g., Electrician (optional)"
               rows={3}
-              className={`common-input py-2 resize-none ${errors.jobDescription ? "border-red-500 focus:border-red-500" : ""}`}
-              {...register("jobDescription", {
-                required: "Job Description is required",
-              })}
+              className="common-input py-2 resize-none"
+              {...register("jobDescription")}
             />
-            {errors.jobDescription && (
-              <p className="mt-1.5 text-xs text-red-500 font-semibold">
-                {errors.jobDescription.message}
-              </p>
-            )}
           </div>
         </div>
 

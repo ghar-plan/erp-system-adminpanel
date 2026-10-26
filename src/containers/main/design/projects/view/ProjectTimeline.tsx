@@ -29,8 +29,8 @@ const formatMoney = (value?: number | string | null) => {
     return "PKR 0";
   }
   return `PKR ${amount.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   })}`;
 };
 
@@ -55,6 +55,52 @@ const dateKeyFrom = (date: Date) => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const getEventDateTime = (
+  entryDateVal?: string | Date | null,
+  createdAtVal?: string | Date | null,
+): Date => {
+  const parsedEntry = parseDate(entryDateVal);
+  const parsedCreated = parseDate(createdAtVal);
+
+  if (!parsedEntry && !parsedCreated) {
+    return new Date(0);
+  }
+  if (!parsedEntry) {
+    return parsedCreated!;
+  }
+  if (!parsedCreated) {
+    return parsedEntry;
+  }
+
+  const hasEntryTime =
+    parsedEntry.getHours() !== 0 ||
+    parsedEntry.getMinutes() !== 0 ||
+    parsedEntry.getSeconds() !== 0 ||
+    parsedEntry.getMilliseconds() !== 0;
+
+  if (hasEntryTime) {
+    return parsedEntry;
+  }
+
+  const combined = new Date(parsedEntry);
+  combined.setHours(
+    parsedCreated.getHours(),
+    parsedCreated.getMinutes(),
+    parsedCreated.getSeconds(),
+    parsedCreated.getMilliseconds(),
+  );
+  return combined;
+};
+
+const formatTime = (date?: Date | null) => {
+  if (!date || Number.isNaN(date.getTime()) || date.getTime() === 0) return "";
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 };
 
 const formatHeadingDate = (key: string) => {
@@ -99,8 +145,7 @@ export default function ProjectTimeline({
 
   const events = useMemo<TimelineEvent[]>(() => {
     const inEvents: TimelineEvent[] = cashflowsIn.map((item) => {
-      const occurredAt =
-        parseDate(item.entryDate) || parseDate(item.created_at) || new Date(0);
+      const occurredAt = getEventDateTime(item.entryDate, item.created_at);
       return {
         id: `in-${item.id}`,
         type: "CASH IN",
@@ -111,8 +156,7 @@ export default function ProjectTimeline({
     });
 
     const outEvents: TimelineEvent[] = cashflowsOut.map((item) => {
-      const occurredAt =
-        parseDate(item.entryDate) || parseDate(item.created_at) || new Date(0);
+      const occurredAt = getEventDateTime(item.entryDate, item.created_at);
       return {
         id: `out-${item.id}`,
         type: "CASH OUT",
@@ -136,7 +180,7 @@ export default function ProjectTimeline({
       });
 
     return [...inEvents, ...outEvents, ...commentEvents].sort(
-      (a, b) => a.occurredAt.getTime() - b.occurredAt.getTime(),
+      (a, b) => b.occurredAt.getTime() - a.occurredAt.getTime(),
     );
   }, [cashflowsIn, cashflowsOut, comments]);
 
@@ -228,7 +272,7 @@ export default function ProjectTimeline({
                     {formatHeadingDate(key)}
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    In {formatMoney(dayIn)} Â· Out {formatMoney(dayOut)}
+                    In {formatMoney(dayIn)} · Out {formatMoney(dayOut)}
                   </p>
                 </div>
 
@@ -249,6 +293,11 @@ export default function ProjectTimeline({
                               <span className="text-sm font-bold text-success-text">
                                 Cash In
                               </span>
+                              {formatTime(event.occurredAt) && (
+                                <span className="text-xs text-muted-foreground font-normal">
+                                  • {formatTime(event.occurredAt)}
+                                </span>
+                              )}
                             </div>
                             <span className="text-sm font-bold text-success-text">
                               {formatMoney(event.data.amount)}
@@ -297,6 +346,11 @@ export default function ProjectTimeline({
                               <span className="text-sm font-bold text-warning-text">
                                 Cash Out
                               </span>
+                              {formatTime(event.occurredAt) && (
+                                <span className="text-xs text-muted-foreground font-normal">
+                                  • {formatTime(event.occurredAt)}
+                                </span>
+                              )}
                             </div>
                             <span className="text-sm font-bold text-warning-text">
                               {formatMoney(total)}
@@ -344,9 +398,16 @@ export default function ProjectTimeline({
                         key={event.id}
                         className="rounded-xl border border-border-main bg-panel-bg p-4"
                       >
-                        <div className="flex items-center gap-2 mb-2">
-                          <MessageSquare size={16} className="text-primary" />
-                          <span className="text-sm font-bold text-foreground">Update</span>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <MessageSquare size={16} className="text-primary" />
+                            <span className="text-sm font-bold text-foreground">Update</span>
+                          </div>
+                          {formatTime(event.occurredAt) && (
+                            <span className="text-xs text-muted-foreground">
+                              {formatTime(event.occurredAt)}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mb-1">
                           {event.data.user?.fullName || event.data.user?.email || "User"}

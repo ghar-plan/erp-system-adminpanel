@@ -226,6 +226,8 @@ export default function ProjectsView() {
             projectId={project.id}
             cashflowsIn={project.cashflowsIn}
             cashflowsOut={project.cashflowsOut}
+            paymentPlan={project.paymentPlan}
+            markupPercentage={project.markupPercentage}
           />
         </AccordionSection>
 

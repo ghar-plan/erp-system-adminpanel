@@ -152,7 +152,7 @@ export default function CustomerTypeCreate() {
 
   const onSubmitForm = async (data: CustomerTypeFormInputs) => {
     if (isEditMode && id) {
-      // Category and pickup point are locked on edit â€” only name can change.
+      // Category and pickup point are locked on edit — only name can change.
       await updateCustomerType(id, {
         name: data.name?.trim() || undefined,
       });
@@ -447,7 +447,7 @@ export default function CustomerTypeCreate() {
             </div>
           ) : null}
 
-          {/* Name â€” Customer & GP Construction */}
+          {/* Name — Customer & GP Construction */}
           {!isPickupPoint ? (
             <div className="md:col-span-2">
               <label className="mb-2 block ui-form-label">
@@ -555,8 +555,8 @@ export default function CustomerTypeCreate() {
                           <td className="px-6 py-3">
                             <input
                               type="text"
-                              inputMode="decimal"
-                              placeholder="0.00"
+                              inputMode="numeric"
+                              placeholder="0"
                               value={rates[pid] ?? ""}
                               onChange={(e) => handleRateChange(pid, e.target.value)}
                               className="common-input h-9 text-sm w-full max-w-[180px]"

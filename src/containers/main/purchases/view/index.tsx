@@ -16,12 +16,16 @@ import usePurchases from "../useHooks";
 import { Purchase, formatMoney } from "@/utils/helpers/models/purchases/purchase.dto";
 import { Can } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { canAccessPurchasePrice } from "@/utils/helpers/permissions/purchase-price-access";
+import useStore from "@/hooks/useStore";
 
 export default function PurchaseView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { getUser } = useStore();
   const { getPurchaseById } = usePurchases();
   const [purchase, setPurchase] = useState<Purchase | null>(null);
+  const canViewPurchasePrice = canAccessPurchasePrice(getUser()?.email);
 
   useEffect(() => {
     if (id) {
@@ -64,8 +68,12 @@ export default function PurchaseView() {
     return null;
   }
 
-  const total = Number(purchase.quantity || 0) * Number(purchase.rate || 0);
-  const remaining = Math.max(total - Number(purchase.paymentMade || 0), 0);
+  const total = canViewPurchasePrice
+    ? Number(purchase.quantity || 0) * Number(purchase.rate || 0)
+    : 0;
+  const remaining = canViewPurchasePrice
+    ? Math.max(total - Number(purchase.paymentMade || 0), 0)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -143,61 +151,65 @@ export default function PurchaseView() {
             </div>
           </div>
 
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-lg bg-warning-bg text-warning-text">
-              <Tag size={18} />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Per Item
-              </label>
-              <p className="text-sm font-semibold text-foreground mt-0.5">
-                {formatMoney(purchase?.rate)}
-              </p>
-            </div>
-          </div>
+          {canViewPurchasePrice ? (
+            <>
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-lg bg-warning-bg text-warning-text">
+                  <Tag size={18} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                    Per Item
+                  </label>
+                  <p className="text-sm font-semibold text-foreground mt-0.5">
+                    {formatMoney(purchase?.rate)}
+                  </p>
+                </div>
+              </div>
 
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-lg bg-accent-bg text-accent-text">
-              <Wallet size={18} />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Total Amount
-              </label>
-              <p className="text-sm font-semibold text-foreground mt-0.5">
-                {formatMoney(total)}
-              </p>
-            </div>
-          </div>
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-lg bg-accent-bg text-accent-text">
+                  <Wallet size={18} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                    Total Amount
+                  </label>
+                  <p className="text-sm font-semibold text-foreground mt-0.5">
+                    {formatMoney(total)}
+                  </p>
+                </div>
+              </div>
 
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-lg bg-success-bg text-success-text">
-              <Wallet size={18} />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Price
-              </label>
-              <p className="text-sm font-semibold text-foreground mt-0.5">
-                {formatMoney(purchase?.paymentMade)}
-              </p>
-            </div>
-          </div>
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-lg bg-success-bg text-success-text">
+                  <Wallet size={18} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                    Price
+                  </label>
+                  <p className="text-sm font-semibold text-foreground mt-0.5">
+                    {formatMoney(purchase?.paymentMade)}
+                  </p>
+                </div>
+              </div>
 
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-lg bg-danger-bg text-danger-text">
-              <Wallet size={18} />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Remaining
-              </label>
-              <p className="text-sm font-semibold text-foreground mt-0.5">
-                {formatMoney(remaining)}
-              </p>
-            </div>
-          </div>
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-lg bg-danger-bg text-danger-text">
+                  <Wallet size={18} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                    Remaining
+                  </label>
+                  <p className="text-sm font-semibold text-foreground mt-0.5">
+                    {formatMoney(remaining)}
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : null}
 
           <div className="flex items-start gap-3">
             <div className="p-2.5 rounded-lg bg-info-bg text-info-text">

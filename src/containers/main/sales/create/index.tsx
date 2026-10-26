@@ -18,10 +18,11 @@ import {
   CustomerType,
   CustomerTypeCategory,
   customerTypeCategoryLabel,
+  WALK_IN_CUSTOMER_TYPE,
+  WALK_IN_CUSTOMER_TYPE_ID,
 } from "@/utils/helpers/models/customer-types/customer-type.dto";
 import { computeSaleBalance } from "@/utils/helpers/models/sales/sale.dto";
 import { StockAvailability } from "@/utils/helpers/models/stocks/stock.dto";
-import { errorToaster } from "@/utils/helpers/common/alert-service";
 
 interface SaleFormInputs {
   customerTypeId: string;
@@ -91,11 +92,21 @@ export default function SaleCreate() {
   const rate = watch("rate");
   const payment = watch("payment");
 
-  const selectedCustomerType = customerTypes.find(
+  const customerTypeOptions = (() => {
+    const withoutWalkIn = customerTypes.filter(
+      (ct) => String(ct.id) !== WALK_IN_CUSTOMER_TYPE_ID,
+    );
+    return [WALK_IN_CUSTOMER_TYPE, ...withoutWalkIn];
+  })();
+
+  const selectedCustomerType = customerTypeOptions.find(
     (ct) => String(ct.id) === String(customerTypeId),
   );
+  // Walk-in uses the same name/telephone flow as regular Customer types
   const isCustomerCategory =
-    selectedCustomerType?.category === CustomerTypeCategory.CUSTOMER;
+    selectedCustomerType?.category === CustomerTypeCategory.CUSTOMER ||
+    selectedCustomerType?.category === CustomerTypeCategory.WALK_IN ||
+    String(customerTypeId) === WALK_IN_CUSTOMER_TYPE_ID;
 
   const balance = computeSaleBalance(quantity, rate, payment);
 
@@ -153,6 +164,7 @@ export default function SaleCreate() {
   // Prefill rate from customer-type product price when configured (always editable).
   useEffect(() => {
     if (!customerTypeId || !productId) return;
+    if (String(customerTypeId) === WALK_IN_CUSTOMER_TYPE_ID) return;
     setLoadingRate(true);
     getProductRate(customerTypeId, String(productId), (fetchedRate) => {
       setLoadingRate(false);
@@ -194,12 +206,6 @@ export default function SaleCreate() {
 
   const onSubmitForm = async (data: SaleFormInputs) => {
     const qty = Number(data.quantity);
-    if (qty > availableForSale) {
-      errorToaster(
-        `Insufficient stock. Available: ${availableForSale}, requested: ${qty}`,
-      );
-      return;
-    }
 
     const payload: any = {
       customerTypeId: data.customerTypeId,
@@ -267,9 +273,11 @@ export default function SaleCreate() {
               })}
             >
               <option value="">Select Customer Type</option>
-              {customerTypes.map((ct) => (
+              {customerTypeOptions.map((ct) => (
                 <option key={ct.id} value={ct.id}>
-                  {ct.name} ({customerTypeCategoryLabel(ct.category)})
+                  {ct.id === WALK_IN_CUSTOMER_TYPE_ID
+                    ? ct.name
+                    : `${ct.name} (${customerTypeCategoryLabel(ct.category)})`}
                 </option>
               ))}
             </select>
@@ -368,36 +376,30 @@ export default function SaleCreate() {
             <label className="mb-2 block ui-form-label">Quantity</label>
             <input
               type="number"
-              step="0.01"
-              min="0.01"
-              max={availableForSale > 0 ? availableForSale : undefined}
+              step="1"
+              min="1"
               placeholder="e.g. 10"
               className={`common-input ${errors.quantity ? "border-red-500 focus:border-red-500" : ""}`}
               {...register("quantity", {
                 required: "Quantity is required",
                 valueAsNumber: true,
-                min: { value: 0.01, message: "Quantity must be greater than 0" },
-                validate: (value) => {
-                  const qty = Number(value);
-                  if (!productId) return true;
-                  if (qty > availableForSale) {
-                    return `Only ${availableForSale} unit(s) available in stock`;
-                  }
-                  return true;
-                },
+                min: { value: 1, message: "Quantity must be at least 1" },
               })}
             />
             {productId ? (
               <p
                 className={`mt-1 text-xs font-semibold ${
                   availableForSale <= 0
-                    ? "text-danger-text"
+                    ? "text-muted-foreground"
                     : "text-emerald-600"
                 }`}
               >
                 Available stock: {availableForSale}
                 {stockInfo?.totalPurchased != null
-                  ? ` · Purchased: ${Number(stockInfo.totalPurchased)} · Sold: ${Number(stockInfo.totalSold)}`
+                  ? ` ? Purchased: ${Number(stockInfo.totalPurchased)} ? Sold: ${Number(stockInfo.totalSold)}`
+                  : ""}
+                {availableForSale <= 0
+                  ? " ? Sales allowed while stock is being finalized"
                   : ""}
               </p>
             ) : null}
@@ -413,14 +415,14 @@ export default function SaleCreate() {
             <label className="mb-2 block ui-form-label">Rate</label>
             <input
               type="number"
-              step="0.01"
-              min="0.01"
+              step="1"
+              min="1"
               placeholder={loadingRate ? "Loading price..." : "e.g. 1300"}
               className={`common-input ${errors.rate ? "border-red-500 focus:border-red-500" : ""}`}
               {...register("rate", {
                 required: "Rate is required",
                 valueAsNumber: true,
-                min: { value: 0.01, message: "Rate must be greater than 0" },
+                min: { value: 1, message: "Rate must be at least 1" },
               })}
             />
             <p className="mt-1 text-xs text-muted-foreground">
@@ -439,7 +441,7 @@ export default function SaleCreate() {
             <label className="mb-2 block ui-form-label">Payment</label>
             <input
               type="number"
-              step="0.01"
+              step="1"
               min="0"
               placeholder="e.g. 5000"
               className={`common-input ${errors.payment ? "border-red-500 focus:border-red-500" : ""}`}
@@ -461,7 +463,7 @@ export default function SaleCreate() {
             <input
               type="text"
               readOnly
-              value={Number.isFinite(balance) ? balance.toFixed(2) : "0.00"}
+              value={Number.isFinite(balance) ? balance : "0"}
               className="common-input bg-muted-foreground/5 cursor-not-allowed text-muted-foreground font-semibold"
             />
           </div>

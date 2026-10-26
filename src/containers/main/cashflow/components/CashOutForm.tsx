@@ -93,20 +93,31 @@ export default function CashOutForm({
   const isNoVendor = isMiscellaneous || isTransportation;
 
   React.useEffect(() => {
-    register("jobId", { required: "Material/Service is required" });
-  }, [register]);
+    register("jobId", {
+      required: !isTransportation ? "Material/Service is required" : false,
+    });
+  }, [register, isTransportation]);
 
-  // Total is derived from quantity × price, except Labour (manual total only)
+  // Total is derived from quantity ? price, except Labour (manual total only) or Transportation (single price/amount)
   React.useEffect(() => {
     if (isLabour) return;
-    const qty = parseMoney(quantity);
+    if (isTransportation) {
+      const p = parseMoney(price);
+      if (p > 0) {
+        setValue("amount", String(p));
+      } else {
+        setValue("amount", "");
+      }
+      return;
+    }
+    const qty = Number(quantity) || 0;
     const unit = parseMoney(price);
     if (qty > 0 && unit > 0) {
-      setValue("amount", multiplyMoney(qty, unit).toFixed(2));
+      setValue("amount", String(multiplyMoney(qty, unit)));
     } else {
       setValue("amount", "");
     }
-  }, [quantity, price, isLabour, setValue]);
+  }, [quantity, price, isLabour, isTransportation, setValue]);
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     if (e.target.value === "Labour") {
@@ -132,10 +143,14 @@ export default function CashOutForm({
         editData.vendorType === "transportation" ||
         editData.isTransportation === true;
       const qty = editData.quantity ? Number(editData.quantity) : 0;
-      // List/API edit payloads expose amount as grand total (qty × unit rate)
+      // List/API edit payloads expose amount as grand total (qty ? unit rate)
       const total = editData.amount ? Number(editData.amount) : 0;
       const unitPrice =
-        !isLabourEdit && qty > 0 && total > 0 ? divideMoney(total, qty) : 0;
+        !isLabourEdit && !isTransportEdit && qty > 0 && total > 0
+          ? divideMoney(total, qty)
+          : isTransportEdit
+            ? total
+            : 0;
 
       reset({
         projectId: editData.projectId || "",
@@ -148,11 +163,17 @@ export default function CashOutForm({
         jobId: editData.jobId || editData.job?.id || "",
         workStageId: editData.workStageId || editData.workStage?.id || "",
         items: editData.items || "",
-        category: editData.category || "",
-        quantity: isLabourEdit ? "" : qty ? String(qty) : "",
-        uom: isLabourEdit ? "" : editData.uom || "",
-        price: isLabourEdit ? "" : unitPrice ? unitPrice.toFixed(2) : "",
-        amount: total ? Number(total).toFixed(2) : "",
+        category: editData.category || (isTransportEdit ? "Overheads" : ""),
+        quantity: isLabourEdit || isTransportEdit ? "" : qty ? String(qty) : "",
+        uom: isLabourEdit || isTransportEdit ? "" : editData.uom || "",
+        price: isTransportEdit
+          ? total ? Number(total) : ""
+          : isLabourEdit
+            ? ""
+            : unitPrice
+              ? unitPrice
+              : "",
+        amount: total ? Number(total) : "",
         ...mapPaymentDetailsFromEdit(editData),
       });
     } else {
@@ -269,6 +290,8 @@ export default function CashOutForm({
                       if (e.target.value === "transportation") {
                         setValue("vendorId", "");
                         clearErrors("vendorId");
+                        setValue("category", "Overheads", { shouldValidate: true });
+                        clearErrors(["jobId", "workStageId", "quantity", "uom", "items"]);
                       }
                     },
                   })}
@@ -311,55 +334,61 @@ export default function CashOutForm({
           )}
 
           {isTransportation && (
-            <div className="flex items-end">
+            <div className="flex items-end md:col-span-3">
               <p className="text-sm text-muted-foreground pb-2">
                 This expense will be recorded as <strong>Transportation</strong> (no vendor).
               </p>
             </div>
           )}
 
-          <div>
-            <label className="mb-2 block ui-form-label">
-              SELECT MATERIAL/SERVICE
-            </label>
-            <TypeaheadSelect
-              options={jobs.map((job) => ({
-                id: job.id,
-                label: job.name,
-              }))}
-              value={jobId || ""}
-              onChange={(value) => {
-                setValue("jobId", value, {
-                  shouldValidate: true,
-                  shouldDirty: true,
-                });
-              }}
-              placeholder="Select a Material/Service"
-              searchPlaceholder="Search material/service..."
-              emptyText="No material/service found"
-              error={errors.jobId?.message}
-            />
-          </div>
+          {!isTransportation && (
+            <>
+              <div>
+                <label className="mb-2 block ui-form-label">
+                  SELECT MATERIAL/SERVICE
+                </label>
+                <TypeaheadSelect
+                  options={jobs.map((job) => ({
+                    id: job.id,
+                    label: job.name,
+                  }))}
+                  value={jobId || ""}
+                  onChange={(value) => {
+                    setValue("jobId", value, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
+                  }}
+                  placeholder="Select a Material/Service"
+                  searchPlaceholder="Search material/service..."
+                  emptyText="No material/service found"
+                  error={errors.jobId?.message}
+                />
+              </div>
 
-          <div>
-            <label className="mb-2 block ui-form-label">WORK STAGE</label>
-            <select
-              className="common-input cursor-pointer"
-              {...register("workStageId", { required: "Work Stage is required" })}
-            >
-              <option value="">Select Work Stage</option>
-              {workStages.map((stage) => (
-                <option key={stage.id} value={stage.id}>
-                  {stage.name}
-                </option>
-              ))}
-            </select>
-            {errors.workStageId && (
-              <p className="mt-1 text-xs text-danger-text font-semibold">
-                {errors.workStageId.message}
-              </p>
-            )}
-          </div>
+              <div>
+                <label className="mb-2 block ui-form-label">WORK STAGE</label>
+                <select
+                  className="common-input cursor-pointer"
+                  {...register("workStageId", {
+                    required: !isTransportation ? "Work Stage is required" : false,
+                  })}
+                >
+                  <option value="">Select Work Stage</option>
+                  {workStages.map((stage) => (
+                    <option key={stage.id} value={stage.id}>
+                      {stage.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.workStageId && (
+                  <p className="mt-1 text-xs text-danger-text font-semibold">
+                    {errors.workStageId.message}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="grid gap-5 grid-cols-1 md:grid-cols-2">
@@ -385,13 +414,15 @@ export default function CashOutForm({
 
           <div>
             <label className="mb-2 block ui-form-label">
-              ITEM NAME / DESCRIPTION
+              ITEM NAME / DESCRIPTION {isTransportation && <span className="text-muted-foreground font-normal lowercase">(optional)</span>}
             </label>
             <input
               type="text"
-              placeholder="e.g. 5000 Grade A Bricks"
+              placeholder={isTransportation ? "e.g. Transportation charges (optional)" : "e.g. 5000 Grade A Bricks"}
               className="common-input"
-              {...register("items", { required: "Description is required" })}
+              {...register("items", {
+                required: !isTransportation ? "Description is required" : false,
+              })}
             />
             {errors.items && (
               <p className="mt-1 text-xs text-danger-text font-semibold">
@@ -403,7 +434,11 @@ export default function CashOutForm({
 
         <div
           className={`grid gap-5 grid-cols-1 ${
-            isLabour ? "md:grid-cols-2" : "md:grid-cols-4 xl:grid-cols-5"
+            isLabour
+              ? "md:grid-cols-2"
+              : isTransportation
+                ? "md:grid-cols-3"
+                : "md:grid-cols-4 xl:grid-cols-5"
           }`}
         >
           <div>
@@ -431,24 +466,24 @@ export default function CashOutForm({
             )}
           </div>
 
-          {!isLabour && (
+          {!isLabour && !isTransportation && (
             <>
               <div>
                 <label className="mb-2 block ui-form-label">QUANTITY</label>
                 <input
                   type="text"
-                  inputMode="decimal"
+                  inputMode="numeric"
                   autoComplete="off"
-                  placeholder="0.00"
+                  placeholder="0"
                   className="common-input"
                   {...register("quantity", {
-                    required: !isLabour ? "Quantity is required" : false,
+                    required: !isLabour && !isTransportation ? "Quantity is required" : false,
                     setValueAs: (v) =>
                       v === "" || v === null || v === undefined
                         ? ""
                         : String(v).replace(/,/g, "").trim(),
                     validate: (v) => {
-                      if (isLabour) return true;
+                      if (isLabour || isTransportation) return true;
                       const n = parseMoney(v);
                       if (!Number.isFinite(n) || n < 0.01) {
                         return "Quantity must be greater than 0";
@@ -469,7 +504,7 @@ export default function CashOutForm({
                 <select
                   className="common-input cursor-pointer"
                   {...register("uom", {
-                    required: !isLabour ? "UOM is required" : false,
+                    required: !isLabour && !isTransportation ? "UOM is required" : false,
                   })}
                 >
                   <option value="">Select UOM</option>
@@ -485,46 +520,50 @@ export default function CashOutForm({
                   </p>
                 )}
               </div>
-
-              <div>
-                <label className="mb-2 block ui-form-label">PRICE (Per Item)</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  placeholder="Enter Price"
-                  className="common-input"
-                  {...register("price", {
-                    required: !isLabour ? "Price is required" : false,
-                    setValueAs: (v) =>
-                      v === "" || v === null || v === undefined
-                        ? ""
-                        : String(v).replace(/,/g, "").trim(),
-                    validate: (v) => {
-                      if (isLabour) return true;
-                      const n = parseMoney(v);
-                      if (!Number.isFinite(n) || n < 0.01) {
-                        return "Price must be greater than 0";
-                      }
-                      return true;
-                    },
-                  })}
-                />
-                {errors.price && (
-                  <p className="mt-1 text-xs text-danger-text font-semibold">
-                    {errors.price.message}
-                  </p>
-                )}
-              </div>
             </>
+          )}
+
+          {!isLabour && (
+            <div>
+              <label className="mb-2 block ui-form-label">
+                {isTransportation ? "PRICE / AMOUNT" : "PRICE (Per Item)"}
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder={isTransportation ? "Enter Amount" : "Enter Price"}
+                className="common-input"
+                {...register("price", {
+                  required: !isLabour ? "Price is required" : false,
+                  setValueAs: (v) =>
+                    v === "" || v === null || v === undefined
+                      ? ""
+                      : String(v).replace(/,/g, "").trim(),
+                  validate: (v) => {
+                    if (isLabour) return true;
+                    const n = parseMoney(v);
+                    if (!Number.isFinite(n) || n < 0.01) {
+                      return "Price must be greater than 0";
+                    }
+                    return true;
+                  },
+                })}
+              />
+              {errors.price && (
+                <p className="mt-1 text-xs text-danger-text font-semibold">
+                  {errors.price.message}
+                </p>
+              )}
+            </div>
           )}
 
           <div>
             <label className="mb-2 block ui-form-label">Total</label>
             <input
               type={isLabour ? "text" : "number"}
-              inputMode="decimal"
-              step="0.01"
+              inputMode="numeric"
+              step="1"
               placeholder={isLabour ? "e.g. 10500" : "Auto-calculated"}
               readOnly={!isLabour}
               tabIndex={isLabour ? 0 : -1}

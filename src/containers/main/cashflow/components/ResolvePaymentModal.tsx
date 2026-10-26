@@ -214,7 +214,7 @@ export default function ResolvePaymentModal({
                   : "Resolve Payment & Record Installment"}
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {transaction.vendorClient || "Vendor"} â€¢ {transaction.project || "Project"}
+                {transaction.vendorClient || "Vendor"} • {transaction.project || "Project"}
               </p>
             </div>
           </div>
@@ -333,7 +333,7 @@ export default function ResolvePaymentModal({
                 Payment Fully Settled & Resolved
               </h3>
               <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                This transaction has been paid in full with PKR 0.00 remaining balance. All installments have been completed.
+                This transaction has been paid in full with PKR 0 remaining balance. All installments have been completed.
               </p>
             </div>
           ) : (

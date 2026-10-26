@@ -134,13 +134,12 @@ function MetricCard({
 
         {badgeText ? (
           <span
-            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border tracking-wide uppercase ${
-              trendType === "positive"
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border tracking-wide uppercase ${trendType === "positive"
                 ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400"
                 : trendType === "negative"
-                ? "bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-400"
-                : "bg-muted-foreground/10 text-muted-foreground border-border-main"
-            }`}
+                  ? "bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-400"
+                  : "bg-muted-foreground/10 text-muted-foreground border-border-main"
+              }`}
           >
             {badgeText}
           </span>
@@ -158,13 +157,12 @@ function MetricCard({
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-xs font-semibold text-muted-foreground">PKR</span>
             <h3
-              className={`text-xl sm:text-2xl font-bold tracking-tight ${
-                trendType === "positive"
+              className={`text-xl sm:text-2xl font-bold tracking-tight ${trendType === "positive"
                   ? "text-emerald-600 dark:text-emerald-400"
                   : trendType === "negative"
-                  ? "text-red-600 dark:text-red-400"
-                  : "text-foreground"
-              }`}
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-foreground"
+                }`}
             >
               {formatCurrency(value)}
             </h3>
@@ -244,9 +242,8 @@ function AnalyticsSection({
       </div>
 
       <div
-        className={`grid grid-cols-1 sm:grid-cols-2 ${
-          showSale ? "xl:grid-cols-3 2xl:grid-cols-6" : "xl:grid-cols-5"
-        } gap-3.5 sm:gap-4`}
+        className={`grid grid-cols-1 sm:grid-cols-2 ${showSale ? "xl:grid-cols-3 2xl:grid-cols-6" : "xl:grid-cols-5"
+          } gap-3.5 sm:gap-4`}
       >
         {showSale ? (
           <MetricCard
@@ -487,9 +484,8 @@ export default function Dashboard() {
             leftIcon={
               <RefreshCw
                 size={14}
-                className={`transition-transform ${
-                  analyticsLoading ? "animate-spin text-primary" : ""
-                }`}
+                className={`transition-transform ${analyticsLoading ? "animate-spin text-primary" : ""
+                  }`}
               />
             }
             className="shadow-2xs text-xs font-semibold"
@@ -517,11 +513,10 @@ export default function Dashboard() {
                   type="button"
                   onClick={() => handlePresetClick(option.id)}
                   disabled={analyticsLoading}
-                  className={`h-8 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 shrink-0 ${
-                    active
+                  className={`h-8 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 shrink-0 ${active
                       ? "bg-primary text-white shadow-xs font-bold"
                       : "bg-muted-foreground/5 hover:bg-muted-foreground/10 text-muted-foreground hover:text-foreground border border-border-main/70"
-                  }`}
+                    }`}
                 >
                   {option.label}
                 </button>
@@ -696,26 +691,24 @@ export default function Dashboard() {
 
             {/* Net Financial Result */}
             <div
-              className={`bg-card/90 backdrop-blur-xs rounded-xl border p-4.5 shadow-2xs transition-all hover:-translate-y-0.5 ${
-                consolidation.netProfit > 0
+              className={`bg-card/90 backdrop-blur-xs rounded-xl border p-4.5 shadow-2xs transition-all hover:-translate-y-0.5 ${consolidation.netProfit > 0
                   ? "border-emerald-500/30 hover:border-emerald-500/60"
                   : consolidation.netLoss > 0
-                  ? "border-red-500/30 hover:border-red-500/60"
-                  : "border-border-main hover:border-primary/40"
-              }`}
+                    ? "border-red-500/30 hover:border-red-500/60"
+                    : "border-border-main hover:border-primary/40"
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                   {consolidation.netLoss > 0 ? "Net Financial Loss" : "Net Operating Profit"}
                 </span>
                 <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    consolidation.netProfit > 0
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center ${consolidation.netProfit > 0
                       ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                       : consolidation.netLoss > 0
-                      ? "bg-red-500/10 text-red-600 dark:text-red-400"
-                      : "bg-muted-foreground/10 text-muted-foreground"
-                  }`}
+                        ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                        : "bg-muted-foreground/10 text-muted-foreground"
+                    }`}
                 >
                   {consolidation.netLoss > 0 ? (
                     <TrendingDown size={17} className="stroke-[2.2]" />
@@ -728,13 +721,12 @@ export default function Dashboard() {
                 <div className="flex items-baseline gap-1">
                   <span className="text-xs font-semibold text-muted-foreground">PKR</span>
                   <span
-                    className={`text-2xl font-extrabold tracking-tight ${
-                      consolidation.netProfit > 0
+                    className={`text-2xl font-extrabold tracking-tight ${consolidation.netProfit > 0
                         ? "text-emerald-600 dark:text-emerald-400"
                         : consolidation.netLoss > 0
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-foreground"
-                    }`}
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-foreground"
+                      }`}
                   >
                     {formatCurrency(
                       consolidation.netLoss > 0
@@ -746,19 +738,18 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-border-main/50 text-[11px]">
                   <span className="text-muted-foreground font-medium">Bottom Line</span>
                   <span
-                    className={`font-bold ${
-                      consolidation.netProfit > 0
+                    className={`font-bold ${consolidation.netProfit > 0
                         ? "text-emerald-600 dark:text-emerald-400"
                         : consolidation.netLoss > 0
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-muted-foreground"
-                    }`}
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-muted-foreground"
+                      }`}
                   >
                     {consolidation.netProfit > 0
                       ? "Positive Return"
                       : consolidation.netLoss > 0
-                      ? "Deficit Outflow"
-                      : "Balanced"}
+                        ? "Deficit Outflow"
+                        : "Balanced"}
                   </span>
                 </div>
               </div>
@@ -869,11 +860,10 @@ export default function Dashboard() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id as ModuleTab)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === tab.id
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === tab.id
                   ? "bg-primary text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted-foreground/5"
-              }`}
+                }`}
             >
               {tab.label}
             </button>

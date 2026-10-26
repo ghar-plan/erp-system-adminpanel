@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { PAYMENT_SOURCE_OPTIONS } from "@/utils/helpers/models/cashflow/cashflow.dto";
 import ResolvePaymentModal from "./ResolvePaymentModal";
 
 interface Transaction {
@@ -44,6 +45,8 @@ interface TransactionsTableProps {
   setFilterEndDate: (val: string) => void;
   filterMiscellaneous: string;
   setFilterMiscellaneous: (val: string) => void;
+  filterSource: string;
+  setFilterSource: (val: string) => void;
   exportData: () => void;
   formatDate: (d: any) => string;
   onDelete: (id: string, type: "CASH IN" | "CASH OUT", label: string) => void;
@@ -69,6 +72,8 @@ export default function TransactionsTable({
   setFilterEndDate,
   filterMiscellaneous,
   setFilterMiscellaneous,
+  filterSource,
+  setFilterSource,
   exportData,
   formatDate,
   onDelete,
@@ -93,6 +98,7 @@ export default function TransactionsTable({
   const [draftStartDate, setDraftStartDate] = useState(filterStartDate);
   const [draftEndDate, setDraftEndDate] = useState(filterEndDate);
   const [draftMiscellaneous, setDraftMiscellaneous] = useState(filterMiscellaneous);
+  const [draftSource, setDraftSource] = useState(filterSource);
 
   // Sync draft states if parent filters change externally
   useEffect(() => {
@@ -119,6 +125,10 @@ export default function TransactionsTable({
     setDraftMiscellaneous(filterMiscellaneous);
   }, [filterMiscellaneous]);
 
+  useEffect(() => {
+    setDraftSource(filterSource);
+  }, [filterSource]);
+
   const handleApply = () => {
     setFilterProject(draftProject);
     setFilterType(draftType);
@@ -126,6 +136,7 @@ export default function TransactionsTable({
     setFilterStartDate(draftStartDate);
     setFilterEndDate(draftEndDate);
     setFilterMiscellaneous(draftMiscellaneous);
+    setFilterSource(draftSource);
   };
 
   const handleReset = () => {
@@ -135,12 +146,14 @@ export default function TransactionsTable({
     setDraftStartDate("");
     setDraftEndDate("");
     setDraftMiscellaneous("");
+    setDraftSource("");
     setFilterProject("");
     setFilterType("");
     setFilterSearch("");
     setFilterStartDate("");
     setFilterEndDate("");
     setFilterMiscellaneous("");
+    setFilterSource("");
   };
 
   return (
@@ -250,6 +263,29 @@ export default function TransactionsTable({
           </select>
         </div>
 
+        {/* Source Filter */}
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label
+            htmlFor="source"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Source
+          </label>
+          <select
+            id="source"
+            value={draftSource}
+            onChange={(e) => setDraftSource(e.target.value)}
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
+          >
+            <option value="">All Sources</option>
+            {PAYMENT_SOURCE_OPTIONS.map((source) => (
+              <option key={source} value={source}>
+                {source}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* From Date */}
         <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
           <label
@@ -341,13 +377,7 @@ export default function TransactionsTable({
                   STATUS
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                  DESCRIPTION
-                </th>
-                <th className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                   VENDOR / CLIENT
-                </th>
-                <th className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                  NAME BY
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                   SOURCE
@@ -383,7 +413,7 @@ export default function TransactionsTable({
                             : "bg-warning-bg text-warning-text border-warning-text/10"
                         }`}
                       >
-                        {tx.type === "CASH IN" ? "↓" : "↑"}{" "}
+                        {tx.type === "CASH IN" ? "?" : "?"}{" "}
                         {tx.type === "CASH IN"
                           ? "CASH IN"
                           : "Cash Out / Material In"}
@@ -406,11 +436,7 @@ export default function TransactionsTable({
                         </span>
                       )}
                     </td>
-                    <td className="table-td text-muted-foreground max-w-[200px] truncate">
-                      {tx?.description || "--"}
-                    </td>
                     <td className="table-td">{tx?.vendorClient || "--"}</td>
-                    <td className="table-td">{tx?.enteredBy || "--"}</td>
                     <td className="table-td">
                       <div className="flex flex-col">
                         <span className="font-semibold text-foreground">
@@ -444,7 +470,7 @@ export default function TransactionsTable({
                     </td>
                     <td className="table-td font-bold text-foreground text-right whitespace-nowrap">
                       {tx?.amount !== undefined
-                        ? `PKR ${tx.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+                        ? `PKR ${tx.amount.toLocaleString("en-US", { minimumFractionDigits: 0 })}`
                         : "--"}
                     </td>
                     {showActions ? (
@@ -516,7 +542,7 @@ export default function TransactionsTable({
               ) : (
                 <tr>
                   <td
-                    colSpan={showActions ? 9 : 8}
+                    colSpan={showActions ? 8 : 7}
                     className="px-6 py-10 text-center text-sm text-muted-foreground  "
                   >
                     No transactions recorded yet.

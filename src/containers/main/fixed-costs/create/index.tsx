@@ -205,14 +205,14 @@ export default function FixedCostCreate() {
             <label className="mb-2 block ui-form-label">Amount</label>
             <input
               type="number"
-              step="0.01"
+              step="1"
               min="0.01"
               placeholder="e.g. 50000"
               className={`common-input ${errors.amount ? "border-red-500 focus:border-red-500" : ""}`}
               {...register("amount", {
                 required: "Amount is required",
                 valueAsNumber: true,
-                min: { value: 0.01, message: "Amount must be greater than 0" },
+                min: { value: 1, message: "Amount must be at least 1" },
               })}
             />
             {errors.amount && (
