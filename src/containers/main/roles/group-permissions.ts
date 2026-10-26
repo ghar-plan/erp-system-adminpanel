@@ -31,6 +31,9 @@ const MODULE_LABELS: Record<string, string> = {
   purchases: "Purchases",
   customer_types: "Customer Types",
   sales: "Sales",
+  fixed_costs: "Fixed Costs",
+  stocks: "Stock",
+  product_lifespans: "Time Span",
   gharplans: "Gharplans",
 };
 

@@ -220,7 +220,7 @@ export const menuConfig: MenuGroup[] = [
         title: "Purchases",
         path: siteRoutes.purchases,
         icon: "purchases",
-        permission: PERMISSIONS.PURCHASES_CREATE,
+        anyOf: [PERMISSIONS.PURCHASES_CREATE, PERMISSIONS.PURCHASES_READ],
       },
       {
         title: "Customer Types",
