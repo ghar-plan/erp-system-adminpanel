@@ -105,7 +105,7 @@ export default function CashOutForm({
         jobId: editData.jobId || editData.job?.id || "",
         workStageId: editData.workStageId || editData.workStage?.id || "",
         items: editData.items || "",
-        amount: total ? Number(total) : "",
+        amount: total ? String(total) : "",
         ...mapPaymentDetailsFromEdit(editData),
       });
     } else {

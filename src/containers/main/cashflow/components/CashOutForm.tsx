@@ -167,13 +167,15 @@ export default function CashOutForm({
         quantity: isLabourEdit || isTransportEdit ? "" : qty ? String(qty) : "",
         uom: isLabourEdit || isTransportEdit ? "" : editData.uom || "",
         price: isTransportEdit
-          ? total ? Number(total) : ""
+          ? total
+            ? String(total)
+            : ""
           : isLabourEdit
             ? ""
             : unitPrice
-              ? unitPrice
+              ? String(unitPrice)
               : "",
-        amount: total ? Number(total) : "",
+        amount: total ? String(total) : "",
         ...mapPaymentDetailsFromEdit(editData),
       });
     } else {
