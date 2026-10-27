@@ -3,8 +3,8 @@ import type { RbacPermission } from "./types";
 const MODULE_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
   vendors: "Vendors",
-  __LEGACY_CONSTRUCTION_SITE__: "Projects",
-  activity: "Activities",
+  construction_site: "Projects",
+  activity: "Material / Services & Units",
   cash_flow: "Cashflow",
   prospect: "Prospects",
   contracts: "Contracts",
@@ -64,17 +64,15 @@ const PERMISSION_LABELS: Record<string, string> = {
   "vendors.update": "Edit vendor",
   "vendors.delete": "Delete vendor",
 
-  "__LEGACY_CONSTRUCTION_SITE__.create": "Create project",
-  "__LEGACY_CONSTRUCTION_SITE__.read": "View projects",
-  "__LEGACY_CONSTRUCTION_SITE__.update": "Edit project",
-  "__LEGACY_CONSTRUCTION_SITE__.delete": "Delete project",
+  "construction_site.create": "Create project",
+  "construction_site.read": "View projects",
+  "construction_site.update": "Edit project",
+  "construction_site.delete": "Delete project",
 
-  "activity.create": "Create activity",
-  "activity.read": "View activities",
-  "activity.update": "Edit activity",
-  "activity.delete": "Delete activity",
-  "activity.import": "Import CSV",
-  "activity.export": "Export activities",
+  "activity.create": "Create material / service / unit",
+  "activity.read": "View material / services & units",
+  "activity.update": "Edit material / service / unit",
+  "activity.delete": "Delete material / service / unit",
 
   "cash_flow.read": "View transactions",
   "cash_flow.update": "Edit transaction",
@@ -83,7 +81,6 @@ const PERMISSION_LABELS: Record<string, string> = {
   "cash_flow.out": "Record Cash Out",
   "cash_flow.print": "Print receipt",
   "cash_flow.export": "Export PDF",
-  "cash_flow.import": "Import cashflow",
 
   "prospect.create": "Create prospect",
   "prospect.read": "View prospects",
@@ -150,12 +147,10 @@ const PERMISSION_LABELS: Record<string, string> = {
   "design_vendors.update": "Edit design vendor",
   "design_vendors.delete": "Delete design vendor",
 
-  "design_activity.create": "Create design activity",
-  "design_activity.read": "View design activities",
-  "design_activity.update": "Edit design activity",
-  "design_activity.delete": "Delete design activity",
-  "design_activity.import": "Import design activity",
-  "design_activity.export": "Export design activity",
+  "design_activity.create": "Create design work stage / job",
+  "design_activity.read": "View design work stages",
+  "design_activity.update": "Edit design work stage / job",
+  "design_activity.delete": "Delete design work stage / job",
 
   "design_cash_flow.read": "View design transactions",
   "design_cash_flow.update": "Edit design transaction",
@@ -164,7 +159,6 @@ const PERMISSION_LABELS: Record<string, string> = {
   "design_cash_flow.out": "Record design Cash Out",
   "design_cash_flow.print": "Print design receipt",
   "design_cash_flow.export": "Export design PDF",
-  "design_cash_flow.import": "Import design cashflow",
 
   "design_prospect.create": "Create design prospect",
   "design_prospect.read": "View design prospects",
@@ -250,7 +244,6 @@ export function groupPermissionsByModule(
       continue;
     }
     if (p.resource === "dashboard" && p.action !== "read") continue;
-    if (p.resource === "cash_flow" && p.action === "create") continue;
     const mod = p.resource || "other";
     if (!map.has(mod)) map.set(mod, []);
     map.get(mod)!.push(p);

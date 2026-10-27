@@ -14,8 +14,8 @@ export interface Purchase {
   productId: string;
   productName: string;
   quantity: number;
-  rate: number;
-  paymentMade: number;
+  rate?: number | null;
+  paymentMade?: number | null;
   remarks?: string | null;
   sourcePayment: CashOutPaymentSource;
   expiryDate?: string | null;

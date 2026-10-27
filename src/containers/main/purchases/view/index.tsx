@@ -68,10 +68,14 @@ export default function PurchaseView() {
     return null;
   }
 
-  const total = canViewPurchasePrice
-    ? Number(purchase.quantity || 0) * Number(purchase.rate || 0)
+  const hasPrice =
+    canViewPurchasePrice &&
+    purchase.rate != null &&
+    Number.isFinite(Number(purchase.rate));
+  const total = hasPrice
+    ? Math.round(Number(purchase.quantity || 0) * Number(purchase.rate))
     : 0;
-  const remaining = canViewPurchasePrice
+  const remaining = hasPrice
     ? Math.max(total - Number(purchase.paymentMade || 0), 0)
     : 0;
 

@@ -72,7 +72,6 @@ export const menuConfig: MenuGroup[] = [
           PERMISSIONS.DESIGN_CASH_FLOW_OUT,
           PERMISSIONS.DESIGN_CASH_FLOW_UPDATE,
           PERMISSIONS.DESIGN_CASH_FLOW_DELETE,
-          PERMISSIONS.DESIGN_CASH_FLOW_IMPORT,
         ],
       },
       {
@@ -162,7 +161,6 @@ export const menuConfig: MenuGroup[] = [
           PERMISSIONS.CASH_FLOW_OUT,
           PERMISSIONS.CASH_FLOW_UPDATE,
           PERMISSIONS.CASH_FLOW_DELETE,
-          PERMISSIONS.CASH_FLOW_IMPORT,
         ],
       },
       {
