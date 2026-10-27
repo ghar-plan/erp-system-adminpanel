@@ -9,11 +9,22 @@ import {
   Trash2,
 } from "lucide-react";
 import useProductPrices from "../useHooks";
-import { GharplansProduct, formatMoney } from "@/utils/helpers/models/purchases/purchase.dto";
+import { GharplansProduct } from "@/utils/helpers/models/purchases/purchase.dto";
 import {
   ProductPrice,
   ProductPriceHistory,
 } from "@/utils/helpers/models/product-prices/product-price.dto";
+
+/** Keep decimals on this screen (e.g. 4.5) — do not round. */
+const formatPrice = (value?: number | string | null) => {
+  if (value === null || value === undefined || value === "") return "—";
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "—";
+  return `PKR ${amount.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
+};
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
@@ -112,7 +123,7 @@ export default function ProductPricesListing() {
         const saved = priceMap[pid];
         next[pid] =
           saved?.rate != null && Number(saved.rate) > 0
-            ? String(Math.round(Number(saved.rate)))
+            ? String(Number(saved.rate))
             : "";
       }
       return next;
@@ -143,8 +154,8 @@ export default function ProductPricesListing() {
     const pid = String(product.id);
     const raw = (drafts[pid] || "").trim();
     const rate = Number(raw);
-    if (!raw || !Number.isFinite(rate) || rate < 1) {
-      errorToaster("Enter a per-item price of at least 1");
+    if (!raw || !Number.isFinite(rate) || rate <= 0) {
+      errorToaster("Enter a per-item price greater than 0 (decimals allowed, e.g. 4.5)");
       return;
     }
 
@@ -152,7 +163,7 @@ export default function ProductPricesListing() {
     const ok = await upsertPrice({
       productId: pid,
       productName: product.name,
-      rate: Math.round(rate),
+      rate,
       effectiveFrom: today(),
     });
     setSavingId(null);
@@ -161,7 +172,7 @@ export default function ProductPricesListing() {
       await loadPrices();
       setDrafts((prev) => ({
         ...prev,
-        [pid]: String(Math.round(rate)),
+        [pid]: String(rate),
       }));
     }
   };
@@ -304,16 +315,19 @@ export default function ProductPricesListing() {
                         <td className="px-4 py-4">
                           <input
                             type="number"
-                            step="1"
-                            min="1"
-                            placeholder="e.g. 2000"
+                            step="0.01"
+                            min="0.01"
+                            placeholder="e.g. 4.5"
                             value={draft}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const cleaned = e.target.value
+                                .replace(/[^\d.]/g, "")
+                                .replace(/(\..*)\./g, "$1");
                               setDrafts((prev) => ({
                                 ...prev,
-                                [pid]: e.target.value.replace(/[^\d]/g, ""),
-                              }))
-                            }
+                                [pid]: cleaned,
+                              }));
+                            }}
                             className="common-input text-sm h-9 w-full max-w-[140px]"
                           />
                         </td>
@@ -429,7 +443,7 @@ export default function ProductPricesListing() {
                     {historyRows.map((row) => (
                       <tr key={row.id}>
                         <td className="py-2.5 pr-3 font-semibold">
-                          {formatMoney(row.rate)}
+                          {formatPrice(row.rate)}
                           {!row.effectiveTo ? (
                             <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-success-text bg-success-bg px-1.5 py-0.5 rounded">
                               Current
