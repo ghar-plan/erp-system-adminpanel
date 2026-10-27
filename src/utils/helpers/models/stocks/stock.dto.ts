@@ -28,6 +28,8 @@ export interface StockBatch {
   expiryDate: string | null;
   quantity: number;
   remainingQuantity: number;
+  /** Snapshot of purchase per-item rate when this batch was received. */
+  rate?: number | null;
   created_at?: string;
   updated_at?: string;
 }

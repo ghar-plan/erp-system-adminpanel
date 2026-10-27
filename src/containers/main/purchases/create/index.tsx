@@ -21,6 +21,7 @@ import {
   CashOutPaymentSource,
   SOURCE_PAYMENT_OPTIONS,
   GharplansProduct,
+  formatMoney,
 } from "@/utils/helpers/models/purchases/purchase.dto";
 import {
   ProductLifespanAvailability,
@@ -39,8 +40,6 @@ interface PurchaseFormInputs {
   productId: string;
   productName: string;
   quantity: number | string;
-  rate: number | string;
-  paymentMade: number | string;
   remarks: string;
   sourcePayment: CashOutPaymentSource | "";
   expiryDate: string;
@@ -66,15 +65,13 @@ export default function PurchaseCreate() {
   const { getByProduct } = useTimeSpan();
   const { isLoading, getUser } = useStore();
   const canViewPurchasePrice = canAccessPurchasePrice(getUser()?.email);
-  /** Admin edit: only Per Item / Price may change; other fields stay read-only. */
-  const isAdminPriceOnlyEdit = isEditMode && canViewPurchasePrice;
-  /** Non-admin edit: may change details but never price fields. */
-  const lockNonPriceFields = isAdminPriceOnlyEdit;
 
   const [selectedProductName, setSelectedProductName] = useState("");
   const [lifespan, setLifespan] = useState<ProductLifespanAvailability | null>(
     null,
   );
+  const [snapshotRate, setSnapshotRate] = useState<number | null>(null);
+  const [snapshotPayment, setSnapshotPayment] = useState<number | null>(null);
   const expiryTouchedRef = useRef(false);
   const loadedEditRef = useRef(false);
 
@@ -101,8 +98,6 @@ export default function PurchaseCreate() {
       productId: "",
       productName: "",
       quantity: "",
-      rate: "",
-      paymentMade: "",
       remarks: "",
       sourcePayment: "",
       expiryDate: "",
@@ -111,8 +106,6 @@ export default function PurchaseCreate() {
   });
 
   const productId = watch("productId");
-  const quantity = watch("quantity");
-  const rate = watch("rate");
   const date = watch("date");
   const selectedSupplierName = watch("supplierName");
 
@@ -208,29 +201,6 @@ export default function PurchaseCreate() {
     }
   };
 
-  // Price = Per Item ? Quantity (client / price-access emails only)
-  useEffect(() => {
-    if (!canViewPurchasePrice) return;
-    const qty = Number(quantity);
-    const perItem = Number(rate);
-    if (
-      Number.isFinite(qty) &&
-      Number.isFinite(perItem) &&
-      qty > 0 &&
-      perItem > 0
-    ) {
-      const price = Math.round(qty * perItem);
-      setValue("paymentMade", price, { shouldValidate: true });
-    } else if (
-      quantity === "" ||
-      rate === "" ||
-      quantity === undefined ||
-      rate === undefined
-    ) {
-      setValue("paymentMade", "", { shouldValidate: false });
-    }
-  }, [quantity, rate, setValue, canViewPurchasePrice]);
-
   const loadProductsForSelect = async (params: {
     name?: string;
     limit?: number;
@@ -259,8 +229,6 @@ export default function PurchaseCreate() {
           productId: data?.productId || "",
           productName: data?.productName || "",
           quantity: data?.quantity ?? "",
-          rate: data?.rate ?? "",
-          paymentMade: data?.paymentMade ?? "",
           remarks: data?.remarks || "",
           sourcePayment: data?.sourcePayment || "",
           expiryDate: data?.expiryDate
@@ -271,6 +239,17 @@ export default function PurchaseCreate() {
         if (data?.productName) {
           setSelectedProductName(data.productName);
         }
+        setSnapshotRate(
+          data?.rate != null && Number.isFinite(Number(data.rate))
+            ? Number(data.rate)
+            : null,
+        );
+        setSnapshotPayment(
+          data?.paymentMade != null &&
+            Number.isFinite(Number(data.paymentMade))
+            ? Number(data.paymentMade)
+            : null,
+        );
         // Keep existing expiry on edit unless user changes product/date
         expiryTouchedRef.current = !!data?.expiryDate;
         loadedEditRef.current = true;
@@ -327,14 +306,7 @@ export default function PurchaseCreate() {
   const onSubmitForm = async (data: PurchaseFormInputs) => {
     const quantity = Number(data.quantity);
 
-    // Admin edit: only Per Item (+ auto Price). Other fields are locked.
-    if (isAdminPriceOnlyEdit && id) {
-      const rate = Number(data.rate);
-      const price = Math.round(quantity * rate);
-      await updatePurchase(id, { rate, paymentMade: price });
-      return;
-    }
-
+    // Prices are never sent from the form — backend snapshots from Product Prices.
     const payload: Record<string, unknown> = {
       supplierName: data.supplierName.trim(),
       productId: String(data.productId),
@@ -345,15 +317,6 @@ export default function PurchaseCreate() {
       ...(data.remarks ? { remarks: data.remarks.trim() } : {}),
       ...(data.expiryDate ? { expiryDate: data.expiryDate } : {}),
     };
-
-    // Only allowlisted emails may send / set purchase price fields (create).
-    // Non-admin creates leave rate / paymentMade null on the server.
-    if (canViewPurchasePrice) {
-      const rate = Number(data.rate);
-      const price = Math.round(quantity * rate);
-      payload.rate = rate;
-      payload.paymentMade = price;
-    }
 
     if (isEditMode && id) {
       await updatePurchase(id, payload);
@@ -389,18 +352,16 @@ export default function PurchaseCreate() {
           </h1>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          {!lockNonPriceFields ? (
-            <Can permission={PERMISSIONS.PURCHASES_CREATE}>
-              <button
-                type="button"
-                onClick={openSupplierModal}
-                className="flex h-10 px-4 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs"
-              >
-                <Plus size={16} />
-                Create Supplier
-              </button>
-            </Can>
-          ) : null}
+          <Can permission={PERMISSIONS.PURCHASES_CREATE}>
+            <button
+              type="button"
+              onClick={openSupplierModal}
+              className="flex h-10 px-4 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground text-sm font-semibold transition-all cursor-pointer shadow-xs"
+            >
+              <Plus size={16} />
+              Create Supplier
+            </button>
+          </Can>
           {!isEditMode && (
             <Can permission={PERMISSIONS.PURCHASES_READ}>
               <Link
@@ -422,25 +383,15 @@ export default function PurchaseCreate() {
       >
         <hr className="border-border-main" />
 
-        {isAdminPriceOnlyEdit ? (
-          <p className="text-sm text-muted-foreground">
-            You can only update <span className="font-semibold text-foreground">Per Item</span>.
-            Price is calculated automatically from quantity × per item.
-          </p>
-        ) : null}
-
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
           <div>
             <label className="mb-2 block ui-form-label">
               Company / Supplier Name
             </label>
             <select
-              disabled={lockNonPriceFields}
-              className={`common-input cursor-pointer ${lockNonPriceFields ? "bg-muted-foreground/5 cursor-not-allowed opacity-80" : ""} ${errors.supplierName ? "border-red-500 focus:border-red-500" : ""}`}
+              className={`common-input cursor-pointer ${errors.supplierName ? "border-red-500 focus:border-red-500" : ""}`}
               {...register("supplierName", {
-                required: lockNonPriceFields
-                  ? false
-                  : "Supplier name is required",
+                required: "Supplier name is required",
               })}
             >
               <option value="">Select a supplier</option>
@@ -471,13 +422,10 @@ export default function PurchaseCreate() {
               onSelect={handleProductSelect}
               onLoad={loadProductsForSelect}
               error={errors.productId?.message}
-              disabled={lockNonPriceFields}
             />
             <input
               type="hidden"
-              {...register("productId", {
-                required: lockNonPriceFields ? false : "Product is required",
-              })}
+              {...register("productId", { required: "Product is required" })}
             />
           </div>
 
@@ -488,10 +436,9 @@ export default function PurchaseCreate() {
               step="1"
               min="1"
               placeholder="e.g. 100"
-              disabled={lockNonPriceFields}
-              className={`common-input ${lockNonPriceFields ? "bg-muted-foreground/5 cursor-not-allowed opacity-80" : ""} ${errors.quantity ? "border-red-500 focus:border-red-500" : ""}`}
+              className={`common-input ${errors.quantity ? "border-red-500 focus:border-red-500" : ""}`}
               {...register("quantity", {
-                required: lockNonPriceFields ? false : "Quantity is required",
+                required: "Quantity is required",
                 valueAsNumber: true,
                 min: { value: 1, message: "Quantity must be at least 1" },
               })}
@@ -503,54 +450,34 @@ export default function PurchaseCreate() {
             )}
           </div>
 
-          {canViewPurchasePrice ? (
+          {canViewPurchasePrice && isEditMode ? (
             <>
               <div>
                 <label className="mb-2 block ui-form-label">Per Item</label>
                 <input
-                  type="number"
-                  step="1"
-                  min="1"
-                  placeholder="e.g. 1200"
-                  className={`common-input ${errors.rate ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("rate", {
-                    required: "Per item price is required",
-                    valueAsNumber: true,
-                    min: {
-                      value: 1,
-                      message: "Per item price must be at least 1",
-                    },
-                  })}
+                  type="text"
+                  readOnly
+                  value={
+                    snapshotRate != null ? formatMoney(snapshotRate) : "—"
+                  }
+                  className="common-input bg-muted-foreground/5 cursor-not-allowed"
                 />
-                {errors.rate && (
-                  <p className="mt-1 text-xs text-danger-text font-semibold">
-                    {errors.rate.message}
-                  </p>
-                )}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Snapshot from Product Prices at purchase time (read-only)
+                </p>
               </div>
-
               <div>
                 <label className="mb-2 block ui-form-label">Price</label>
                 <input
-                  type="number"
-                  step="1"
-                  min="0"
-                  placeholder="Auto-calculated"
+                  type="text"
                   readOnly
-                  className={`common-input bg-muted-foreground/5 cursor-not-allowed ${errors.paymentMade ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("paymentMade", {
-                    valueAsNumber: true,
-                    min: { value: 0, message: "Price cannot be negative" },
-                  })}
+                  value={
+                    snapshotPayment != null
+                      ? formatMoney(snapshotPayment)
+                      : "—"
+                  }
+                  className="common-input bg-muted-foreground/5 cursor-not-allowed"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Auto-calculated (Quantity × Per Item)
-                </p>
-                {errors.paymentMade && (
-                  <p className="mt-1 text-xs text-danger-text font-semibold">
-                    {errors.paymentMade.message}
-                  </p>
-                )}
               </div>
             </>
           ) : null}
@@ -558,12 +485,9 @@ export default function PurchaseCreate() {
           <div>
             <label className="mb-2 block ui-form-label">Source Payment</label>
             <select
-              disabled={lockNonPriceFields}
-              className={`common-input bg-card ${lockNonPriceFields ? "bg-muted-foreground/5 cursor-not-allowed opacity-80" : ""} ${errors.sourcePayment ? "border-red-500 focus:border-red-500" : ""}`}
+              className={`common-input bg-card ${errors.sourcePayment ? "border-red-500 focus:border-red-500" : ""}`}
               {...register("sourcePayment", {
-                required: lockNonPriceFields
-                  ? false
-                  : "Source payment is required",
+                required: "Source payment is required",
               })}
             >
               <option value="">Select Source Payment</option>
@@ -584,13 +508,10 @@ export default function PurchaseCreate() {
             <label className="mb-2 block ui-form-label">Date</label>
             <input
               type="date"
-              disabled={lockNonPriceFields}
-              className={`common-input ${lockNonPriceFields ? "bg-muted-foreground/5 cursor-not-allowed opacity-80" : ""} ${errors.date ? "border-red-500 focus:border-red-500" : ""}`}
+              className={`common-input ${errors.date ? "border-red-500 focus:border-red-500" : ""}`}
               {...register("date", {
-                required: lockNonPriceFields ? false : "Date is required",
+                required: "Date is required",
                 onChange: () => {
-                  if (lockNonPriceFields) return;
-                  // Allow recompute when purchase date changes
                   if (!isEditMode) {
                     expiryTouchedRef.current = false;
                   } else {
@@ -613,11 +534,9 @@ export default function PurchaseCreate() {
             </label>
             <input
               type="date"
-              disabled={lockNonPriceFields}
-              className={`common-input ${lockNonPriceFields ? "bg-muted-foreground/5 cursor-not-allowed opacity-80" : ""}`}
+              className="common-input"
               {...register("expiryDate", {
                 onChange: () => {
-                  if (lockNonPriceFields) return;
                   expiryTouchedRef.current = true;
                 },
               })}
@@ -632,8 +551,7 @@ export default function PurchaseCreate() {
             <textarea
               placeholder="e.g. Urgent delivery requested"
               rows={3}
-              disabled={lockNonPriceFields}
-              className={`common-input py-3 resize-none ${lockNonPriceFields ? "bg-muted-foreground/5 cursor-not-allowed opacity-80" : ""}`}
+              className="common-input py-3 resize-none"
               {...register("remarks")}
             />
           </div>
@@ -650,11 +568,7 @@ export default function PurchaseCreate() {
             ) : (
               <>
                 {isEditMode ? <Save size={18} /> : <PlusSquare size={18} />}
-                {isAdminPriceOnlyEdit
-                  ? "Save Price"
-                  : isEditMode
-                    ? "Save Changes"
-                    : "Save Purchase"}
+                {isEditMode ? "Save Changes" : "Save Purchase"}
               </>
             )}
           </button>

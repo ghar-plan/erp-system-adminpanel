@@ -215,6 +215,18 @@ export const menuConfig: MenuGroup[] = [
     path: siteRoutes.purchases,
     children: [
       {
+        title: "Product Prices",
+        path: siteRoutes.productPrices,
+        icon: "product-prices",
+        permission: PERMISSIONS.PRODUCT_PRICES_READ,
+      },
+      {
+        title: "Time Span",
+        path: siteRoutes.timeSpan,
+        icon: "time-span",
+        permission: PERMISSIONS.PRODUCT_LIFESPANS_READ,
+      },
+      {
         title: "Purchases",
         path: siteRoutes.purchases,
         icon: "purchases",
@@ -233,22 +245,16 @@ export const menuConfig: MenuGroup[] = [
         permission: PERMISSIONS.SALES_READ,
       },
       {
-        title: "Fixed Costs",
-        path: siteRoutes.fixedCosts,
-        icon: "fixed-costs",
-        permission: PERMISSIONS.FIXED_COSTS_READ,
-      },
-      {
         title: "Stock",
         path: siteRoutes.stocks,
         icon: "stocks",
         permission: PERMISSIONS.STOCKS_READ,
       },
       {
-        title: "Time Span",
-        path: siteRoutes.timeSpan,
-        icon: "time-span",
-        permission: PERMISSIONS.PRODUCT_LIFESPANS_READ,
+        title: "Fixed Costs",
+        path: siteRoutes.fixedCosts,
+        icon: "fixed-costs",
+        permission: PERMISSIONS.FIXED_COSTS_READ,
       },
     ],
   },

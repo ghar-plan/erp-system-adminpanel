@@ -150,6 +150,9 @@ export const PERMISSIONS = {
   PRODUCT_LIFESPANS_READ: "product_lifespans.read",
   PRODUCT_LIFESPANS_UPDATE: "product_lifespans.update",
 
+  PRODUCT_PRICES_READ: "product_prices.read",
+  PRODUCT_PRICES_UPDATE: "product_prices.update",
+
   GHARPLANS_READ: "gharplans.read",
 } as const;
 

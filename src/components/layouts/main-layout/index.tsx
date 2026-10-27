@@ -99,6 +99,7 @@ const CHILD_ICONS: Record<string, React.ReactNode> = {
   "fixed-costs": <Landmark size={16} />,
   stocks: <Package size={16} />,
   "time-span": <Timer size={16} />,
+  "product-prices": <Tags size={16} />,
 };
 
 const MainLayout: React.FC<LayoutProps> = ({ children }) => {

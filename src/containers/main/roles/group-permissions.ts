@@ -34,6 +34,7 @@ const MODULE_LABELS: Record<string, string> = {
   fixed_costs: "Fixed Costs",
   stocks: "Stock",
   product_lifespans: "Time Span",
+  product_prices: "Product Prices",
   gharplans: "Gharplans",
 };
 
@@ -203,6 +204,9 @@ const PERMISSION_LABELS: Record<string, string> = {
 
   "product_lifespans.read": "View product time spans",
   "product_lifespans.update": "Edit product time spans",
+
+  "product_prices.read": "View product prices",
+  "product_prices.update": "Edit product prices",
 
   "gharplans.read": "View Ghar Plans products",
 };

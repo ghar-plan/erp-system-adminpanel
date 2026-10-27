@@ -5,6 +5,9 @@ import { Stock, StockBatch } from "@/utils/helpers/models/stocks/stock.dto";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
+import { formatMoney } from "@/utils/helpers/models/purchases/purchase.dto";
+import { canAccessPurchasePrice } from "@/utils/helpers/permissions/purchase-price-access";
+import useStore from "@/hooks/useStore";
 
 interface StockFilters {
   search: string;
@@ -31,6 +34,8 @@ const formatDate = (value?: string | null) => {
 
 export default function StocksListing() {
   const { getStocks, getBatchesByProduct } = useStocks();
+  const { getUser } = useStore();
+  const canViewPurchasePrice = canAccessPurchasePrice(getUser()?.email);
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [searchVal, setSearchVal] = useState("");
@@ -295,6 +300,11 @@ export default function StocksListing() {
                                           <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
                                             Qty left in stock
                                           </th>
+                                          {canViewPurchasePrice ? (
+                                            <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                                              Per Item
+                                            </th>
+                                          ) : null}
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-border-main">
@@ -314,6 +324,11 @@ export default function StocksListing() {
                                                 batch.remainingQuantity,
                                               )}
                                             </td>
+                                            {canViewPurchasePrice ? (
+                                              <td className="px-3 py-2">
+                                                {formatMoney(batch.rate)}
+                                              </td>
+                                            ) : null}
                                           </tr>
                                         ))}
                                       </tbody>

@@ -91,4 +91,5 @@ export enum siteRoutes {
   fixedCostsView = "/fixed-costs/view/:id",
   stocks = "/stocks",
   timeSpan = "/time-span",
+  productPrices = "/product-prices",
 }
