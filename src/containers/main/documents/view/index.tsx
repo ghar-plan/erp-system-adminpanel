@@ -185,6 +185,9 @@ export default function DocumentView() {
                     Product
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Variant
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Qty
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -199,8 +202,15 @@ export default function DocumentView() {
                 {(doc.items || []).map((item, index) => (
                   <tr key={item.id || index}>
                     <td className="px-3 py-2">{index + 1}</td>
-                    <td className="px-3 py-2 font-semibold">
-                      {item.productName}
+                    <td className="px-3 py-2 font-semibold break-words">
+                      {item.productName || "--"}
+                    </td>
+                    <td className="px-3 py-2 break-words">
+                      {item.variantName ? (
+                        <span className="font-medium">{item.variantName}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2">{item.quantity}</td>
                     <td className="px-3 py-2">{formatMoney(item.rate)}</td>

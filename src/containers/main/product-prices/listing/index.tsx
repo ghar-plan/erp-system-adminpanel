@@ -1,5 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
+  ChevronDown,
+  ChevronRight,
   Search,
   Save,
   Loader2,
@@ -9,10 +12,16 @@ import {
   Trash2,
 } from "lucide-react";
 import useProductPrices from "../useHooks";
-import { GharplansProduct } from "@/utils/helpers/models/purchases/purchase.dto";
+import {
+  ProductSku,
+  groupSkusByProduct,
+} from "@/utils/helpers/models/product-sku";
+import { formatSkuDetails } from "@/utils/helpers/models/product-sku-options";
 import {
   ProductPrice,
   ProductPriceHistory,
+  computeMarginPercent,
+  formatMarginPercent,
 } from "@/utils/helpers/models/product-prices/product-price.dto";
 
 /** Keep decimals on this screen (e.g. 4.5) — do not round. */
@@ -24,6 +33,13 @@ const formatPrice = (value?: number | string | null) => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })}`;
+};
+
+const marginToneClass = (margin: number | null): string => {
+  if (margin === null) return "text-muted-foreground";
+  if (margin > 0) return "text-success-text font-semibold";
+  if (margin < 0) return "text-danger-text font-semibold";
+  return "text-muted-foreground font-semibold";
 };
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
@@ -51,12 +67,14 @@ export default function ProductPricesListing() {
   const { getProducts, getPriceMap, getHistory, upsertPrice, clearPrice } =
     useProductPrices();
 
-  const [products, setProducts] = useState<GharplansProduct[]>([]);
+  const [products, setProducts] = useState<ProductSku[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [priceMap, setPriceMap] = useState<Record<string, ProductPrice>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const groups = useMemo(() => groupSkusByProduct(products), [products]);
 
   const [searchVal, setSearchVal] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
@@ -65,7 +83,9 @@ export default function ProductPricesListing() {
 
   const [historyProduct, setHistoryProduct] = useState<{
     id: string;
-    name: string;
+    variantId: string;
+    productName: string;
+    variantName: string | null;
   } | null>(null);
   const [historyRows, setHistoryRows] = useState<ProductPriceHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -117,8 +137,8 @@ export default function ProductPricesListing() {
   useEffect(() => {
     setDrafts((prev) => {
       const next = { ...prev };
-      for (const product of products) {
-        const pid = String(product.id);
+      for (const sku of products) {
+        const pid = sku.skuKey;
         if (next[pid] !== undefined) continue;
         const saved = priceMap[pid];
         next[pid] =
@@ -150,8 +170,8 @@ export default function ProductPricesListing() {
     loadProducts(nextPage, pageInfo.limit, appliedSearch);
   };
 
-  const handleSave = async (product: GharplansProduct) => {
-    const pid = String(product.id);
+  const handleSave = async (sku: ProductSku) => {
+    const pid = sku.skuKey;
     const raw = (drafts[pid] || "").trim();
     const rate = Number(raw);
     if (!raw || !Number.isFinite(rate) || rate <= 0) {
@@ -161,8 +181,10 @@ export default function ProductPricesListing() {
 
     setSavingId(pid);
     const ok = await upsertPrice({
-      productId: pid,
-      productName: product.name,
+      productId: sku.productId,
+      productName: sku.productName,
+      variantId: sku.variantId,
+      variantName: sku.variantName,
       rate,
       effectiveFrom: today(),
     });
@@ -177,11 +199,11 @@ export default function ProductPricesListing() {
     }
   };
 
-  const handleClear = async (product: GharplansProduct) => {
-    const pid = String(product.id);
+  const handleClear = async (sku: ProductSku) => {
+    const pid = sku.skuKey;
     if (!priceMap[pid]) return;
     setSavingId(pid);
-    const ok = await clearPrice(pid);
+    const ok = await clearPrice(sku.productId, sku.variantId);
     setSavingId(null);
     if (ok) {
       setDrafts((prev) => ({ ...prev, [pid]: "" }));
@@ -189,11 +211,20 @@ export default function ProductPricesListing() {
     }
   };
 
-  const openHistory = async (product: GharplansProduct) => {
-    const pid = String(product.id);
-    setHistoryProduct({ id: pid, name: product.name });
+  const openHistory = async (
+    sku: ProductSku,
+    event?: React.MouseEvent,
+  ) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    setHistoryProduct({
+      id: sku.productId,
+      variantId: sku.variantId,
+      productName: sku.productName,
+      variantName: sku.variantName,
+    });
     setHistoryLoading(true);
-    const rows = await getHistory(pid);
+    const rows = await getHistory(sku.productId, sku.variantId);
     setHistoryRows(rows);
     setHistoryLoading(false);
   };
@@ -203,6 +234,105 @@ export default function ProductPricesListing() {
     setHistoryRows([]);
   };
 
+  const toggleExpanded = (productId: string) =>
+    setExpanded((prev) => ({ ...prev, [productId]: !prev[productId] }));
+
+  const renderVariantRow = (sku: ProductSku) => {
+    const pid = sku.skuKey;
+    const draft = drafts[pid] ?? "";
+    const saved = priceMap[pid];
+    const isSaving = savingId === pid;
+    // Selling = website (GP) price; cost = ERP rate entered here (variant-wise)
+    const cost = draft.trim() !== "" ? draft : saved?.rate;
+    const margin = computeMarginPercent(sku.price, cost);
+
+    return (
+      <tr key={pid} className="align-middle">
+        <td className="px-3 py-3 text-sm font-medium break-words whitespace-normal">
+          {sku.variantName || <span className="text-muted-foreground">—</span>}
+        </td>
+        <td className="px-3 py-3 text-xs text-muted-foreground break-words whitespace-normal">
+          {formatSkuDetails(sku) || "—"}
+        </td>
+        <td className="px-3 py-3 text-sm text-muted-foreground whitespace-nowrap">
+          {formatPrice(sku.price)}
+        </td>
+        <td className="px-3 py-3">
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            placeholder="e.g. 4.5"
+            value={draft}
+            onChange={(e) => {
+              const cleaned = e.target.value
+                .replace(/[^\d.]/g, "")
+                .replace(/(\..*)\./g, "$1");
+              setDrafts((prev) => ({ ...prev, [pid]: cleaned }));
+            }}
+            className="common-input text-sm h-9 w-full max-w-[140px]"
+          />
+        </td>
+        <td
+          className={`px-3 py-3 text-sm whitespace-nowrap ${marginToneClass(margin)}`}
+          title="(GP selling price − ERP cost) × 100 ÷ ERP cost"
+        >
+          {formatMarginPercent(sku.price, cost)}
+        </td>
+        <td className="px-3 py-3 text-sm text-muted-foreground whitespace-nowrap">
+          {saved ? formatDate(saved.effectiveFrom) : "—"}
+        </td>
+        <td className="px-3 py-3">
+          <div className="flex flex-wrap gap-2">
+            <Can permission={PERMISSIONS.PRODUCT_PRICES_UPDATE}>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSave(sku);
+                }}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-50 cursor-pointer"
+                title="Save price"
+              >
+                {isSaving ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Save size={14} />
+                )}
+                Save
+              </button>
+              {saved ? (
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClear(sku);
+                  }}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border-main bg-card text-foreground text-xs font-semibold hover:bg-muted-foreground/5 disabled:opacity-50 cursor-pointer"
+                  title="Remove current price"
+                >
+                  <Trash2 size={14} />
+                  Clear
+                </button>
+              ) : null}
+            </Can>
+            <button
+              type="button"
+              onClick={(e) => openHistory(sku, e)}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border-main bg-card text-foreground text-xs font-semibold hover:bg-muted-foreground/5 cursor-pointer"
+              title="View price history"
+            >
+              <History size={14} />
+              History
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="animate-fade-in">
@@ -210,9 +340,9 @@ export default function ProductPricesListing() {
           Product Prices
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Set the per-item purchase price for each product. When staff records a
-          purchase, that price is saved on the purchase. Changing a price later
-          only applies to new purchases — older stock keeps the previous price.
+          Set cost (ERP rate) per variant. Margin % uses the website selling
+          price from Gharplans: (GP price − ERP cost) × 100 ÷ ERP cost.
+          Changing a rate later only applies to new purchases.
         </p>
       </div>
 
@@ -266,116 +396,120 @@ export default function ProductPricesListing() {
               Loading products from Gharplans...
             </p>
           </div>
-        ) : products.length > 0 ? (
+        ) : groups.length > 0 ? (
           <div className="bg-card rounded-xl border border-border-main overflow-hidden shadow-xs animate-slide-up">
             <div className="overflow-x-auto">
-              <table className="min-w-full table-fixed divide-y divide-border-main">
+              <table className="min-w-full divide-y divide-border-main">
                 <thead className="bg-muted-foreground/5">
                   <tr className="text-left">
-                    <th className="w-16 px-4 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                      Sr
-                    </th>
-                    <th className="w-[40%] min-w-[220px] px-4 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Product
-                    </th>
-                    <th className="w-[18%] min-w-[140px] px-4 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Per Item
-                    </th>
-                    <th className="w-[16%] min-w-[120px] px-4 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                      Effective From
-                    </th>
-                    <th className="w-[26%] min-w-[200px] px-4 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                      Actions
-                    </th>
+                    {["", "Sr", "Product", "Variants", "ERP rates set"].map(
+                      (column, idx) => (
+                        <th
+                          key={idx}
+                          className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap"
+                        >
+                          {column}
+                        </th>
+                      ),
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-main bg-card text-foreground">
-                  {products.map((product, index) => {
-                    const pid = String(product.id);
-                    const draft = drafts[pid] ?? "";
-                    const saved = priceMap[pid];
-                    const isSaving = savingId === pid;
+                  {groups.map((group, index) => {
+                    const isExpanded = !!expanded[group.productId];
+                    const variantCount = group.variants.length;
+                    const ratesSet = group.variants.filter(
+                      (v) => !!priceMap[v.skuKey],
+                    ).length;
+                    const allSet = ratesSet === variantCount;
 
                     return (
-                      <tr
-                        key={pid}
-                        className="hover:bg-muted-foreground/5 transition-colors align-middle"
-                      >
-                        <td className="px-4 py-4 text-sm whitespace-nowrap">
-                          {(page - 1) * limit + index + 1}
-                        </td>
-                        <td className="px-4 py-4">
-                          <p
-                            className="text-sm font-semibold text-foreground leading-snug break-words whitespace-normal"
-                            title={product.name}
-                          >
-                            {product.name}
-                          </p>
-                        </td>
-                        <td className="px-4 py-4">
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0.01"
-                            placeholder="e.g. 4.5"
-                            value={draft}
-                            onChange={(e) => {
-                              const cleaned = e.target.value
-                                .replace(/[^\d.]/g, "")
-                                .replace(/(\..*)\./g, "$1");
-                              setDrafts((prev) => ({
-                                ...prev,
-                                [pid]: cleaned,
-                              }));
-                            }}
-                            className="common-input text-sm h-9 w-full max-w-[140px]"
-                          />
-                        </td>
-                        <td className="px-4 py-4 text-sm text-muted-foreground whitespace-nowrap">
-                          {saved ? formatDate(saved.effectiveFrom) : "—"}
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex flex-wrap gap-2">
-                            <Can permission={PERMISSIONS.PRODUCT_PRICES_UPDATE}>
-                              <button
-                                type="button"
-                                disabled={isSaving}
-                                onClick={() => handleSave(product)}
-                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-50 cursor-pointer"
-                                title="Save price"
-                              >
-                                {isSaving ? (
-                                  <Loader2 size={14} className="animate-spin" />
-                                ) : (
-                                  <Save size={14} />
-                                )}
-                                Save
-                              </button>
-                              {saved ? (
-                                <button
-                                  type="button"
-                                  disabled={isSaving}
-                                  onClick={() => handleClear(product)}
-                                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border-main bg-card text-foreground text-xs font-semibold hover:bg-muted-foreground/5 disabled:opacity-50 cursor-pointer"
-                                  title="Remove current price"
-                                >
-                                  <Trash2 size={14} />
-                                  Clear
-                                </button>
-                              ) : null}
-                            </Can>
-                            <button
-                              type="button"
-                              onClick={() => openHistory(product)}
-                              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border-main bg-card text-foreground text-xs font-semibold hover:bg-muted-foreground/5 cursor-pointer"
-                              title="View price history"
+                      <React.Fragment key={group.productId}>
+                        <tr
+                          className="hover:bg-muted-foreground/5 transition-colors cursor-pointer"
+                          onClick={() => toggleExpanded(group.productId)}
+                        >
+                          <td className="table-td w-10 text-muted-foreground">
+                            {isExpanded ? (
+                              <ChevronDown size={16} />
+                            ) : (
+                              <ChevronRight size={16} />
+                            )}
+                          </td>
+                          <td className="table-td">
+                            {(page - 1) * limit + index + 1}
+                          </td>
+                          <td className="table-td font-semibold text-foreground">
+                            {group.productName}
+                          </td>
+                          <td className="table-td">
+                            <span className="px-2.5 py-1 text-xs font-bold tracking-wide rounded-md bg-info-bg text-info-text border border-panel-border">
+                              {variantCount}{" "}
+                              {variantCount === 1 ? "variant" : "variants"}
+                            </span>
+                          </td>
+                          <td className="table-td">
+                            <span
+                              className={`px-2.5 py-1 text-xs font-bold tracking-wide rounded-md border border-panel-border ${
+                                allSet
+                                  ? "bg-success-bg text-success-text"
+                                  : ratesSet > 0
+                                    ? "bg-warning-bg text-warning-text"
+                                    : "bg-muted-foreground/5 text-muted-foreground"
+                              }`}
                             >
-                              <History size={14} />
-                              History
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                              {ratesSet} / {variantCount} set
+                            </span>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="bg-muted-foreground/[0.03]">
+                            <td colSpan={5} className="px-6 py-4">
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                  Variant prices
+                                </p>
+                                <div className="overflow-x-auto rounded-lg border border-border-main">
+                                  <table className="min-w-full text-sm">
+                                    <thead className="bg-muted-foreground/5">
+                                      <tr>
+                                        {[
+                                          "Variant",
+                                          "Details",
+                                          "Selling (GP)",
+                                          "Cost (ERP)",
+                                          "Margin %",
+                                          "Effective From",
+                                          "Actions",
+                                        ].map((column) => (
+                                          <th
+                                            key={column}
+                                            className="px-3 py-2 text-left text-xs font-bold text-muted-foreground whitespace-nowrap"
+                                            title={
+                                              column === "Margin %"
+                                                ? "(Selling − Cost) × 100 ÷ Cost"
+                                                : column === "Selling (GP)"
+                                                  ? "Website selling price from Gharplans"
+                                                  : column === "Cost (ERP)"
+                                                    ? "Your product cost for this variant"
+                                                    : undefined
+                                            }
+                                          >
+                                            {column}
+                                          </th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border-main">
+                                      {group.variants.map(renderVariantRow)}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
@@ -396,77 +530,94 @@ export default function ProductPricesListing() {
         )}
       </div>
 
-      {historyProduct ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-            onClick={closeHistory}
-          />
-          <div className="bg-card border border-border-main w-full max-w-lg rounded-2xl shadow-xl overflow-hidden z-10 animate-scale-up relative">
-            <div className="px-6 py-4 border-b border-border-main flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                  <Tag size={18} className="text-primary" />
-                  Price History
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5 break-words">
-                  {historyProduct.name}
-                </p>
-              </div>
-              <button
-                type="button"
+      {historyProduct && typeof document !== "undefined"
+        ? createPortal(
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+              <div
+                className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
                 onClick={closeHistory}
-                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted-foreground/5 cursor-pointer"
+              />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="price-history-title"
+                className="bg-card border border-border-main w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden relative animate-scale-up"
+                onClick={(e) => e.stopPropagation()}
               >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-6 max-h-[60vh] overflow-y-auto">
-              {historyLoading ? (
-                <div className="flex justify-center py-10">
-                  <Loader2 className="animate-spin text-primary" size={28} />
+                <div className="px-6 py-4 border-b border-border-main flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3
+                      id="price-history-title"
+                      className="text-lg font-bold text-foreground flex items-center gap-2"
+                    >
+                      <Tag size={18} className="text-primary shrink-0" />
+                      Price History
+                    </h3>
+                    {historyProduct.variantName ? (
+                      <p className="text-sm font-semibold text-foreground mt-1 truncate">
+                        {historyProduct.variantName}
+                      </p>
+                    ) : null}
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                      {historyProduct.productName}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeHistory}
+                    className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted-foreground/5 cursor-pointer shrink-0"
+                  >
+                    <X size={18} />
+                  </button>
                 </div>
-              ) : historyRows.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No price history yet. Save a price to start tracking.
-                </p>
-              ) : (
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border-main">
-                      <th className="pb-2 pr-3">Per Item</th>
-                      <th className="pb-2 pr-3">From</th>
-                      <th className="pb-2">To</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border-main">
-                    {historyRows.map((row) => (
-                      <tr key={row.id}>
-                        <td className="py-2.5 pr-3 font-semibold">
-                          {formatPrice(row.rate)}
-                          {!row.effectiveTo ? (
-                            <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-success-text bg-success-bg px-1.5 py-0.5 rounded">
-                              Current
-                            </span>
-                          ) : null}
-                        </td>
-                        <td className="py-2.5 pr-3 text-muted-foreground whitespace-nowrap">
-                          {formatDate(row.effectiveFrom)}
-                        </td>
-                        <td className="py-2.5 text-muted-foreground whitespace-nowrap">
-                          {row.effectiveTo
-                            ? formatDate(row.effectiveTo)
-                            : "Present"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
+                <div className="p-6 max-h-[60vh] overflow-y-auto">
+                  {historyLoading ? (
+                    <div className="flex justify-center py-10">
+                      <Loader2 className="animate-spin text-primary" size={28} />
+                    </div>
+                  ) : historyRows.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      No price history yet. Save a price to start tracking.
+                    </p>
+                  ) : (
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border-main">
+                          <th className="pb-2 pr-3">Per Item</th>
+                          <th className="pb-2 pr-3">From</th>
+                          <th className="pb-2">To</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border-main">
+                        {historyRows.map((row) => (
+                          <tr key={row.id}>
+                            <td className="py-2.5 pr-3 font-semibold">
+                              {formatPrice(row.rate)}
+                              {!row.effectiveTo ? (
+                                <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-success-text bg-success-bg px-1.5 py-0.5 rounded">
+                                  Current
+                                </span>
+                              ) : null}
+                            </td>
+                            <td className="py-2.5 pr-3 text-muted-foreground whitespace-nowrap">
+                              {formatDate(row.effectiveFrom)}
+                            </td>
+                            <td className="py-2.5 text-muted-foreground whitespace-nowrap">
+                              {row.effectiveTo
+                                ? formatDate(row.effectiveTo)
+                                : "Present"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

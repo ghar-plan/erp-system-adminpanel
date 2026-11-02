@@ -1,5 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { PlusSquare, Loader2, Save, Search, DollarSign } from "lucide-react";
+import {
+  PlusSquare,
+  Loader2,
+  Save,
+  Search,
+  DollarSign,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
@@ -15,6 +23,13 @@ import {
   CustomerType,
 } from "@/utils/helpers/models/customer-types/customer-type.dto";
 import { errorToaster } from "@/utils/helpers/common/alert-service";
+import {
+  ProductSku,
+  groupSkusByProduct,
+  skuMapKey,
+  parseSkuMapKey,
+} from "@/utils/helpers/models/product-sku";
+import { formatSkuDetails } from "@/utils/helpers/models/product-sku-options";
 
 interface CustomerTypeFormInputs {
   name: string;
@@ -26,12 +41,6 @@ interface CustomerTypeFormInputs {
 interface PickupPoint {
   id: string;
   name: string;
-}
-
-interface GharplansProduct {
-  id: number | string;
-  name: string;
-  [key: string]: any;
 }
 
 const PRODUCT_PAGE_LIMIT = 10;
@@ -182,27 +191,47 @@ export default function CustomerTypeCreate() {
   };
 
   // ---- Product prices (edit mode only) ----
-  const [productsPage, setProductsPage] = useState<GharplansProduct[]>([]);
+  const [productsPage, setProductsPage] = useState<ProductSku[]>([]);
   const [productsTotal, setProductsTotal] = useState(0);
   const [productPage, setProductPage] = useState(1);
   const [productSearch, setProductSearch] = useState("");
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [savingPrices, setSavingPrices] = useState(false);
+  const [expandedProducts, setExpandedProducts] = useState<
+    Record<string, boolean>
+  >({});
+  const productGroups = useMemo(
+    () => groupSkusByProduct(productsPage),
+    [productsPage],
+  );
+  const toggleProductExpanded = (productId: string) =>
+    setExpandedProducts((prev) => ({ ...prev, [productId]: !prev[productId] }));
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Accumulated across pages so edits/prefills are never lost on pagination.
   const [rates, setRates] = useState<Record<string, string>>({});
-  const [productNames, setProductNames] = useState<Record<string, string>>({});
+  // Keyed by skuMapKey(productId, variantId).
+  const [skuInfo, setSkuInfo] = useState<
+    Record<
+      string,
+      { productId: string; productName: string; variantId: string; variantName: string | null }
+    >
+  >({});
 
   const fetchProductsPage = (page: number, search: string) => {
     setLoadingProducts(true);
     getProducts(
-      (data: GharplansProduct[]) => {
+      (data: ProductSku[]) => {
         setProductsPage(data);
-        setProductNames((prev) => {
+        setSkuInfo((prev) => {
           const next = { ...prev };
-          data.forEach((product) => {
-            next[String(product.id)] = product.name;
+          data.forEach((sku) => {
+            next[sku.skuKey] = {
+              productId: sku.productId,
+              productName: sku.productName,
+              variantId: sku.variantId,
+              variantName: sku.variantName,
+            };
           });
           return next;
         });
@@ -220,14 +249,21 @@ export default function CustomerTypeCreate() {
       setRates((prev) => {
         const next = { ...prev };
         data.forEach((price) => {
-          next[String(price.productId)] = String(price.rate);
+          next[skuMapKey(price.productId, price.variantId)] = String(price.rate);
         });
         return next;
       });
-      setProductNames((prev) => {
+      setSkuInfo((prev) => {
         const next = { ...prev };
         data.forEach((price) => {
-          next[String(price.productId)] = price.productName;
+          const key = skuMapKey(price.productId, price.variantId);
+          if (next[key]) return;
+          next[key] = {
+            productId: String(price.productId),
+            productName: price.productName,
+            variantId: price.variantId ? String(price.variantId) : "",
+            variantName: price.variantName ?? null,
+          };
         });
         return next;
       });
@@ -255,9 +291,9 @@ export default function CustomerTypeCreate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productSearch]);
 
-  const handleRateChange = (productId: string, value: string) => {
+  const handleRateChange = (key: string, value: string) => {
     const cleaned = value.replace(/[^0-9.]/g, "");
-    setRates((prev) => ({ ...prev, [productId]: cleaned }));
+    setRates((prev) => ({ ...prev, [key]: cleaned }));
   };
 
   const onProductsPageChange = (pageInfo: { selected: number }) => {
@@ -277,11 +313,17 @@ export default function CustomerTypeCreate() {
 
     const prices = entries
       .filter(([, value]) => Number(value) > 0)
-      .map(([productId, value]) => ({
-        productId,
-        productName: productNames[productId] || "",
-        rate: Number(value),
-      }))
+      .map(([key, value]) => {
+        const info = skuInfo[key];
+        const parsed = parseSkuMapKey(key);
+        return {
+          productId: info?.productId || parsed.productId,
+          productName: info?.productName || "",
+          variantId: info?.variantId ?? parsed.variantId,
+          variantName: info?.variantName ?? null,
+          rate: Number(value),
+        };
+      })
       .filter((item) => !!item.productName);
 
     if (prices.length === 0) {
@@ -529,45 +571,125 @@ export default function CustomerTypeCreate() {
               <table className="min-w-full divide-y divide-border-main">
                 <thead className="bg-muted-foreground/5">
                   <tr className="text-left">
-                    <th className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                      Product Name
-                    </th>
-                    <th className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap w-56">
-                      Rate (PKR)
-                    </th>
+                    {["", "Product Name", "Variants", "Rates set"].map(
+                      (column, idx) => (
+                        <th
+                          key={idx}
+                          className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap"
+                        >
+                          {column}
+                        </th>
+                      ),
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-main bg-card text-foreground">
                   {loadingProducts ? (
                     <tr>
-                      <td colSpan={2} className="px-6 py-8 text-center text-sm text-muted-foreground">
+                      <td colSpan={4} className="px-6 py-8 text-center text-sm text-muted-foreground">
                         Loading products...
                       </td>
                     </tr>
-                  ) : productsPage.length > 0 ? (
-                    productsPage.map((product) => {
-                      const pid = String(product.id);
+                  ) : productGroups.length > 0 ? (
+                    productGroups.map((group) => {
+                      const isExpanded = !!expandedProducts[group.productId];
+                      const variantCount = group.variants.length;
+                      const ratesSet = group.variants.filter(
+                        (v) => Number(rates[v.skuKey]) > 0,
+                      ).length;
                       return (
-                        <tr key={pid} className="hover:bg-muted-foreground/5 transition-colors">
-                          <td className="table-td font-semibold text-foreground">
-                            {product.name}
-                          </td>
-                          <td className="px-6 py-3">
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="0"
-                              value={rates[pid] ?? ""}
-                              onChange={(e) => handleRateChange(pid, e.target.value)}
-                              className="common-input h-9 text-sm w-full max-w-[180px]"
-                            />
-                          </td>
-                        </tr>
+                        <React.Fragment key={group.productId}>
+                          <tr
+                            className="hover:bg-muted-foreground/5 transition-colors cursor-pointer"
+                            onClick={() => toggleProductExpanded(group.productId)}
+                          >
+                            <td className="table-td w-10 text-muted-foreground">
+                              {isExpanded ? (
+                                <ChevronDown size={16} />
+                              ) : (
+                                <ChevronRight size={16} />
+                              )}
+                            </td>
+                            <td className="table-td font-semibold text-foreground">
+                              {group.productName}
+                            </td>
+                            <td className="table-td">
+                              <span className="px-2.5 py-1 text-xs font-bold tracking-wide rounded-md bg-info-bg text-info-text border border-panel-border">
+                                {variantCount}{" "}
+                                {variantCount === 1 ? "variant" : "variants"}
+                              </span>
+                            </td>
+                            <td className="table-td">
+                              <span
+                                className={`px-2.5 py-1 text-xs font-bold tracking-wide rounded-md border border-panel-border ${
+                                  ratesSet === variantCount
+                                    ? "bg-success-bg text-success-text"
+                                    : ratesSet > 0
+                                      ? "bg-warning-bg text-warning-text"
+                                      : "bg-muted-foreground/5 text-muted-foreground"
+                                }`}
+                              >
+                                {ratesSet} / {variantCount} set
+                              </span>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr className="bg-muted-foreground/[0.03]">
+                              <td colSpan={4} className="px-6 py-4">
+                                <div className="overflow-x-auto rounded-lg border border-border-main">
+                                  <table className="min-w-full text-sm">
+                                    <thead className="bg-muted-foreground/5">
+                                      <tr>
+                                        {["Variant", "Details", "Rate (PKR)"].map(
+                                          (column) => (
+                                            <th
+                                              key={column}
+                                              className="px-3 py-2 text-left text-xs font-bold text-muted-foreground whitespace-nowrap"
+                                            >
+                                              {column}
+                                            </th>
+                                          ),
+                                        )}
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border-main">
+                                      {group.variants.map((sku) => {
+                                        const pid = sku.skuKey;
+                                        return (
+                                          <tr key={pid}>
+                                            <td className="px-3 py-3 text-sm font-medium break-words whitespace-normal">
+                                              {sku.variantName || (
+                                                <span className="text-muted-foreground">-</span>
+                                              )}
+                                            </td>
+                                            <td className="px-3 py-3 text-xs text-muted-foreground break-words whitespace-normal">
+                                              {formatSkuDetails(sku) || "-"}
+                                            </td>
+                                            <td className="px-3 py-3 w-56">
+                                              <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                placeholder="0"
+                                                value={rates[pid] ?? ""}
+                                                onChange={(e) => handleRateChange(pid, e.target.value)}
+                                                className="common-input h-9 text-sm w-full max-w-[180px]"
+                                              />
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       );
                     })
                   ) : (
                     <tr>
-                      <td colSpan={2} className="px-6 py-8">
+                      <td colSpan={4} className="px-6 py-8">
                         <DataNotFound show={true} />
                       </td>
                     </tr>

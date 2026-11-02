@@ -8,8 +8,11 @@ import {
   Pencil,
   Trash2,
   X,
+  FilePenLine,
 } from "lucide-react";
-import ProductSearchSelect from "@/components/ui/ProductSearchSelect";
+import ProductVariantSelect, {
+  ProductVariantValue,
+} from "@/components/ui/ProductVariantSelect";
 import Button from "@/components/ui/Button";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useFieldArray, useForm } from "react-hook-form";
@@ -19,10 +22,15 @@ import useTimeSpan from "@/containers/main/time-span/useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
 import {
   CashOutPaymentSource,
+  CommerceEntryStatus,
   SOURCE_PAYMENT_OPTIONS,
-  GharplansProduct,
   formatMoney,
+  isDraftEntry,
 } from "@/utils/helpers/models/purchases/purchase.dto";
+import {
+  normalizeVariantId,
+  skuMapKey,
+} from "@/utils/helpers/models/product-sku";
 import {
   ProductLifespanAvailability,
   computeExpiryFromLifespan,
@@ -39,6 +47,12 @@ type PurchaseSupplierOption = { id: string; name: string };
 type PurchaseLineInput = {
   productId: string;
   productName: string;
+  variantId: string;
+  variantName: string;
+  brandId?: string;
+  brandName?: string;
+  /** UI-only: product has several variants and none chosen yet. */
+  variantRequired?: boolean;
   quantity: number | string;
   expiryDate: string;
 };
@@ -56,6 +70,11 @@ const today = () => new Date().toISOString().slice(0, 10);
 const emptyLine = (): PurchaseLineInput => ({
   productId: "",
   productName: "",
+  variantId: "",
+  variantName: "",
+  brandId: "",
+  brandName: "",
+  variantRequired: false,
   quantity: "",
   expiryDate: "",
 });
@@ -68,7 +87,7 @@ export default function PurchaseCreate() {
     createPurchase,
     getPurchaseById,
     updatePurchase,
-    getProducts,
+    postPurchase,
     getPurchaseSuppliers,
     createPurchaseSupplier,
     updatePurchaseSupplier,
@@ -85,6 +104,10 @@ export default function PurchaseCreate() {
   const [snapshotItems, setSnapshotItems] = useState<
     Array<{ rate?: number | null; lineTotal?: number | null }>
   >([]);
+  const [entryStatus, setEntryStatus] = useState<string>(
+    CommerceEntryStatus.POSTED,
+  );
+  const editingDraft = isEditMode && isDraftEntry(entryStatus);
   const expiryTouchedRef = useRef<Record<number, boolean>>({});
   const loadedEditRef = useRef(false);
 
@@ -216,29 +239,16 @@ export default function PurchaseCreate() {
     }
   };
 
-  const loadProductsForSelect = async (params: {
-    name?: string;
-    limit?: number;
-    offset?: number;
-  }) => {
-    let products: GharplansProduct[] = [];
-    let total = 0;
-    await getProducts(
-      (data: GharplansProduct[]) => {
-        products = data;
-      },
-      params,
-      (count: number) => {
-        total = count;
-      },
+  // Keyed by skuMapKey(productId, variantId)
+  const ensureLifespan = async (productId: string, variantId: string = "") => {
+    if (!productId) return;
+    const key = skuMapKey(productId, variantId);
+    if (lifespansByProduct[key] !== undefined) return;
+    const lifespan = await getByProduct(
+      String(productId),
+      normalizeVariantId(variantId),
     );
-    return { products, total };
-  };
-
-  const ensureLifespan = async (productId: string) => {
-    if (!productId || lifespansByProduct[productId] !== undefined) return;
-    const lifespan = await getByProduct(String(productId));
-    setLifespansByProduct((prev) => ({ ...prev, [productId]: lifespan }));
+    setLifespansByProduct((prev) => ({ ...prev, [key]: lifespan }));
   };
 
   // Load purchase details if editing
@@ -250,6 +260,10 @@ export default function PurchaseCreate() {
             ? data.items.map((item: any) => ({
                 productId: String(item.productId || ""),
                 productName: item.productName || "",
+                variantId: normalizeVariantId(item.variantId),
+                variantName: item.variantName || "",
+                brandId: item.brandId ? String(item.brandId) : "",
+                brandName: item.brandName || "",
                 quantity: item.quantity ?? "",
                 expiryDate: item.expiryDate
                   ? String(item.expiryDate).slice(0, 10)
@@ -259,12 +273,18 @@ export default function PurchaseCreate() {
                 {
                   productId: String(data?.productId || ""),
                   productName: data?.productName || "",
+                  variantId: normalizeVariantId(data?.variantId),
+                  variantName: data?.variantName || "",
+                  brandId: data?.brandId ? String(data.brandId) : "",
+                  brandName: data?.brandName || "",
                   quantity: data?.quantity ?? "",
                   expiryDate: data?.expiryDate
                     ? String(data.expiryDate).slice(0, 10)
                     : "",
                 },
               ];
+
+        setEntryStatus(data?.status || CommerceEntryStatus.POSTED);
 
         reset({
           supplierName: data?.supplierName || "",
@@ -302,7 +322,7 @@ export default function PurchaseCreate() {
         lines.forEach((line, index) => {
           touched[index] = !!line.expiryDate;
           if (line.productId) {
-            ensureLifespan(line.productId);
+            ensureLifespan(line.productId, line.variantId);
           }
         });
         expiryTouchedRef.current = touched;
@@ -318,10 +338,10 @@ export default function PurchaseCreate() {
 
     items.forEach((line, index) => {
       const pid = String(line?.productId || "");
-      if (!pid) return;
-      const lifespan = lifespansByProduct[pid];
+      if (!pid || line?.variantRequired) return;
+      const lifespan = lifespansByProduct[skuMapKey(pid, line?.variantId)];
       if (!lifespan) {
-        ensureLifespan(pid);
+        ensureLifespan(pid, line?.variantId);
         return;
       }
       if (expiryTouchedRef.current[index]) return;
@@ -347,20 +367,43 @@ export default function PurchaseCreate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, items, lifespansByProduct, isEditMode, setValue]);
 
-  const handleProductSelect = (index: number, id: string, name: string) => {
-    setValue(`items.${index}.productId`, id, { shouldValidate: true });
-    setValue(`items.${index}.productName`, name, { shouldValidate: true });
+  const handleProductVariantChange = (
+    index: number,
+    value: ProductVariantValue,
+  ) => {
+    const variantId = normalizeVariantId(value.variantId);
+    setValue(`items.${index}.productId`, value.productId, {
+      shouldValidate: true,
+    });
+    setValue(`items.${index}.productName`, value.productName, {
+      shouldValidate: true,
+    });
+    setValue(`items.${index}.variantId`, variantId, { shouldValidate: true });
+    setValue(`items.${index}.variantName`, value.variantName || "");
+    setValue(`items.${index}.brandId`, value.brandId || "");
+    setValue(`items.${index}.brandName`, value.brandName || "");
+    setValue(`items.${index}.variantRequired`, !!value.requiresVariant);
     expiryTouchedRef.current[index] = false;
     loadedEditRef.current = false;
-    ensureLifespan(id);
+    if (value.productId && !value.requiresVariant) {
+      ensureLifespan(value.productId, variantId);
+    }
   };
 
-  const onSubmitForm = async (data: PurchaseFormInputs) => {
+  const submitPurchase = async (
+    data: PurchaseFormInputs,
+    status: CommerceEntryStatus,
+  ) => {
+    const isDraft = status === CommerceEntryStatus.DRAFT;
     const cleanedItems = (data.items || [])
       .filter((item) => item.productId && item.productName)
       .map((item) => ({
         productId: String(item.productId),
         productName: item.productName,
+        variantId: normalizeVariantId(item.variantId),
+        variantName: item.variantName || null,
+        ...(item.brandId ? { brandId: String(item.brandId) } : {}),
+        ...(item.brandName ? { brandName: item.brandName } : {}),
         quantity: Number(item.quantity),
         ...(item.expiryDate ? { expiryDate: item.expiryDate } : {}),
       }));
@@ -377,20 +420,37 @@ export default function PurchaseCreate() {
       }
     }
 
+    if (!isDraft && !data.sourcePayment) {
+      errorToaster("Source of payment is required to save the purchase");
+      return;
+    }
+
     const payload: Record<string, unknown> = {
       supplierName: data.supplierName.trim(),
       items: cleanedItems,
-      sourcePayment: data.sourcePayment,
+      sourcePayment: data.sourcePayment || CashOutPaymentSource.CASH,
       date: data.date,
+      status,
       ...(data.remarks ? { remarks: data.remarks.trim() } : {}),
     };
 
     if (isEditMode && id) {
-      await updatePurchase(id, payload);
+      if (editingDraft && status === CommerceEntryStatus.POSTED) {
+        await postPurchase(id, payload);
+      } else {
+        await updatePurchase(id, payload);
+      }
     } else {
       await createPurchase(payload);
     }
   };
+
+  const onSaveDraft = handleSubmit((data) =>
+    submitPurchase(data, CommerceEntryStatus.DRAFT),
+  );
+  const onSubmitForm = handleSubmit((data) =>
+    submitPurchase(data, CommerceEntryStatus.POSTED),
+  );
 
   const goToBack = () => {
     navigate(-1);
@@ -408,9 +468,20 @@ export default function PurchaseCreate() {
           >
             <IoArrowBackOutline size={20} className="stroke-[2.5]" />
           </button>
-          <h1 className="text-2xl text-foreground font-bold">
-            {isEditMode ? "Edit Purchase" : "Record Purchase"}
-          </h1>
+          <div>
+            <h1 className="text-2xl text-foreground font-bold">
+              {isEditMode
+                ? editingDraft
+                  ? "Edit Draft Purchase"
+                  : "Edit Purchase"
+                : "Record Purchase"}
+            </h1>
+            {editingDraft ? (
+              <p className="text-sm text-muted-foreground mt-1">
+                Draft — stock is not updated until you save this as a purchase.
+              </p>
+            ) : null}
+          </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <Can permission={PERMISSIONS.PURCHASES_CREATE}>
@@ -439,7 +510,7 @@ export default function PurchaseCreate() {
 
       <form
         id="purchase-create-form"
-        onSubmit={handleSubmit(onSubmitForm)}
+        onSubmit={onSubmitForm}
         className="mt-8 w-full animate-slide-up space-y-6"
       >
         <hr className="border-border-main" />
@@ -499,9 +570,7 @@ export default function PurchaseCreate() {
             <label className="mb-2 block ui-form-label">Source Payment</label>
             <select
               className={`common-input bg-card ${errors.sourcePayment ? "border-red-500 focus:border-red-500" : ""}`}
-              {...register("sourcePayment", {
-                required: "Source payment is required",
-              })}
+              {...register("sourcePayment")}
             >
               <option value="">Select Source Payment</option>
               {SOURCE_PAYMENT_OPTIONS.map((source) => (
@@ -558,7 +627,8 @@ export default function PurchaseCreate() {
             {fields.map((field, index) => {
               const line = items?.[index];
               const pid = String(line?.productId || "");
-              const lifespan = pid ? lifespansByProduct[pid] : null;
+              const lineSkuKey = pid ? skuMapKey(pid, line?.variantId) : "";
+              const lifespan = pid ? lifespansByProduct[lineSkuKey] : null;
               const lifespanHint = lifespan
                 ? lifespan.isLifetime
                   ? "Lifetime product (no auto expiry)"
@@ -603,14 +673,16 @@ export default function PurchaseCreate() {
                       <label className="mb-2 block ui-form-label">
                         Product Name
                       </label>
-                      <ProductSearchSelect
-                        value={pid}
-                        selectedName={line?.productName || ""}
-                        onSelect={(productId, name) =>
-                          handleProductSelect(index, productId, name)
+                      <ProductVariantSelect
+                        productId={pid}
+                        productName={line?.productName || ""}
+                        variantId={line?.variantId || ""}
+                        variantName={line?.variantName || null}
+                        onChange={(value) =>
+                          handleProductVariantChange(index, value)
                         }
-                        onLoad={loadProductsForSelect}
-                        error={errors.items?.[index]?.productId?.message}
+                        productError={errors.items?.[index]?.productId?.message}
+                        variantError={errors.items?.[index]?.variantId?.message}
                       />
                       <input
                         type="hidden"
@@ -621,6 +693,19 @@ export default function PurchaseCreate() {
                       <input
                         type="hidden"
                         {...register(`items.${index}.productName` as const)}
+                      />
+                      <input
+                        type="hidden"
+                        {...register(`items.${index}.variantId` as const, {
+                          validate: (v, formValues) =>
+                            !formValues.items?.[index]?.variantRequired ||
+                            !!v ||
+                            "Variant is required",
+                        })}
+                      />
+                      <input
+                        type="hidden"
+                        {...register(`items.${index}.variantName` as const)}
                       />
                     </div>
 
@@ -719,7 +804,24 @@ export default function PurchaseCreate() {
           />
         </div>
 
-        <div className="flex justify-end pt-4 border-t border-border-main/60">
+        <div className="flex justify-end gap-3 flex-wrap pt-4 border-t border-border-main/60">
+          {(!isEditMode || editingDraft) && (
+            <button
+              type="button"
+              onClick={onSaveDraft}
+              disabled={isLoading}
+              className="flex h-10 px-6 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-foreground text-sm transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <>
+                  <FilePenLine size={18} />
+                  Save as Draft
+                </>
+              )}
+            </button>
+          )}
           <button
             type="submit"
             disabled={isLoading}
@@ -729,8 +831,16 @@ export default function PurchaseCreate() {
               <Loader2 className="animate-spin" size={16} />
             ) : (
               <>
-                {isEditMode ? <Save size={18} /> : <PlusSquare size={18} />}
-                {isEditMode ? "Save Changes" : "Save Purchase"}
+                {isEditMode && !editingDraft ? (
+                  <Save size={18} />
+                ) : (
+                  <PlusSquare size={18} />
+                )}
+                {editingDraft
+                  ? "Save as Purchase"
+                  : isEditMode
+                    ? "Save Changes"
+                    : "Save Purchase"}
               </>
             )}
           </button>

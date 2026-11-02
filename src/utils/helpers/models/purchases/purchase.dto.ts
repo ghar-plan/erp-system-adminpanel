@@ -3,6 +3,8 @@ import {
   CASH_OUT_PAYMENT_SOURCE_OPTIONS,
 } from "@/utils/helpers/models/cashflow/cashflow.dto";
 
+import { formatSkuLabel } from "@/utils/helpers/models/product-sku";
+
 // Re-export so purchase/sales screens can import a single, semantically named
 // source-of-truth without reaching into the cashflow module directly.
 export { CashOutPaymentSource };
@@ -12,6 +14,10 @@ export interface PurchaseItem {
   id?: string;
   productId: string;
   productName: string;
+  variantId?: string | null;
+  variantName?: string | null;
+  brandId?: string | null;
+  brandName?: string | null;
   quantity: number;
   rate?: number | null;
   lineTotal?: number | null;
@@ -19,17 +25,45 @@ export interface PurchaseItem {
   sortOrder?: number;
 }
 
+export const formatPurchaseBrandsLabel = (purchase: {
+  items?: PurchaseItem[];
+}): string => {
+  const names = Array.from(
+    new Set(
+      (purchase.items || [])
+        .map((item) => item.brandName?.trim())
+        .filter((name): name is string => !!name),
+    ),
+  );
+  if (!names.length) return "--";
+  if (names.length === 1) return names[0];
+  return `${names[0]} + ${names.length - 1} more`;
+};
+
+export enum CommerceEntryStatus {
+  DRAFT = "draft",
+  POSTED = "posted",
+}
+
+export const COMMERCE_ENTRY_STATUS_OPTIONS = [
+  { value: CommerceEntryStatus.DRAFT, label: "Draft" },
+  { value: CommerceEntryStatus.POSTED, label: "Posted" },
+];
+
 export interface Purchase {
   id: string;
   supplierName: string;
   /** Denormalized summary (first product / "Name + N more") */
   productId: string;
   productName: string;
+  variantId?: string | null;
+  variantName?: string | null;
   quantity: number;
   rate?: number | null;
   paymentMade?: number | null;
   remarks?: string | null;
   sourcePayment: CashOutPaymentSource;
+  status?: CommerceEntryStatus | string;
   expiryDate?: string | null;
   date: string;
   items?: PurchaseItem[];
@@ -37,14 +71,22 @@ export interface Purchase {
   updated_at?: string;
 }
 
+export const isDraftEntry = (
+  status?: CommerceEntryStatus | string | null,
+): boolean => status === CommerceEntryStatus.DRAFT || status === "draft";
+
 export const formatPurchaseProductsLabel = (purchase: Purchase): string => {
   if (purchase.items && purchase.items.length > 1) {
-    return `${purchase.items[0].productName} + ${purchase.items.length - 1} more`;
+    const first = purchase.items[0];
+    return `${formatSkuLabel(first.productName, first.variantName)} + ${purchase.items.length - 1} more`;
   }
   if (purchase.items && purchase.items.length === 1) {
-    return purchase.items[0].productName;
+    const only = purchase.items[0];
+    return formatSkuLabel(only.productName, only.variantName);
   }
-  return purchase.productName || "--";
+  return purchase.productName
+    ? formatSkuLabel(purchase.productName, purchase.variantName)
+    : "--";
 };
 
 export const computePurchaseLineTotal = (

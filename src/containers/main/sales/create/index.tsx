@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { PlusSquare, Loader2, Save, Plus, Trash2, List } from "lucide-react";
-import ProductSearchSelect from "@/components/ui/ProductSearchSelect";
+import {
+  PlusSquare,
+  Loader2,
+  Save,
+  Plus,
+  Trash2,
+  List,
+  FilePenLine,
+} from "lucide-react";
+import ProductVariantSelect, {
+  ProductVariantValue,
+} from "@/components/ui/ProductVariantSelect";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Can } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
@@ -15,9 +25,12 @@ import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
 import {
   CashOutPaymentSource,
   SOURCE_PAYMENT_OPTIONS,
-  GharplansProduct,
   formatMoney,
 } from "@/utils/helpers/models/purchases/purchase.dto";
+import {
+  normalizeVariantId,
+  skuMapKey,
+} from "@/utils/helpers/models/product-sku";
 import {
   CustomerType,
   CustomerTypeCategory,
@@ -26,9 +39,11 @@ import {
   WALK_IN_CUSTOMER_TYPE_ID,
 } from "@/utils/helpers/models/customer-types/customer-type.dto";
 import {
+  CommerceEntryStatus,
   computeLineTotal,
   computeSaleBalanceFromItems,
   computeSaleSubtotal,
+  isDraftEntry,
   resolveSalePayment,
 } from "@/utils/helpers/models/sales/sale.dto";
 import { StockAvailability } from "@/utils/helpers/models/stocks/stock.dto";
@@ -37,6 +52,12 @@ import { errorToaster } from "@/utils/helpers/common/alert-service";
 interface SaleLineInput {
   productId: string;
   productName: string;
+  variantId: string;
+  variantName: string;
+  brandId?: string;
+  brandName?: string;
+  /** UI-only: product has several variants and none chosen yet. */
+  variantRequired?: boolean;
   quantity: number | string;
   rate: number | string;
 }
@@ -57,6 +78,11 @@ const today = () => new Date().toISOString().slice(0, 10);
 const emptyLine = (): SaleLineInput => ({
   productId: "",
   productName: "",
+  variantId: "",
+  variantName: "",
+  brandId: "",
+  brandName: "",
+  variantRequired: false,
   quantity: "",
   rate: "",
 });
@@ -69,9 +95,9 @@ export default function SaleCreate() {
     createSale,
     getSaleById,
     updateSale,
+    postSale,
     getCustomerTypes,
     getProductRate,
-    getProducts,
   } = useSales();
   const { getStockByProduct } = useStocks();
   const { isLoading } = useStore();
@@ -84,6 +110,10 @@ export default function SaleCreate() {
     Record<string, number>
   >({});
   const [loadingRateIndex, setLoadingRateIndex] = useState<number | null>(null);
+  const [entryStatus, setEntryStatus] = useState<string>(
+    CommerceEntryStatus.POSTED,
+  );
+  const editingDraft = isEditMode && isDraftEntry(entryStatus);
 
   const {
     register,
@@ -145,25 +175,6 @@ export default function SaleCreate() {
     sourcePayment === CashOutPaymentSource.CASH ||
     sourcePayment === CashOutPaymentSource.CREDIT;
 
-  const loadProductsForSelect = async (params: {
-    name?: string;
-    limit?: number;
-    offset?: number;
-  }) => {
-    let products: GharplansProduct[] = [];
-    let total = 0;
-    await getProducts(
-      (data: GharplansProduct[]) => {
-        products = data;
-      },
-      params,
-      (count: number) => {
-        total = count;
-      },
-    );
-    return { products, total };
-  };
-
   useEffect(() => {
     // New sales only offer open customers; edit may keep a closed one.
     getCustomerTypes(setCustomerTypes, { activeOnly: true });
@@ -178,6 +189,10 @@ export default function SaleCreate() {
             ? data.items.map((item: any) => ({
                 productId: String(item.productId || ""),
                 productName: item.productName || "",
+                variantId: normalizeVariantId(item.variantId),
+                variantName: item.variantName || "",
+                brandId: item.brandId ? String(item.brandId) : "",
+                brandName: item.brandName || "",
                 quantity: item.quantity ?? "",
                 rate: item.rate ?? "",
               }))
@@ -185,6 +200,10 @@ export default function SaleCreate() {
                 {
                   productId: String(data?.productId || ""),
                   productName: data?.productName || "",
+                  variantId: normalizeVariantId(data?.variantId),
+                  variantName: data?.variantName || "",
+                  brandId: data?.brandId ? String(data.brandId) : "",
+                  brandName: data?.brandName || "",
                   quantity: data?.quantity ?? "",
                   rate: data?.rate ?? "",
                 },
@@ -197,6 +216,8 @@ export default function SaleCreate() {
             return [...prev, data.customerType];
           });
         }
+
+        setEntryStatus(data?.status || CommerceEntryStatus.POSTED);
 
         reset({
           customerTypeId: data?.customerTypeId || "",
@@ -212,8 +233,8 @@ export default function SaleCreate() {
         const original: Record<string, number> = {};
         for (const line of lines) {
           if (!line.productId) continue;
-          original[String(line.productId)] =
-            (original[String(line.productId)] || 0) + Number(line.quantity || 0);
+          const key = skuMapKey(line.productId, line.variantId);
+          original[key] = (original[key] || 0) + Number(line.quantity || 0);
         }
         setOriginalQtyByProduct(original);
       });
@@ -227,33 +248,40 @@ export default function SaleCreate() {
       return;
     }
     (items || []).forEach((item, index) => {
-      if (!item?.productId) return;
+      if (!item?.productId || item?.variantRequired) return;
       const currentRate = Number(item.rate);
       if (Number.isFinite(currentRate) && currentRate > 0) return;
       setLoadingRateIndex(index);
-      getProductRate(customerTypeId, String(item.productId), (fetchedRate) => {
-        setLoadingRateIndex(null);
-        if (fetchedRate !== null && fetchedRate !== undefined) {
-          setValue(`items.${index}.rate`, fetchedRate, { shouldValidate: true });
-        }
-      });
+      getProductRate(
+        customerTypeId,
+        String(item.productId),
+        (fetchedRate) => {
+          setLoadingRateIndex(null);
+          if (fetchedRate !== null && fetchedRate !== undefined) {
+            setValue(`items.${index}.rate`, fetchedRate, {
+              shouldValidate: true,
+            });
+          }
+        },
+        normalizeVariantId(item.variantId),
+      );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerTypeId]);
 
   // Load stock for each selected product
   useEffect(() => {
-    const productIds = [
-      ...new Set(
-        (items || [])
-          .map((item) => String(item?.productId || ""))
-          .filter(Boolean),
-      ),
-    ];
-    productIds.forEach((pid) => {
-      if (stockByProduct[pid] !== undefined) return;
-      getStockByProduct(pid).then((info) => {
-        setStockByProduct((prev) => ({ ...prev, [pid]: info }));
+    const skuLines = new Map<string, { productId: string; variantId: string }>();
+    (items || []).forEach((item) => {
+      const productId = String(item?.productId || "");
+      if (!productId || item?.variantRequired) return;
+      const variantId = normalizeVariantId(item?.variantId);
+      skuLines.set(skuMapKey(productId, variantId), { productId, variantId });
+    });
+    skuLines.forEach(({ productId, variantId }, key) => {
+      if (stockByProduct[key] !== undefined) return;
+      getStockByProduct(productId, variantId).then((info) => {
+        setStockByProduct((prev) => ({ ...prev, [key]: info }));
       });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -276,41 +304,77 @@ export default function SaleCreate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourcePayment, subtotal]);
 
-  const availableForProduct = (productId: string) => {
-    if (!productId) return 0;
-    const onHand = Number(stockByProduct[productId]?.quantity ?? 0);
+  /** `skuKey` = skuMapKey(productId, variantId) */
+  const availableForProduct = (skuKey: string) => {
+    if (!skuKey) return 0;
+    const onHand = Number(stockByProduct[skuKey]?.quantity ?? 0);
     if (isEditMode) {
-      return onHand + Number(originalQtyByProduct[productId] || 0);
+      return onHand + Number(originalQtyByProduct[skuKey] || 0);
     }
     return onHand;
   };
 
-  const handleProductSelect = async (index: number, pid: string, name: string) => {
+  const handleProductVariantChange = async (
+    index: number,
+    value: ProductVariantValue,
+  ) => {
+    const pid = value.productId;
+    const variantId = normalizeVariantId(value.variantId);
     setValue(`items.${index}.productId`, pid, { shouldValidate: true });
-    setValue(`items.${index}.productName`, name, { shouldValidate: true });
+    setValue(`items.${index}.productName`, value.productName, {
+      shouldValidate: true,
+    });
+    setValue(`items.${index}.variantId`, variantId, { shouldValidate: true });
+    setValue(`items.${index}.variantName`, value.variantName || "");
+    setValue(`items.${index}.brandId`, value.brandId || "");
+    setValue(`items.${index}.brandName`, value.brandName || "");
+    setValue(`items.${index}.variantRequired`, !!value.requiresVariant);
 
-    if (customerTypeId && String(customerTypeId) !== WALK_IN_CUSTOMER_TYPE_ID) {
+    // Wait for the variant pick before loading rate/stock for multi-variant products.
+    if (!pid || value.requiresVariant) return;
+
+    if (
+      pid &&
+      customerTypeId &&
+      String(customerTypeId) !== WALK_IN_CUSTOMER_TYPE_ID
+    ) {
       setLoadingRateIndex(index);
-      getProductRate(customerTypeId, pid, (fetchedRate) => {
-        setLoadingRateIndex(null);
-        if (fetchedRate !== null && fetchedRate !== undefined) {
-          setValue(`items.${index}.rate`, fetchedRate, { shouldValidate: true });
-        }
-      });
+      getProductRate(
+        customerTypeId,
+        pid,
+        (fetchedRate) => {
+          setLoadingRateIndex(null);
+          if (fetchedRate !== null && fetchedRate !== undefined) {
+            setValue(`items.${index}.rate`, fetchedRate, {
+              shouldValidate: true,
+            });
+          }
+        },
+        variantId,
+      );
     }
 
-    if (stockByProduct[pid] === undefined) {
-      const info = await getStockByProduct(pid);
-      setStockByProduct((prev) => ({ ...prev, [pid]: info }));
+    const key = skuMapKey(pid, variantId);
+    if (pid && stockByProduct[key] === undefined) {
+      const info = await getStockByProduct(pid, variantId);
+      setStockByProduct((prev) => ({ ...prev, [key]: info }));
     }
   };
 
-  const onSubmitForm = async (data: SaleFormInputs) => {
+  const submitSale = async (
+    data: SaleFormInputs,
+    status: CommerceEntryStatus,
+  ) => {
+    const isDraft = status === CommerceEntryStatus.DRAFT;
     const cleanedItems = (data.items || [])
       .filter((item) => item.productId && item.productName)
       .map((item) => ({
         productId: String(item.productId),
         productName: item.productName,
+        variantId: normalizeVariantId(item.variantId),
+        variantName: item.variantName || null,
+        ...(item.brandId ? { brandId: String(item.brandId) } : {}),
+        ...(item.brandName ? { brandName: item.brandName } : {}),
         quantity: Number(item.quantity),
         rate: Number(item.rate),
       }));
@@ -331,14 +395,22 @@ export default function SaleCreate() {
       }
     }
 
+    if (!isDraft && !data.sourcePayment) {
+      errorToaster("Source of payment is required to record the sale");
+      return;
+    }
+
     const saleSubtotal = computeSaleSubtotal(cleanedItems);
     const paymentAmount = resolveSalePayment(
-      data.sourcePayment,
+      data.sourcePayment || CashOutPaymentSource.CASH,
       saleSubtotal,
       data.payment,
     );
 
-    if (data.sourcePayment === CashOutPaymentSource.PARTIAL) {
+    if (
+      !isDraft &&
+      data.sourcePayment === CashOutPaymentSource.PARTIAL
+    ) {
       if (paymentAmount <= 0 || paymentAmount >= saleSubtotal) {
         errorToaster(
           "Partial payment must be greater than 0 and less than the subtotal",
@@ -352,7 +424,8 @@ export default function SaleCreate() {
       date: data.date,
       items: cleanedItems,
       payment: paymentAmount,
-      sourcePayment: data.sourcePayment,
+      sourcePayment: data.sourcePayment || CashOutPaymentSource.CASH,
+      status,
       ...(data.remarks ? { remarks: data.remarks.trim() } : {}),
     };
 
@@ -364,11 +437,22 @@ export default function SaleCreate() {
     }
 
     if (isEditMode && id) {
-      await updateSale(id, payload);
+      if (editingDraft && status === CommerceEntryStatus.POSTED) {
+        await postSale(id, payload);
+      } else {
+        await updateSale(id, payload);
+      }
     } else {
       await createSale(payload);
     }
   };
+
+  const onSaveDraft = handleSubmit((data) =>
+    submitSale(data, CommerceEntryStatus.DRAFT),
+  );
+  const onSubmitForm = handleSubmit((data) =>
+    submitSale(data, CommerceEntryStatus.POSTED),
+  );
 
   const goToBack = () => navigate(-1);
 
@@ -384,9 +468,20 @@ export default function SaleCreate() {
           >
             <IoArrowBackOutline size={20} className="stroke-[2.5]" />
           </button>
-          <h1 className="text-2xl text-foreground font-bold">
-            {isEditMode ? "Edit Sale" : "Record Sale"}
-          </h1>
+          <div>
+            <h1 className="text-2xl text-foreground font-bold">
+              {isEditMode
+                ? editingDraft
+                  ? "Edit Draft Sale"
+                  : "Edit Sale"
+                : "Record Sale"}
+            </h1>
+            {editingDraft ? (
+              <p className="text-sm text-muted-foreground mt-1">
+                Draft — stock is not updated until you record this as a sale.
+              </p>
+            ) : null}
+          </div>
         </div>
         {!isEditMode && (
           <Can permission={PERMISSIONS.SALES_READ}>
@@ -403,7 +498,7 @@ export default function SaleCreate() {
 
       <form
         id="sale-create-form"
-        onSubmit={handleSubmit(onSubmitForm)}
+        onSubmit={onSubmitForm}
         className="mt-8 w-full animate-slide-up space-y-6"
       >
         <hr className="border-border-main" />
@@ -540,7 +635,8 @@ export default function SaleCreate() {
             {fields.map((field, index) => {
               const line = items?.[index];
               const pid = String(line?.productId || "");
-              const available = availableForProduct(pid);
+              const lineSkuKey = pid ? skuMapKey(pid, line?.variantId) : "";
+              const available = availableForProduct(lineSkuKey);
               const lineTotal = computeLineTotal(
                 line?.quantity ?? 0,
                 line?.rate ?? 0,
@@ -572,14 +668,16 @@ export default function SaleCreate() {
                       <label className="mb-2 block ui-form-label">
                         Product Name
                       </label>
-                      <ProductSearchSelect
-                        value={pid}
-                        selectedName={line?.productName || ""}
-                        onSelect={(id, name) =>
-                          handleProductSelect(index, id, name)
+                      <ProductVariantSelect
+                        productId={pid}
+                        productName={line?.productName || ""}
+                        variantId={line?.variantId || ""}
+                        variantName={line?.variantName || null}
+                        onChange={(value) =>
+                          handleProductVariantChange(index, value)
                         }
-                        onLoad={loadProductsForSelect}
-                        error={errors.items?.[index]?.productId?.message}
+                        productError={errors.items?.[index]?.productId?.message}
+                        variantError={errors.items?.[index]?.variantId?.message}
                       />
                       <input
                         type="hidden"
@@ -590,6 +688,19 @@ export default function SaleCreate() {
                       <input
                         type="hidden"
                         {...register(`items.${index}.productName` as const)}
+                      />
+                      <input
+                        type="hidden"
+                        {...register(`items.${index}.variantId` as const, {
+                          validate: (v, formValues) =>
+                            !formValues.items?.[index]?.variantRequired ||
+                            !!v ||
+                            "Variant is required",
+                        })}
+                      />
+                      <input
+                        type="hidden"
+                        {...register(`items.${index}.variantName` as const)}
                       />
                     </div>
 
@@ -620,10 +731,10 @@ export default function SaleCreate() {
                               : "text-emerald-600"
                           }`}
                         >
-                          Available stock: {available}
-                          {available <= 0
-                            ? " — sales allowed while stock is being finalized"
-                            : ""}
+                          Available for this variant: {available}
+                          {available > 0
+                            ? " (FIFO — oldest batch sold first)"
+                            : " — sales allowed while stock is being finalized"}
                         </p>
                       ) : null}
                     </div>
@@ -675,9 +786,7 @@ export default function SaleCreate() {
             <label className="mb-2 block ui-form-label">Source Payment</label>
             <select
               className={`common-input bg-card ${errors.sourcePayment ? "border-red-500 focus:border-red-500" : ""}`}
-              {...register("sourcePayment", {
-                required: "Source payment is required",
-              })}
+              {...register("sourcePayment")}
             >
               <option value="">Select Source Payment</option>
               {SOURCE_PAYMENT_OPTIONS.map((source) => (
@@ -748,7 +857,24 @@ export default function SaleCreate() {
           </div>
         </div>
 
-        <div className="flex justify-end pt-4 border-t border-border-main/60">
+        <div className="flex justify-end gap-3 flex-wrap pt-4 border-t border-border-main/60">
+          {(!isEditMode || editingDraft) && (
+            <button
+              type="button"
+              onClick={onSaveDraft}
+              disabled={isLoading}
+              className="flex h-10 px-6 items-center justify-center gap-2 rounded-md border border-border-main bg-card hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-foreground text-sm transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <>
+                  <FilePenLine size={18} />
+                  Save as Draft
+                </>
+              )}
+            </button>
+          )}
           <button
             type="submit"
             disabled={isLoading}
@@ -758,8 +884,16 @@ export default function SaleCreate() {
               <Loader2 className="animate-spin" size={16} />
             ) : (
               <>
-                {isEditMode ? <Save size={18} /> : <PlusSquare size={18} />}
-                {isEditMode ? "Save Changes" : "Record Sale"}
+                {isEditMode && !editingDraft ? (
+                  <Save size={18} />
+                ) : (
+                  <PlusSquare size={18} />
+                )}
+                {editingDraft
+                  ? "Record as Sale"
+                  : isEditMode
+                    ? "Save Changes"
+                    : "Record Sale"}
               </>
             )}
           </button>

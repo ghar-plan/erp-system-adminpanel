@@ -1,6 +1,7 @@
 import { Sales_APIS } from "@/libs/apis/sales.api";
 import { CustomerTypes_APIS } from "@/libs/apis/customer-types.api";
 import { Gharplans_APIS } from "@/libs/apis/gharplans.api";
+import { PurchaseSuppliers_APIS } from "@/libs/apis/purchase-suppliers.api";
 import { useNavigate } from "react-router-dom";
 import {
   successToaster,
@@ -55,6 +56,16 @@ const useSales = () => {
     }
   };
 
+  const postSale = async (id: string, body: any = {}) => {
+    const response = await Sales_APIS.post(id, body);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message || "Sale posted successfully");
+      navigate(siteRoutes.salesList);
+      return response;
+    }
+  };
+
   const deleteSale = async (
     id: string,
     name: string,
@@ -91,10 +102,12 @@ const useSales = () => {
     customerTypeId: string,
     productId: string,
     setData: (rate: number | null) => void,
+    variantId: string = "",
   ) => {
     const response = await CustomerTypes_APIS.getProductRate(
       customerTypeId,
       productId,
+      variantId,
     );
     const { status = false, data = null } = response || {};
     if (status && data) {
@@ -120,15 +133,30 @@ const useSales = () => {
     }
   };
 
+  const getBrands = async (setData: Function) => {
+    const response = await Gharplans_APIS.getBrands();
+    const { status = false, data = [] } = response || {};
+    setData(status && data ? data : []);
+  };
+
+  const getVendors = async (setData: Function) => {
+    const response = await PurchaseSuppliers_APIS.getAll();
+    const { status = false, data = [] } = response || {};
+    setData(status && data ? data : []);
+  };
+
   return {
     getSales,
     getSaleById,
     createSale,
     updateSale,
+    postSale,
     deleteSale,
     getCustomerTypes,
     getProductRate,
     getProducts,
+    getBrands,
+    getVendors,
   };
 };
 

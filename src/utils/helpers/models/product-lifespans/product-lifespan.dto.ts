@@ -2,6 +2,8 @@ export interface ProductLifespan {
   id?: string;
   productId: string;
   productName: string;
+  variantId?: string | null;
+  variantName?: string | null;
   years: number;
   months: number;
   days: number;
@@ -12,6 +14,8 @@ export interface ProductLifespan {
 export interface ProductLifespanAvailability {
   productId: string;
   productName: string | null;
+  variantId?: string | null;
+  variantName?: string | null;
   years: number;
   months: number;
   days: number;

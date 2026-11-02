@@ -1,16 +1,46 @@
 import { CashOutPaymentSource } from "@/utils/helpers/models/cashflow/cashflow.dto";
 import { CustomerTypeCategory } from "@/utils/helpers/models/customer-types/customer-type.dto";
 import { roundMoney } from "@/utils/helpers/money";
+import { formatSkuLabel } from "@/utils/helpers/models/product-sku";
 
 export interface SaleItem {
   id?: string;
   productId: string;
   productName: string;
+  variantId?: string | null;
+  variantName?: string | null;
+  brandId?: string | null;
+  brandName?: string | null;
   quantity: number;
   rate: number;
   lineTotal?: number;
   sortOrder?: number;
 }
+
+export const formatSaleBrandsLabel = (sale: {
+  items?: SaleItem[];
+}): string => {
+  const names = Array.from(
+    new Set(
+      (sale.items || [])
+        .map((item) => item.brandName?.trim())
+        .filter((name): name is string => !!name),
+    ),
+  );
+  if (!names.length) return "--";
+  if (names.length === 1) return names[0];
+  return `${names[0]} + ${names.length - 1} more`;
+};
+
+export enum CommerceEntryStatus {
+  DRAFT = "draft",
+  POSTED = "posted",
+}
+
+export const COMMERCE_ENTRY_STATUS_OPTIONS = [
+  { value: CommerceEntryStatus.DRAFT, label: "Draft" },
+  { value: CommerceEntryStatus.POSTED, label: "Posted" },
+];
 
 export interface Sale {
   id: string;
@@ -26,16 +56,23 @@ export interface Sale {
   /** Denormalized summary (first product / "Name + N more") */
   productId: string;
   productName: string;
+  variantId?: string | null;
+  variantName?: string | null;
   quantity: number;
   rate: number;
   payment: number;
   balance: number;
   sourcePayment: CashOutPaymentSource;
+  status?: CommerceEntryStatus | string;
   remarks?: string | null;
   items?: SaleItem[];
   created_at?: string;
   updated_at?: string;
 }
+
+export const isDraftEntry = (
+  status?: CommerceEntryStatus | string | null,
+): boolean => status === CommerceEntryStatus.DRAFT || status === "draft";
 
 export const computeLineTotal = (
   quantity: number | string,
@@ -106,10 +143,14 @@ export const computeSaleBalance = (
 
 export const formatSaleProductsLabel = (sale: Sale): string => {
   if (sale.items && sale.items.length > 1) {
-    return `${sale.items[0].productName} + ${sale.items.length - 1} more`;
+    const first = sale.items[0];
+    return `${formatSkuLabel(first.productName, first.variantName)} + ${sale.items.length - 1} more`;
   }
   if (sale.items && sale.items.length === 1) {
-    return sale.items[0].productName;
+    const only = sale.items[0];
+    return formatSkuLabel(only.productName, only.variantName);
   }
-  return sale.productName || "--";
+  return sale.productName
+    ? formatSkuLabel(sale.productName, sale.variantName)
+    : "--";
 };

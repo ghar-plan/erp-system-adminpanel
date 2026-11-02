@@ -2,6 +2,8 @@ export interface Stock {
   id: string;
   productId: string;
   productName: string;
+  variantId?: string | null;
+  variantName?: string | null;
   quantity: number;
   totalPurchased: number;
   totalSold: number;
@@ -12,6 +14,8 @@ export interface Stock {
 export interface StockAvailability {
   productId: string;
   productName: string | null;
+  variantId?: string | null;
+  variantName?: string | null;
   quantity: number;
   totalPurchased: number;
   totalSold: number;
@@ -23,6 +27,8 @@ export interface StockBatch {
   id: string;
   productId: string;
   productName: string;
+  variantId?: string | null;
+  variantName?: string | null;
   purchaseId: string | null;
   purchaseDate: string;
   expiryDate: string | null;

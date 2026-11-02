@@ -17,6 +17,7 @@ import {
   formatMoney,
   formatPurchaseProductsLabel,
 } from "@/utils/helpers/models/purchases/purchase.dto";
+import { formatSkuLabel } from "@/utils/helpers/models/product-sku";
 import { Can } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { canAccessPurchasePrice } from "@/utils/helpers/permissions/purchase-price-access";
@@ -83,6 +84,8 @@ export default function PurchaseView() {
           {
             productId: purchase.productId,
             productName: purchase.productName,
+            variantId: purchase.variantId,
+            variantName: purchase.variantName,
             quantity: purchase.quantity,
             rate: purchase.rate,
             lineTotal: purchase.paymentMade,
@@ -282,7 +285,9 @@ export default function PurchaseView() {
                     className={lineExpiry.toneClass}
                   >
                     <td className="px-3 py-2 font-semibold text-foreground">
-                      {item.productName || "--"}
+                      {item.productName
+                        ? formatSkuLabel(item.productName, item.variantName)
+                        : "--"}
                     </td>
                     <td className="px-3 py-2">{item.quantity ?? "--"}</td>
                     {canViewPurchasePrice ? (

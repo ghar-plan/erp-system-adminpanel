@@ -2,8 +2,24 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Loader2, Search, X } from "lucide-react";
 
 export interface ProductSearchOption {
+  /** Unique option id (use sku key `productId::variantId` for variants). */
   id: string | number;
+  /** Display label (full SKU label for variants). */
   name: string;
+  /** Parent product id (defaults to `id` when omitted). */
+  productId?: string;
+  /** Parent product name (defaults to `name` when omitted). */
+  productName?: string;
+  variantId?: string;
+  variantName?: string;
+  /** Secondary line: unit / weight / colors etc. */
+  meta?: string;
+}
+
+export interface ProductSelectMeta {
+  variantId: string;
+  variantName: string | null;
+  label: string;
 }
 
 const PAGE_SIZE = 50;
@@ -12,12 +28,21 @@ interface ProductSearchSelectProps {
   value: string;
   /** Shown on the closed control when `value` is set but the option is not in the current list */
   selectedName?: string;
-  onSelect: (productId: string, productName: string) => void;
+  onSelect: (
+    productId: string,
+    productName: string,
+    meta?: ProductSelectMeta,
+  ) => void;
   onLoad: (params: {
     name?: string;
     limit?: number;
     offset?: number;
-  }) => Promise<{ products: ProductSearchOption[]; total: number }>;
+  }) => Promise<{
+    products: ProductSearchOption[];
+    total: number;
+    /** Source rows fetched (e.g. products before SKU expansion). Defaults to products.length. */
+    consumed?: number;
+  }>;
   placeholder?: string;
   searchPlaceholder?: string;
   emptyText?: string;
@@ -47,10 +72,11 @@ export default function ProductSearchSelect({
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<ProductSearchOption[]>([]);
   const [total, setTotal] = useState(0);
+  const [loadedCount, setLoadedCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const hasMore = products.length < total;
+  const hasMore = loadedCount < total;
 
   const selectedFromList = useMemo(
     () => products.find((p) => String(p.id) === String(value)) || null,
@@ -81,6 +107,8 @@ export default function ProductSearchSelect({
       if (requestId !== requestIdRef.current) return;
 
       setTotal(result.total ?? 0);
+      const consumed = result.consumed ?? (result.products || []).length;
+      setLoadedCount((prev) => (append ? prev + consumed : consumed));
       setProducts((prev) => {
         if (!append) return result.products || [];
         const seen = new Set(prev.map((p) => String(p.id)));
@@ -94,6 +122,7 @@ export default function ProductSearchSelect({
       if (!append) {
         setProducts([]);
         setTotal(0);
+        setLoadedCount(0);
       }
     } finally {
       if (requestId === requestIdRef.current) {
@@ -110,6 +139,7 @@ export default function ProductSearchSelect({
   const resetAndLoad = (name: string) => {
     setProducts([]);
     setTotal(0);
+    setLoadedCount(0);
     fetchPage(name, 0, false);
   };
 
@@ -153,12 +183,24 @@ export default function ProductSearchSelect({
     }
     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 48;
     if (nearBottom) {
-      fetchPage(query, products.length, true);
+      fetchPage(query, loadedCount, true);
     }
   };
 
   const handleSelect = (product: ProductSearchOption) => {
-    onSelect(String(product.id), product.name);
+    if (product.productId !== undefined) {
+      onSelect(
+        String(product.productId),
+        product.productName || product.name,
+        {
+          variantId: product.variantId ?? "",
+          variantName: product.variantName ? product.variantName : null,
+          label: product.name,
+        },
+      );
+    } else {
+      onSelect(String(product.id), product.name);
+    }
     setOpen(false);
     setQuery("");
   };
@@ -262,6 +304,17 @@ export default function ProductSearchSelect({
                       title={product.name}
                     >
                       <span className="line-clamp-2">{product.name}</span>
+                      {product.meta ? (
+                        <span
+                          className={`block text-[11px] font-normal mt-0.5 line-clamp-1 ${
+                            isActive
+                              ? "text-primary/80"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {product.meta}
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}
@@ -278,7 +331,8 @@ export default function ProductSearchSelect({
                 ) : null}
                 {!loading && !loadingMore && products.length > 0 && !hasMore ? (
                   <p className="px-3 py-2 text-center text-[11px] text-muted-foreground">
-                    Showing all {products.length} products
+                    Showing all {products.length}{" "}
+                    {products.length === 1 ? "option" : "options"}
                   </p>
                 ) : null}
               </>

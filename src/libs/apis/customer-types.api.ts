@@ -5,6 +5,7 @@ import {
   putRequest,
   deleteRequest,
 } from "../../utils/helpers/common/http-methods";
+import { normalizeVariantId } from "../../utils/helpers/models/product-sku";
 
 export const CustomerTypes_APIS = {
   create: (body: any) => postRequest("/v1/customer-types", body),
@@ -21,6 +22,9 @@ export const CustomerTypes_APIS = {
     getRequest(`/v1/customer-types/${id}/prices`, params),
   upsertPrices: (id: string, body: any) =>
     putRequest(`/v1/customer-types/${id}/prices`, body),
-  getProductRate: (id: string, productId: string) =>
-    getRequest(`/v1/customer-types/${id}/product-rate`, { productId }),
+  getProductRate: (id: string, productId: string, variantId?: string | null) =>
+    getRequest(`/v1/customer-types/${id}/product-rate`, {
+      productId,
+      variantId: normalizeVariantId(variantId),
+    }),
 };

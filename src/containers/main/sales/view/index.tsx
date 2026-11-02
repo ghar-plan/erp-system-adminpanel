@@ -260,6 +260,9 @@ export default function SaleView() {
                       Product
                     </th>
                     <th className="px-3 py-2 text-xs font-bold text-muted-foreground">
+                      Variant
+                    </th>
+                    <th className="px-3 py-2 text-xs font-bold text-muted-foreground">
                       Qty
                     </th>
                     {canViewSaleRates ? (
@@ -277,8 +280,15 @@ export default function SaleView() {
                 <tbody className="divide-y divide-border-main">
                   {sale.items.map((item, index) => (
                     <tr key={item.id || `${item.productId}-${index}`}>
-                      <td className="px-3 py-2 font-semibold">
+                      <td className="px-3 py-2 font-semibold break-words">
                         {item.productName || "--"}
+                      </td>
+                      <td className="px-3 py-2 break-words">
+                        {item.variantName ? (
+                          <span className="font-medium">{item.variantName}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-2">{item.quantity ?? "--"}</td>
                       {canViewSaleRates ? (

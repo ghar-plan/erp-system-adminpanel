@@ -57,6 +57,8 @@ export interface CustomerTypeProductPrice {
   customerTypeId: string;
   productId: string;
   productName: string;
+  variantId?: string | null;
+  variantName?: string | null;
   rate: number;
   created_at?: string;
   updated_at?: string;

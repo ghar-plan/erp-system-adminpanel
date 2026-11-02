@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Search, Package, Boxes, ChevronDown, ChevronRight } from "lucide-react";
 import useStocks from "../useHooks";
 import { Stock, StockBatch } from "@/utils/helpers/models/stocks/stock.dto";
@@ -6,6 +6,10 @@ import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
 import { formatMoney } from "@/utils/helpers/models/purchases/purchase.dto";
+import {
+  normalizeVariantId,
+  skuMapKey,
+} from "@/utils/helpers/models/product-sku";
 import { canAccessPurchasePrice } from "@/utils/helpers/permissions/purchase-price-access";
 import useStore from "@/hooks/useStore";
 import ExpiryStatusBadge from "@/components/ui/ExpiryStatusBadge";
@@ -16,6 +20,15 @@ interface StockFilters {
   page: number;
   limit: number;
 }
+
+type StockProductGroup = {
+  productId: string;
+  productName: string;
+  variants: Stock[];
+  available: number;
+  totalPurchased: number;
+  totalSold: number;
+};
 
 const emptyFilters: StockFilters = {
   search: "",
@@ -34,6 +47,45 @@ const formatDate = (value?: string | null) => {
   });
 };
 
+const formatQty = (value?: number | string | null) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "--";
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+};
+
+const groupStocksByProduct = (stocks: Stock[]): StockProductGroup[] => {
+  const order: string[] = [];
+  const map = new Map<string, StockProductGroup>();
+
+  for (const row of stocks || []) {
+    const productId = String(row.productId);
+    let group = map.get(productId);
+    if (!group) {
+      group = {
+        productId,
+        productName: row.productName || productId,
+        variants: [],
+        available: 0,
+        totalPurchased: 0,
+        totalSold: 0,
+      };
+      map.set(productId, group);
+      order.push(productId);
+    }
+    group.variants.push(row);
+    group.available += Number(row.quantity) || 0;
+    group.totalPurchased += Number(row.totalPurchased) || 0;
+    group.totalSold += Number(row.totalSold) || 0;
+    // Prefer a non-empty product name if later rows have a better one
+    if (row.productName?.trim()) group.productName = row.productName.trim();
+  }
+
+  return order.map((id) => map.get(id)!);
+};
+
 export default function StocksListing() {
   const { getStocks, getBatchesByProduct } = useStocks();
   const { getUser } = useStore();
@@ -42,13 +94,22 @@ export default function StocksListing() {
   const [totalElements, setTotalElements] = useState(0);
   const [searchVal, setSearchVal] = useState("");
   const [filters, setFilters] = useState<StockFilters>(emptyFilters);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [batchesByProduct, setBatchesByProduct] = useState<
+  /** Expanded product accordion */
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(
+    null,
+  );
+  /** Expanded variant → FIFO batches */
+  const [expandedVariantKey, setExpandedVariantKey] = useState<string | null>(
+    null,
+  );
+  const [batchesBySku, setBatchesBySku] = useState<
     Record<string, StockBatch[]>
   >({});
   const [loadingBatchesFor, setLoadingBatchesFor] = useState<string | null>(
     null,
   );
+
+  const groups = useMemo(() => groupStocksByProduct(stocks), [stocks]);
 
   const fetchStocks = (currentFilters: StockFilters) => {
     const queryParams: any = {
@@ -66,14 +127,16 @@ export default function StocksListing() {
   const handleApplyFilters = () => {
     const updatedFilters = { ...filters, search: searchVal, page: 1 };
     setFilters(updatedFilters);
-    setExpandedId(null);
+    setExpandedProductId(null);
+    setExpandedVariantKey(null);
     fetchStocks(updatedFilters);
   };
 
   const handleResetFilters = () => {
     setSearchVal("");
     setFilters(emptyFilters);
-    setExpandedId(null);
+    setExpandedProductId(null);
+    setExpandedVariantKey(null);
     fetchStocks(emptyFilters);
   };
 
@@ -85,33 +148,31 @@ export default function StocksListing() {
       limit: pageInfo.limit,
     };
     setFilters(updatedFilters);
-    setExpandedId(null);
+    setExpandedProductId(null);
+    setExpandedVariantKey(null);
     fetchStocks(updatedFilters);
   };
 
-  const formatQty = (value?: number | string | null) => {
-    const n = Number(value);
-    if (!Number.isFinite(n)) return "--";
-    return n.toLocaleString("en-US", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
+  const toggleProduct = (productId: string) => {
+    setExpandedProductId((prev) => (prev === productId ? null : productId));
+    setExpandedVariantKey(null);
   };
 
-  const toggleBatches = async (item: Stock) => {
-    if (expandedId === item.id) {
-      setExpandedId(null);
+  const toggleVariantBatches = async (item: Stock) => {
+    const key = skuMapKey(item.productId, item.variantId);
+    if (expandedVariantKey === key) {
+      setExpandedVariantKey(null);
       return;
     }
-    setExpandedId(item.id);
-    if (batchesByProduct[item.productId]) return;
+    setExpandedVariantKey(key);
+    if (batchesBySku[key]) return;
 
-    setLoadingBatchesFor(item.productId);
-    const batches = await getBatchesByProduct(item.productId);
-    setBatchesByProduct((prev) => ({
-      ...prev,
-      [item.productId]: batches,
-    }));
+    setLoadingBatchesFor(key);
+    const batches = await getBatchesByProduct(
+      item.productId,
+      normalizeVariantId(item.variantId),
+    );
+    setBatchesBySku((prev) => ({ ...prev, [key]: batches }));
     setLoadingBatchesFor(null);
   };
 
@@ -119,10 +180,93 @@ export default function StocksListing() {
     "",
     "Sr No.",
     "Product",
+    "Variants",
     "Available",
     "Total Purchased",
     "Total Sold",
   ];
+
+  const renderBatches = (item: Stock) => {
+    const key = skuMapKey(item.productId, item.variantId);
+    const batches = batchesBySku[key] || [];
+    const loading = loadingBatchesFor === key;
+
+    if (loading) {
+      return (
+        <p className="text-sm text-muted-foreground px-3 py-2">
+          Loading FIFO batches…
+        </p>
+      );
+    }
+    if (!batches.length) {
+      return (
+        <p className="text-sm text-muted-foreground px-3 py-2">
+          No purchase batches for this variant yet.
+        </p>
+      );
+    }
+
+    return (
+      <div className="space-y-2 px-1 py-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          FIFO batches — oldest sold first (this variant only)
+        </p>
+        <div className="overflow-x-auto rounded-lg border border-border-main">
+          <table className="min-w-full text-sm">
+            <thead className="bg-muted-foreground/5">
+              <tr>
+                <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                  Purchased on
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                  Expires on
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                  Expiry status
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                  Qty purchased
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                  Qty left in stock
+                </th>
+                {canViewPurchasePrice ? (
+                  <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                    Per Item
+                  </th>
+                ) : null}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-main">
+              {batches.map((batch) => {
+                const expiry = getExpiryStatus(batch.expiryDate);
+                return (
+                  <tr key={batch.id} className={expiry.toneClass}>
+                    <td className="px-3 py-2">
+                      {formatDate(batch.purchaseDate)}
+                    </td>
+                    <td className="px-3 py-2">
+                      {formatDate(batch.expiryDate)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <ExpiryStatusBadge info={expiry} />
+                    </td>
+                    <td className="px-3 py-2">{formatQty(batch.quantity)}</td>
+                    <td className="px-3 py-2 font-semibold">
+                      {formatQty(batch.remainingQuantity)}
+                    </td>
+                    {canViewPurchasePrice ? (
+                      <td className="px-3 py-2">{formatMoney(batch.rate)}</td>
+                    ) : null}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -132,8 +276,8 @@ export default function StocksListing() {
             Stock
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Track available quantity by purchase batch. Oldest stock is sold
-            first.
+            Stock is tracked per product variant. Sales use FIFO within that
+            variant — oldest purchase batch is sold first.
           </p>
         </div>
       </div>
@@ -169,7 +313,7 @@ export default function StocksListing() {
           </div>
           <div>
             <span className="text-[10px] font-bold text-muted-foreground block uppercase tracking-wider">
-              Products in Stock
+              SKUs in Stock
             </span>
             <span className="text-xl font-bold text-foreground mt-0.5 block">
               {totalElements}
@@ -182,10 +326,10 @@ export default function StocksListing() {
           </div>
           <div>
             <span className="text-[10px] font-bold text-muted-foreground block uppercase tracking-wider">
-              Batches
+              How to read
             </span>
             <span className="text-sm font-semibold text-foreground mt-0.5 block">
-              Expand a row to see qty purchased vs left
+              Expand product → variants → FIFO batches
             </span>
           </div>
         </div>
@@ -206,7 +350,7 @@ export default function StocksListing() {
             />
             <input
               type="search"
-              placeholder="Search by product name or ID..."
+              placeholder="Search by product or variant name..."
               value={searchVal}
               onChange={(e) => setSearchVal(e.target.value)}
               className="common-input pl-10 pr-4 text-sm h-10 w-full"
@@ -233,7 +377,7 @@ export default function StocksListing() {
       </div>
 
       <div className="w-full flex flex-col gap-4">
-        {stocks.length > 0 ? (
+        {groups.length > 0 ? (
           <div className="bg-card rounded-xl border border-border-main overflow-hidden shadow-xs animate-slide-up">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-border-main">
@@ -250,18 +394,16 @@ export default function StocksListing() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-main bg-card text-foreground">
-                  {stocks.map((item, index) => {
-                    const available = Number(item.quantity);
-                    const lowStock = available <= 0;
-                    const isExpanded = expandedId === item.id;
-                    const batches = batchesByProduct[item.productId] || [];
-                    const loading = loadingBatchesFor === item.productId;
+                  {groups.map((group, index) => {
+                    const isExpanded = expandedProductId === group.productId;
+                    const lowStock = group.available <= 0;
+                    const variantCount = group.variants.length;
 
                     return (
-                      <React.Fragment key={item.id}>
+                      <React.Fragment key={group.productId}>
                         <tr
                           className="hover:bg-muted-foreground/5 transition-colors cursor-pointer"
-                          onClick={() => toggleBatches(item)}
+                          onClick={() => toggleProduct(group.productId)}
                         >
                           <td className="table-td w-10 text-muted-foreground">
                             {isExpanded ? (
@@ -274,7 +416,13 @@ export default function StocksListing() {
                             {(filters.page - 1) * filters.limit + index + 1}
                           </td>
                           <td className="table-td font-semibold text-foreground">
-                            {item.productName || "--"}
+                            {group.productName}
+                          </td>
+                          <td className="table-td">
+                            <span className="px-2.5 py-1 text-xs font-bold tracking-wide rounded-md bg-info-bg text-info-text border border-panel-border">
+                              {variantCount}{" "}
+                              {variantCount === 1 ? "variant" : "variants"}
+                            </span>
                           </td>
                           <td className="table-td">
                             <span
@@ -284,101 +432,115 @@ export default function StocksListing() {
                                   : "bg-success-bg text-success-text border border-panel-border"
                               }`}
                             >
-                              {formatQty(available)}
+                              {formatQty(group.available)}
                             </span>
                           </td>
                           <td className="table-td">
-                            {formatQty(item.totalPurchased)}
+                            {formatQty(group.totalPurchased)}
                           </td>
                           <td className="table-td">
-                            {formatQty(item.totalSold)}
+                            {formatQty(group.totalSold)}
                           </td>
                         </tr>
-                        {isExpanded && (
+
+                        {isExpanded ? (
                           <tr className="bg-muted-foreground/[0.03]">
                             <td colSpan={columns.length} className="px-6 py-4">
-                              {loading ? (
-                                <p className="text-sm text-muted-foreground">
-                                  Loading batches?
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                  Variants — click a row for FIFO batches
                                 </p>
-                              ) : batches.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">
-                                  No purchase batches for this product yet.
-                                </p>
-                              ) : (
-                                <div className="space-y-2">
-                                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                    Purchase batches (oldest sold first)
-                                  </p>
-                                  <div className="overflow-x-auto rounded-lg border border-border-main">
-                                    <table className="min-w-full text-sm">
-                                      <thead className="bg-muted-foreground/5">
-                                        <tr>
-                                          <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
-                                            Purchased on
-                                          </th>
-                                          <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
-                                            Expires on
-                                          </th>
-                                          <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
-                                            Expiry status
-                                          </th>
-                                          <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
-                                            Qty purchased
-                                          </th>
-                                          <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
-                                            Qty left in stock
-                                          </th>
-                                          {canViewPurchasePrice ? (
-                                            <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
-                                              Per Item
-                                            </th>
-                                          ) : null}
-                                        </tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-border-main">
-                                        {batches.map((batch) => {
-                                          const expiry = getExpiryStatus(
-                                            batch.expiryDate,
-                                          );
-                                          return (
-                                          <tr
-                                            key={batch.id}
-                                            className={expiry.toneClass}
-                                          >
-                                            <td className="px-3 py-2">
-                                              {formatDate(batch.purchaseDate)}
-                                            </td>
-                                            <td className="px-3 py-2">
-                                              {formatDate(batch.expiryDate)}
-                                            </td>
-                                            <td className="px-3 py-2">
-                                              <ExpiryStatusBadge info={expiry} />
-                                            </td>
-                                            <td className="px-3 py-2">
-                                              {formatQty(batch.quantity)}
-                                            </td>
-                                            <td className="px-3 py-2 font-semibold">
-                                              {formatQty(
-                                                batch.remainingQuantity,
-                                              )}
-                                            </td>
-                                            {canViewPurchasePrice ? (
-                                              <td className="px-3 py-2">
-                                                {formatMoney(batch.rate)}
+                                <div className="overflow-x-auto rounded-lg border border-border-main">
+                                  <table className="min-w-full text-sm">
+                                    <thead className="bg-muted-foreground/5">
+                                      <tr>
+                                        <th className="w-8 px-3 py-2" />
+                                        <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                                          Variant
+                                        </th>
+                                        <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                                          Available
+                                        </th>
+                                        <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                                          Purchased
+                                        </th>
+                                        <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                                          Sold
+                                        </th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border-main">
+                                      {group.variants.map((item) => {
+                                        const key = skuMapKey(
+                                          item.productId,
+                                          item.variantId,
+                                        );
+                                        const isVariantOpen =
+                                          expandedVariantKey === key;
+                                        const available = Number(item.quantity);
+                                        const variantLow = available <= 0;
+
+                                        return (
+                                          <React.Fragment key={item.id}>
+                                            <tr
+                                              className="hover:bg-muted-foreground/5 transition-colors cursor-pointer"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleVariantBatches(item);
+                                              }}
+                                            >
+                                              <td className="px-3 py-2 text-muted-foreground">
+                                                {isVariantOpen ? (
+                                                  <ChevronDown size={14} />
+                                                ) : (
+                                                  <ChevronRight size={14} />
+                                                )}
                                               </td>
+                                              <td className="px-3 py-2 font-medium">
+                                                {item.variantName || (
+                                                  <span className="text-muted-foreground">
+                                                    — (product-level)
+                                                  </span>
+                                                )}
+                                              </td>
+                                              <td className="px-3 py-2">
+                                                <span
+                                                  className={`px-2 py-0.5 text-xs font-bold rounded-md ${
+                                                    variantLow
+                                                      ? "bg-danger-bg text-danger-text"
+                                                      : "bg-success-bg text-success-text"
+                                                  }`}
+                                                >
+                                                  {formatQty(available)}
+                                                </span>
+                                              </td>
+                                              <td className="px-3 py-2">
+                                                {formatQty(item.totalPurchased)}
+                                              </td>
+                                              <td className="px-3 py-2">
+                                                {formatQty(item.totalSold)}
+                                              </td>
+                                            </tr>
+                                            {isVariantOpen ? (
+                                              <tr>
+                                                <td
+                                                  colSpan={5}
+                                                  className="bg-card px-3 py-2"
+                                                >
+                                                  {renderBatches(item)}
+                                                </td>
+                                              </tr>
                                             ) : null}
-                                          </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
-                                  </div>
+                                          </React.Fragment>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
                                 </div>
-                              )}
+                              </div>
                             </td>
                           </tr>
-                        )}
+                        ) : null}
                       </React.Fragment>
                     );
                   })}

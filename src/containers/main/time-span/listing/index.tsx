@@ -1,7 +1,19 @@
-import React, { useEffect, useState } from "react";
-import { Search, Save, Loader2, TimerReset, Infinity } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Search,
+  Save,
+  Loader2,
+  TimerReset,
+  Infinity,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import useTimeSpan from "../useHooks";
-import { GharplansProduct } from "@/utils/helpers/models/purchases/purchase.dto";
+import {
+  ProductSku,
+  groupSkusByProduct,
+} from "@/utils/helpers/models/product-sku";
+import { formatSkuDetails } from "@/utils/helpers/models/product-sku-options";
 import {
   ProductLifespan,
   formatLifespanLabel,
@@ -31,7 +43,7 @@ export default function TimeSpanListing() {
   const { getProducts, getLifespanMap, upsertLifespan, clearLifespan } =
     useTimeSpan();
 
-  const [products, setProducts] = useState<GharplansProduct[]>([]);
+  const [products, setProducts] = useState<ProductSku[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [lifespanMap, setLifespanMap] = useState<
     Record<string, ProductLifespan>
@@ -39,6 +51,8 @@ export default function TimeSpanListing() {
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const groups = useMemo(() => groupSkusByProduct(products), [products]);
 
   const [searchVal, setSearchVal] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
@@ -92,8 +106,8 @@ export default function TimeSpanListing() {
   useEffect(() => {
     setDrafts((prev) => {
       const next = { ...prev };
-      for (const product of products) {
-        const pid = String(product.id);
+      for (const sku of products) {
+        const pid = sku.skuKey;
         if (next[pid]) continue;
         const saved = lifespanMap[pid];
         next[pid] = {
@@ -137,8 +151,8 @@ export default function TimeSpanListing() {
     }));
   };
 
-  const handleSave = async (product: GharplansProduct) => {
-    const pid = String(product.id);
+  const handleSave = async (sku: ProductSku) => {
+    const pid = sku.skuKey;
     const draft = drafts[pid] || emptyDraft();
     const years = toPart(draft.years);
     const months = toPart(draft.months);
@@ -155,8 +169,10 @@ export default function TimeSpanListing() {
 
     setSavingId(pid);
     const ok = await upsertLifespan({
-      productId: pid,
-      productName: product.name,
+      productId: sku.productId,
+      productName: sku.productName,
+      variantId: sku.variantId,
+      variantName: sku.variantName,
       years,
       months,
       days,
@@ -176,17 +192,19 @@ export default function TimeSpanListing() {
     }
   };
 
-  const handleSetLifetime = async (product: GharplansProduct) => {
-    const pid = String(product.id);
+  const handleSetLifetime = async (sku: ProductSku) => {
+    const pid = sku.skuKey;
     setSavingId(pid);
     const existing = lifespanMap[pid];
     let ok = false;
     if (existing) {
-      ok = await clearLifespan(pid);
+      ok = await clearLifespan(sku.productId, sku.variantId);
     } else {
       ok = await upsertLifespan({
-        productId: pid,
-        productName: product.name,
+        productId: sku.productId,
+        productName: sku.productName,
+        variantId: sku.variantId,
+        variantName: sku.variantName,
         years: 0,
         months: 0,
         days: 0,
@@ -197,6 +215,106 @@ export default function TimeSpanListing() {
       setDrafts((prev) => ({ ...prev, [pid]: emptyDraft() }));
       await loadLifespans();
     }
+  };
+
+  const toggleExpanded = (productId: string) =>
+    setExpanded((prev) => ({ ...prev, [productId]: !prev[productId] }));
+
+  const renderVariantRow = (sku: ProductSku) => {
+    const pid = sku.skuKey;
+    const draft = drafts[pid] || emptyDraft();
+    const saved = lifespanMap[pid];
+    const statusLabel = formatLifespanLabel(
+      saved?.years,
+      saved?.months,
+      saved?.days,
+    );
+    const isLifetime = statusLabel === "Lifetime";
+    const isSaving = savingId === pid;
+
+    return (
+      <tr key={pid} className="align-top">
+        <td className="px-3 py-3 text-sm font-medium break-words whitespace-normal">
+          {sku.variantName || <span className="text-muted-foreground">—</span>}
+        </td>
+        <td className="px-3 py-3 text-xs text-muted-foreground break-words whitespace-normal">
+          {formatSkuDetails(sku) || "—"}
+        </td>
+        <td className="px-3 py-3">
+          <div className="flex flex-wrap items-end gap-2">
+            {[
+              { key: "years" as const, label: "Years", value: draft.years },
+              { key: "months" as const, label: "Months", value: draft.months },
+              { key: "days" as const, label: "Days", value: draft.days },
+            ].map((field) => (
+              <div key={field.key} className="flex flex-col gap-1">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                  {field.label}
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="0"
+                  value={field.value}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^\d]/g, "");
+                    updateDraft(pid, { [field.key]: cleaned });
+                  }}
+                  className="common-input text-sm h-9 w-[72px] text-center appearance-none"
+                />
+              </div>
+            ))}
+          </div>
+        </td>
+        <td className="px-3 py-3">
+          <span
+            className={`inline-flex max-w-full items-center gap-1.5 px-2.5 py-1 text-xs font-bold tracking-wide rounded-md whitespace-normal break-words ${
+              isLifetime
+                ? "bg-info-bg text-info-text border border-panel-border"
+                : "bg-warning-bg text-warning-text border border-panel-border"
+            }`}
+          >
+            {isLifetime ? (
+              <Infinity size={12} className="shrink-0" />
+            ) : (
+              <TimerReset size={12} className="shrink-0" />
+            )}
+            {statusLabel}
+          </span>
+        </td>
+        <td className="px-3 py-3">
+          <Can permission={PERMISSIONS.PRODUCT_LIFESPANS_UPDATE}>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => handleSave(sku)}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-50 cursor-pointer"
+                title="Save time span"
+              >
+                {isSaving ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Save size={14} />
+                )}
+                Save
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => handleSetLifetime(sku)}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border-main bg-card text-foreground text-xs font-semibold hover:bg-muted-foreground/5 disabled:opacity-50 cursor-pointer"
+                title="Set as lifetime"
+              >
+                <Infinity size={14} />
+                Lifetime
+              </button>
+            </div>
+          </Can>
+        </td>
+      </tr>
+    );
   };
 
   return (
@@ -264,144 +382,106 @@ export default function TimeSpanListing() {
         ) : products.length > 0 ? (
           <div className="bg-card rounded-xl border border-border-main overflow-hidden shadow-xs animate-slide-up">
             <div className="overflow-x-auto">
-              <table className="min-w-full table-fixed divide-y divide-border-main">
+              <table className="min-w-full divide-y divide-border-main">
                 <thead className="bg-muted-foreground/5">
                   <tr className="text-left">
-                    <th className="w-16 px-4 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                      Sr
-                    </th>
-                    <th className="w-[32%] min-w-[220px] px-4 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Product
-                    </th>
-                    <th className="w-[38%] min-w-[280px] px-4 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Duration (Y / M / D)
-                    </th>
-                    <th className="w-[14%] min-w-[140px] px-4 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                      Status
-                    </th>
-                    <th className="w-[16%] min-w-[180px] px-4 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                      Actions
-                    </th>
+                    {["", "Sr", "Product", "Variants", "Time span set"].map(
+                      (column, idx) => (
+                        <th
+                          key={idx}
+                          className="px-6 py-4 text-xs font-bold text-left text-muted-foreground uppercase tracking-wider whitespace-nowrap"
+                        >
+                          {column}
+                        </th>
+                      ),
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-main bg-card text-foreground">
-                  {products.map((product, index) => {
-                    const pid = String(product.id);
-                    const draft = drafts[pid] || emptyDraft();
-                    const saved = lifespanMap[pid];
-                    const statusLabel = formatLifespanLabel(
-                      saved?.years,
-                      saved?.months,
-                      saved?.days,
-                    );
-                    const isLifetime = statusLabel === "Lifetime";
-                    const isSaving = savingId === pid;
+                  {groups.map((group, index) => {
+                    const isExpanded = !!expanded[group.productId];
+                    const variantCount = group.variants.length;
+                    const setCount = group.variants.filter(
+                      (v) => !!lifespanMap[v.skuKey],
+                    ).length;
+                    const allSet = setCount === variantCount;
 
                     return (
-                      <tr
-                        key={pid}
-                        className="hover:bg-muted-foreground/5 transition-colors align-top"
-                      >
-                        <td className="px-4 py-4 text-sm whitespace-nowrap">
-                          {(page - 1) * limit + index + 1}
-                        </td>
-                        <td className="px-4 py-4">
-                          <p
-                            className="text-sm font-semibold text-foreground leading-snug break-words whitespace-normal"
-                            title={product.name}
-                          >
-                            {product.name}
-                          </p>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex flex-wrap items-end gap-2">
-                            {[
-                              {
-                                key: "years" as const,
-                                label: "Years",
-                                value: draft.years,
-                              },
-                              {
-                                key: "months" as const,
-                                label: "Months",
-                                value: draft.months,
-                              },
-                              {
-                                key: "days" as const,
-                                label: "Days",
-                                value: draft.days,
-                              },
-                            ].map((field) => (
-                              <div key={field.key} className="flex flex-col gap-1">
-                                <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                                  {field.label}
-                                </span>
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  pattern="[0-9]*"
-                                  placeholder="0"
-                                  value={field.value}
-                                  onChange={(e) => {
-                                    const cleaned = e.target.value.replace(
-                                      /[^\d]/g,
-                                      "",
-                                    );
-                                    updateDraft(pid, { [field.key]: cleaned });
-                                  }}
-                                  className="common-input text-sm h-9 w-[72px] text-center appearance-none"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={`inline-flex max-w-full items-center gap-1.5 px-2.5 py-1 text-xs font-bold tracking-wide rounded-md whitespace-normal break-words ${
-                              isLifetime
-                                ? "bg-info-bg text-info-text border border-panel-border"
-                                : "bg-warning-bg text-warning-text border border-panel-border"
-                            }`}
-                          >
-                            {isLifetime ? (
-                              <Infinity size={12} className="shrink-0" />
+                      <React.Fragment key={group.productId}>
+                        <tr
+                          className="hover:bg-muted-foreground/5 transition-colors cursor-pointer"
+                          onClick={() => toggleExpanded(group.productId)}
+                        >
+                          <td className="table-td w-10 text-muted-foreground">
+                            {isExpanded ? (
+                              <ChevronDown size={16} />
                             ) : (
-                              <TimerReset size={12} className="shrink-0" />
+                              <ChevronRight size={16} />
                             )}
-                            {statusLabel}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <Can permission={PERMISSIONS.PRODUCT_LIFESPANS_UPDATE}>
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                disabled={isSaving}
-                                onClick={() => handleSave(product)}
-                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-50 cursor-pointer"
-                                title="Save time span"
-                              >
-                                {isSaving ? (
-                                  <Loader2 size={14} className="animate-spin" />
-                                ) : (
-                                  <Save size={14} />
-                                )}
-                                Save
-                              </button>
-                              <button
-                                type="button"
-                                disabled={isSaving}
-                                onClick={() => handleSetLifetime(product)}
-                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border-main bg-card text-foreground text-xs font-semibold hover:bg-muted-foreground/5 disabled:opacity-50 cursor-pointer"
-                                title="Set as lifetime"
-                              >
-                                <Infinity size={14} />
-                                Lifetime
-                              </button>
-                            </div>
-                          </Can>
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="table-td">
+                            {(page - 1) * limit + index + 1}
+                          </td>
+                          <td className="table-td font-semibold text-foreground">
+                            {group.productName}
+                          </td>
+                          <td className="table-td">
+                            <span className="px-2.5 py-1 text-xs font-bold tracking-wide rounded-md bg-info-bg text-info-text border border-panel-border">
+                              {variantCount}{" "}
+                              {variantCount === 1 ? "variant" : "variants"}
+                            </span>
+                          </td>
+                          <td className="table-td">
+                            <span
+                              className={`px-2.5 py-1 text-xs font-bold tracking-wide rounded-md border border-panel-border ${
+                                allSet
+                                  ? "bg-success-bg text-success-text"
+                                  : setCount > 0
+                                    ? "bg-warning-bg text-warning-text"
+                                    : "bg-muted-foreground/5 text-muted-foreground"
+                              }`}
+                            >
+                              {setCount} / {variantCount} set
+                            </span>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="bg-muted-foreground/[0.03]">
+                            <td colSpan={5} className="px-6 py-4">
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                  Variant time spans
+                                </p>
+                                <div className="overflow-x-auto rounded-lg border border-border-main">
+                                  <table className="min-w-full text-sm">
+                                    <thead className="bg-muted-foreground/5">
+                                      <tr>
+                                        {[
+                                          "Variant",
+                                          "Details",
+                                          "Duration (Y / M / D)",
+                                          "Status",
+                                          "Actions",
+                                        ].map((column) => (
+                                          <th
+                                            key={column}
+                                            className="px-3 py-2 text-left text-xs font-bold text-muted-foreground whitespace-nowrap"
+                                          >
+                                            {column}
+                                          </th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border-main">
+                                      {group.variants.map(renderVariantRow)}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>

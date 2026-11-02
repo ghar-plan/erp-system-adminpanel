@@ -8,6 +8,7 @@ import {
   ProductLifespan,
   ProductLifespanAvailability,
 } from "@/utils/helpers/models/product-lifespans/product-lifespan.dto";
+import { extractSkusFromResponse } from "@/utils/helpers/models/product-sku-options";
 
 const useTimeSpan = () => {
   const getProducts = async (
@@ -18,7 +19,7 @@ const useTimeSpan = () => {
     const response = await Gharplans_APIS.getProducts(params);
     const { status = false, data = [] } = response || {};
     if (status && data) {
-      setData(data);
+      setData(extractSkusFromResponse(response));
       setTotalElements?.(response?.total ?? data.length);
     } else {
       setData([]);
@@ -37,9 +38,13 @@ const useTimeSpan = () => {
 
   const getByProduct = async (
     productId: string,
+    variantId: string = "",
   ): Promise<ProductLifespanAvailability | null> => {
     if (!productId) return null;
-    const response = await ProductLifespans_APIS.getByProduct(productId);
+    const response = await ProductLifespans_APIS.getByProduct(
+      productId,
+      variantId,
+    );
     const { status = false, data = null } = response || {};
     if (status && data) return data as ProductLifespanAvailability;
     return null;
@@ -48,6 +53,8 @@ const useTimeSpan = () => {
   const upsertLifespan = async (body: {
     productId: string;
     productName: string;
+    variantId: string;
+    variantName: string | null;
     years?: number;
     months?: number;
     days?: number;
@@ -64,8 +71,8 @@ const useTimeSpan = () => {
     return false;
   };
 
-  const clearLifespan = async (productId: string) => {
-    const response = await ProductLifespans_APIS.clear(productId);
+  const clearLifespan = async (productId: string, variantId: string = "") => {
+    const response = await ProductLifespans_APIS.clear(productId, variantId);
     const { status = false, message = "" } = response || {};
     if (status) {
       successToaster(message || "Set to lifetime");

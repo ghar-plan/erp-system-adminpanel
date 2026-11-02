@@ -10,5 +10,7 @@ export const Purchases_APIS = {
   getAll: (params: any = {}) => getRequest("/v1/purchases", params),
   getById: (id: string) => getRequest(`/v1/purchases/${id}`),
   update: (id: string, body: any) => patchRequest(`/v1/purchases/${id}`, body),
+  post: (id: string, body: any = {}) =>
+    postRequest(`/v1/purchases/${id}/post`, body),
   delete: (id: string) => deleteRequest(`/v1/purchases/${id}`),
 };

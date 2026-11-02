@@ -7,6 +7,8 @@ export interface DocumentItem {
   id?: string;
   productId: string;
   productName: string;
+  variantId?: string | null;
+  variantName?: string | null;
   quantity: number;
   rate: number;
   lineTotal?: number;

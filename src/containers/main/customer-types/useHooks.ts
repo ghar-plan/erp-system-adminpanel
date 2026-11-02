@@ -4,6 +4,7 @@ import {
   successToaster,
   confirmationPopup,
 } from "@/utils/helpers/common/alert-service";
+import { extractSkusFromResponse } from "@/utils/helpers/models/product-sku-options";
 
 const useCustomerTypes = () => {
   const getCustomerTypes = async (
@@ -159,7 +160,8 @@ const useCustomerTypes = () => {
     const response = await Gharplans_APIS.getProducts(params);
     const { status = false, data = [] } = response || {};
     if (status && data) {
-      setData(data);
+      // One row per SKU (variant); pagination stays product-based.
+      setData(extractSkusFromResponse(response));
       setTotalElements?.(response?.total ?? data.length);
     } else {
       setData([]);

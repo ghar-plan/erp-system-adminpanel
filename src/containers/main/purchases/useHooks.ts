@@ -2,6 +2,7 @@ import { Purchases_APIS } from "@/libs/apis/purchases.api";
 import { PurchaseSuppliers_APIS } from "@/libs/apis/purchase-suppliers.api";
 import { Gharplans_APIS } from "@/libs/apis/gharplans.api";
 import { useNavigate } from "react-router-dom";
+
 import {
   successToaster,
   confirmationPopup,
@@ -55,6 +56,16 @@ const usePurchases = () => {
     }
   };
 
+  const postPurchase = async (id: string, body: any = {}) => {
+    const response = await Purchases_APIS.post(id, body);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message || "Purchase posted successfully");
+      navigate(siteRoutes.purchasesList);
+      return response;
+    }
+  };
+
   const deletePurchase = async (
     id: string,
     name: string,
@@ -100,6 +111,12 @@ const usePurchases = () => {
     }
   };
 
+  const getBrands = async (setData: Function) => {
+    const response = await Gharplans_APIS.getBrands();
+    const { status = false, data = [] } = response || {};
+    setData(status && data ? data : []);
+  };
+
   const createPurchaseSupplier = async (name: string) => {
     const response = await PurchaseSuppliers_APIS.create({ name: name.trim() });
     const { status = false, message = "", data } = response || {};
@@ -142,9 +159,11 @@ const usePurchases = () => {
     getPurchaseById,
     createPurchase,
     updatePurchase,
+    postPurchase,
     deletePurchase,
     getProducts,
     getPurchaseSuppliers,
+    getBrands,
     createPurchaseSupplier,
     updatePurchaseSupplier,
     deletePurchaseSupplier,

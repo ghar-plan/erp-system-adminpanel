@@ -23,9 +23,10 @@ const useStocks = () => {
 
   const getStockByProduct = async (
     productId: string,
+    variantId: string = "",
   ): Promise<StockAvailability | null> => {
     if (!productId) return null;
-    const response = await Stocks_APIS.getByProduct(productId);
+    const response = await Stocks_APIS.getByProduct(productId, variantId);
     const { status = false, data = null } = response || {};
     if (status && data) {
       return data as StockAvailability;
@@ -35,9 +36,13 @@ const useStocks = () => {
 
   const getBatchesByProduct = async (
     productId: string,
+    variantId: string = "",
   ): Promise<StockBatch[]> => {
     if (!productId) return [];
-    const response = await Stocks_APIS.getBatchesByProduct(productId);
+    const response = await Stocks_APIS.getBatchesByProduct(
+      productId,
+      variantId,
+    );
     const { status = false, data = [] } = response || {};
     if (status && Array.isArray(data)) {
       return data as StockBatch[];

@@ -9,7 +9,9 @@ import {
   FileText,
 } from "lucide-react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import ProductSearchSelect from "@/components/ui/ProductSearchSelect";
+import ProductVariantSelect, {
+  ProductVariantValue,
+} from "@/components/ui/ProductVariantSelect";
 import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
 import { Can } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
@@ -20,7 +22,7 @@ import {
   computeDocumentTotal,
   generateDocumentNo,
 } from "@/utils/helpers/models/documents/document.dto";
-import { GharplansProduct } from "@/utils/helpers/models/purchases/purchase.dto";
+import { normalizeVariantId } from "@/utils/helpers/models/product-sku";
 import { formatMoney } from "@/utils/helpers/money";
 import { validatePakistanMobile } from "@/utils/helpers/common/phone";
 import { errorToaster } from "@/utils/helpers/common/alert-service";
@@ -30,6 +32,10 @@ import useDocuments from "../useHooks";
 type LineInput = {
   productId: string;
   productName: string;
+  variantId: string;
+  variantName: string;
+  /** UI-only: product has several variants and none chosen yet. */
+  variantRequired?: boolean;
   quantity: number | string;
   rate: number | string;
 };
@@ -49,6 +55,9 @@ const today = () => new Date().toISOString().slice(0, 10);
 const emptyLine = (): LineInput => ({
   productId: "",
   productName: "",
+  variantId: "",
+  variantName: "",
+  variantRequired: false,
   quantity: "",
   rate: "",
 });
@@ -60,7 +69,7 @@ type Props = {
 export default function DocumentCreate({ type }: Props) {
   const navigate = useNavigate();
   const { isLoading } = useStore();
-  const { createDocument, downloadPdf, getProducts } = useDocuments();
+  const { createDocument, downloadPdf } = useDocuments();
   const [submitting, setSubmitting] = useState(false);
 
   const isBill = type === DocumentType.BILL;
@@ -96,28 +105,23 @@ export default function DocumentCreate({ type }: Props) {
   const items = watch("items");
   const subtotal = computeDocumentTotal(items || []);
 
-  const loadProductsForSelect = async (params: {
-    name?: string;
-    limit?: number;
-    offset?: number;
-  }) => {
-    let products: GharplansProduct[] = [];
-    let total = 0;
-    await getProducts(
-      (data: GharplansProduct[]) => {
-        products = data;
-      },
-      params,
-      (count: number) => {
-        total = count;
-      },
+  const handleProductVariantChange = (
+    index: number,
+    value: ProductVariantValue,
+  ) => {
+    setValue(`items.${index}.productId`, value.productId, {
+      shouldValidate: true,
+    });
+    setValue(`items.${index}.productName`, value.productName, {
+      shouldValidate: true,
+    });
+    setValue(
+      `items.${index}.variantId`,
+      normalizeVariantId(value.variantId),
+      { shouldValidate: true },
     );
-    return { products, total };
-  };
-
-  const handleProductSelect = (index: number, id: string, name: string) => {
-    setValue(`items.${index}.productId`, id, { shouldValidate: true });
-    setValue(`items.${index}.productName`, name, { shouldValidate: true });
+    setValue(`items.${index}.variantName`, value.variantName || "");
+    setValue(`items.${index}.variantRequired`, !!value.requiresVariant);
   };
 
   const onSubmitForm = async (data: DocumentFormInputs) => {
@@ -126,6 +130,8 @@ export default function DocumentCreate({ type }: Props) {
       .map((item) => ({
         productId: String(item.productId),
         productName: item.productName,
+        variantId: normalizeVariantId(item.variantId),
+        variantName: item.variantName || null,
         quantity: Number(item.quantity),
         rate: Number(item.rate),
       }));
@@ -293,7 +299,7 @@ export default function DocumentCreate({ type }: Props) {
             <div>
               <h2 className="text-base font-bold text-foreground">Products</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Select product; enter quantity and rate manually
+                Select product and variant; enter quantity and rate manually
               </p>
             </div>
             <button
@@ -338,16 +344,18 @@ export default function DocumentCreate({ type }: Props) {
                   <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                     <div className="md:col-span-2">
                       <label className="mb-2 block ui-form-label">
-                        Product Name
+                        Product / Variant
                       </label>
-                      <ProductSearchSelect
-                        value={String(line?.productId || "")}
-                        selectedName={line?.productName || ""}
-                        onSelect={(id, name) =>
-                          handleProductSelect(index, id, name)
+                      <ProductVariantSelect
+                        productId={String(line?.productId || "")}
+                        productName={line?.productName || ""}
+                        variantId={line?.variantId || ""}
+                        variantName={line?.variantName || null}
+                        onChange={(value) =>
+                          handleProductVariantChange(index, value)
                         }
-                        onLoad={loadProductsForSelect}
-                        error={errors.items?.[index]?.productId?.message}
+                        productError={errors.items?.[index]?.productId?.message}
+                        variantError={errors.items?.[index]?.variantId?.message}
                       />
                       <input
                         type="hidden"
@@ -358,6 +366,19 @@ export default function DocumentCreate({ type }: Props) {
                       <input
                         type="hidden"
                         {...register(`items.${index}.productName` as const)}
+                      />
+                      <input
+                        type="hidden"
+                        {...register(`items.${index}.variantId` as const, {
+                          validate: (v, formValues) =>
+                            !formValues.items?.[index]?.variantRequired ||
+                            !!v ||
+                            "Variant is required",
+                        })}
+                      />
+                      <input
+                        type="hidden"
+                        {...register(`items.${index}.variantName` as const)}
                       />
                     </div>
 

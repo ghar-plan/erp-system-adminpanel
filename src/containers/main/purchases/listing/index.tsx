@@ -4,8 +4,11 @@ import { Plus, Search, Eye, Pencil, Trash2, ShoppingBag } from "lucide-react";
 import usePurchases from "../useHooks";
 import {
   Purchase,
+  COMMERCE_ENTRY_STATUS_OPTIONS,
   formatMoney,
+  formatPurchaseBrandsLabel,
   formatPurchaseProductsLabel,
+  isDraftEntry,
   SOURCE_PAYMENT_OPTIONS,
 } from "@/utils/helpers/models/purchases/purchase.dto";
 import Pagination from "@/components/particles/table/pagination";
@@ -23,6 +26,9 @@ import { getWorstExpiryStatus } from "@/utils/helpers/common/expiry-status";
 interface PurchaseFilters {
   search: string;
   sourcePayment: string;
+  status: string;
+  brandId: string;
+  supplierName: string;
   startDate: string;
   endDate: string;
   page: number;
@@ -32,6 +38,9 @@ interface PurchaseFilters {
 const emptyFilters: PurchaseFilters = {
   search: "",
   sourcePayment: "",
+  status: "",
+  brandId: "",
+  supplierName: "",
   startDate: "",
   endDate: "",
   page: 1,
@@ -42,7 +51,8 @@ export default function PurchasesListing() {
   const [searchParams] = useSearchParams();
   const { hasPermission } = usePermissions();
   const { getUser } = useStore();
-  const { getPurchases, deletePurchase } = usePurchases();
+  const { getPurchases, deletePurchase, getPurchaseSuppliers, getBrands } =
+    usePurchases();
   const canView = hasPermission(PERMISSIONS.PURCHASES_READ);
   const canUpdate = hasPermission(PERMISSIONS.PURCHASES_UPDATE);
   const canDelete = hasPermission(PERMISSIONS.PURCHASES_DELETE);
@@ -51,6 +61,8 @@ export default function PurchasesListing() {
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [totalElements, setTotalElements] = useState(0);
+  const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
+  const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
 
   const [searchVal, setSearchVal] = useState("");
   const [filters, setFilters] = useState<PurchaseFilters>({
@@ -67,6 +79,10 @@ export default function PurchasesListing() {
     if (currentFilters.search) queryParams.search = currentFilters.search;
     if (currentFilters.sourcePayment)
       queryParams.sourcePayment = currentFilters.sourcePayment;
+    if (currentFilters.status) queryParams.entryStatus = currentFilters.status;
+    if (currentFilters.brandId) queryParams.brandId = currentFilters.brandId;
+    if (currentFilters.supplierName)
+      queryParams.supplierName = currentFilters.supplierName;
     if (currentFilters.startDate) queryParams.startDate = currentFilters.startDate;
     if (currentFilters.endDate) queryParams.endDate = currentFilters.endDate;
 
@@ -74,8 +90,13 @@ export default function PurchasesListing() {
   };
 
   useEffect(() => {
+    getBrands(setBrands);
+    getPurchaseSuppliers(setVendors);
     const initial = {
       ...emptyFilters,
+      status: searchParams.get("status") || "",
+      brandId: searchParams.get("brandId") || "",
+      supplierName: searchParams.get("supplierName") || "",
       startDate: searchParams.get("startDate") || "",
       endDate: searchParams.get("endDate") || "",
       page: 1,
@@ -138,6 +159,8 @@ export default function PurchasesListing() {
 
   const columns = [
     "Sr No.",
+    "Status",
+    "Brand",
     "Supplier",
     "Product",
     "Quantity",
@@ -256,6 +279,69 @@ export default function PurchasesListing() {
         </div>
 
         <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[150px]">
+          <label htmlFor="purchaseStatus" className="text-xs text-foreground font-medium whitespace-nowrap">
+            Entry Status
+          </label>
+          <select
+            id="purchaseStatus"
+            value={filters.status}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, status: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
+          >
+            <option value="">All</option>
+            {COMMERCE_ENTRY_STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label htmlFor="brandId" className="text-xs text-foreground font-medium whitespace-nowrap">
+            Brand
+          </label>
+          <select
+            id="brandId"
+            value={filters.brandId}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, brandId: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-44 bg-card"
+          >
+            <option value="">All Brands</option>
+            {brands.map((brand) => (
+              <option key={brand.id} value={brand.id}>
+                {brand.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label htmlFor="supplierName" className="text-xs text-foreground font-medium whitespace-nowrap">
+            Vendor
+          </label>
+          <select
+            id="supplierName"
+            value={filters.supplierName}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, supplierName: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-44 bg-card"
+          >
+            <option value="">All Vendors</option>
+            {vendors.map((vendor) => (
+              <option key={vendor.id} value={vendor.name}>
+                {vendor.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[150px]">
           <label htmlFor="startDate" className="text-xs text-foreground font-medium">
             From
           </label>
@@ -331,6 +417,20 @@ export default function PurchasesListing() {
                     >
                       <td className="table-td">
                         {(filters.page - 1) * filters.limit + index + 1}
+                      </td>
+                      <td className="table-td">
+                        <span
+                          className={`px-2.5 py-1 text-xs font-bold tracking-wide rounded-md ${
+                            isDraftEntry(purchase?.status)
+                              ? "bg-warning-bg text-warning-text border border-panel-border"
+                              : "bg-success-bg text-success-text border border-panel-border"
+                          }`}
+                        >
+                          {isDraftEntry(purchase?.status) ? "Draft" : "Posted"}
+                        </span>
+                      </td>
+                      <td className="table-td">
+                        {formatPurchaseBrandsLabel(purchase)}
                       </td>
                       <td className="table-td font-semibold text-foreground">
                         {purchase?.supplierName || "--"}

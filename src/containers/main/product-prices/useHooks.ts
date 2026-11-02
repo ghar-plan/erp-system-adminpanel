@@ -8,6 +8,7 @@ import {
   ProductPrice,
   ProductPriceHistory,
 } from "@/utils/helpers/models/product-prices/product-price.dto";
+import { extractSkusFromResponse } from "@/utils/helpers/models/product-sku-options";
 
 const useProductPrices = () => {
   const getProducts = async (
@@ -18,7 +19,8 @@ const useProductPrices = () => {
     const response = await Gharplans_APIS.getProducts(params);
     const { status = false, data = [] } = response || {};
     if (status && data) {
-      setData(data);
+      // One row per SKU (variant); pagination stays product-based.
+      setData(extractSkusFromResponse(response));
       setTotalElements?.(response?.total ?? data.length);
     } else {
       setData([]);
@@ -37,9 +39,10 @@ const useProductPrices = () => {
 
   const getHistory = async (
     productId: string,
+    variantId: string = "",
   ): Promise<ProductPriceHistory[]> => {
     if (!productId) return [];
-    const response = await ProductPrices_APIS.getHistory(productId);
+    const response = await ProductPrices_APIS.getHistory(productId, variantId);
     const { status = false, data = [] } = response || {};
     if (status && Array.isArray(data)) return data as ProductPriceHistory[];
     return [];
@@ -48,6 +51,8 @@ const useProductPrices = () => {
   const upsertPrice = async (body: {
     productId: string;
     productName: string;
+    variantId: string;
+    variantName: string | null;
     rate: number;
     effectiveFrom?: string;
   }) => {
@@ -63,8 +68,8 @@ const useProductPrices = () => {
     return false;
   };
 
-  const clearPrice = async (productId: string) => {
-    const response = await ProductPrices_APIS.clear(productId);
+  const clearPrice = async (productId: string, variantId: string = "") => {
+    const response = await ProductPrices_APIS.clear(productId, variantId);
     const { status = false, message = "" } = response || {};
     if (status) {
       successToaster(message || "Product price removed");

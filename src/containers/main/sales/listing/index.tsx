@@ -4,8 +4,11 @@ import { Plus, Search, Eye, Pencil, Trash2, ShoppingCart } from "lucide-react";
 import useSales from "../useHooks";
 import {
   Sale,
+  COMMERCE_ENTRY_STATUS_OPTIONS,
   computeSaleSubtotal,
+  formatSaleBrandsLabel,
   formatSaleProductsLabel,
+  isDraftEntry,
 } from "@/utils/helpers/models/sales/sale.dto";
 import {
   formatMoney,
@@ -31,6 +34,9 @@ interface SaleFilters {
   search: string;
   customerTypeId: string;
   sourcePayment: string;
+  status: string;
+  brandId: string;
+  supplierName: string;
   outstandingOnly: boolean;
   startDate: string;
   endDate: string;
@@ -42,6 +48,9 @@ const emptyFilters: SaleFilters = {
   search: "",
   customerTypeId: "",
   sourcePayment: "",
+  status: "",
+  brandId: "",
+  supplierName: "",
   outstandingOnly: false,
   startDate: "",
   endDate: "",
@@ -52,6 +61,9 @@ const emptyFilters: SaleFilters = {
 const filtersFromSearchParams = (searchParams: URLSearchParams): SaleFilters => ({
   ...emptyFilters,
   sourcePayment: searchParams.get("sourcePayment") || "",
+  status: searchParams.get("status") || "",
+  brandId: searchParams.get("brandId") || "",
+  supplierName: searchParams.get("supplierName") || "",
   outstandingOnly:
     searchParams.get("outstandingOnly") === "true" ||
     searchParams.get("outstandingOnly") === "1",
@@ -65,7 +77,8 @@ export default function SalesListing() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { hasPermission } = usePermissions();
   const { getUser } = useStore();
-  const { getSales, deleteSale, getCustomerTypes } = useSales();
+  const { getSales, deleteSale, getCustomerTypes, getBrands, getVendors } =
+    useSales();
   const canView = hasPermission(PERMISSIONS.SALES_READ);
   const canUpdate = hasPermission(PERMISSIONS.SALES_UPDATE);
   const canDelete =
@@ -76,6 +89,8 @@ export default function SalesListing() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [customerTypes, setCustomerTypes] = useState<{ id: string; name: string }[]>([]);
+  const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
+  const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
 
   const [searchVal, setSearchVal] = useState("");
   const [filters, setFilters] = useState<SaleFilters>(() =>
@@ -85,6 +100,9 @@ export default function SalesListing() {
   const syncUrl = (next: SaleFilters) => {
     const params = new URLSearchParams();
     if (next.sourcePayment) params.set("sourcePayment", next.sourcePayment);
+    if (next.status) params.set("status", next.status);
+    if (next.brandId) params.set("brandId", next.brandId);
+    if (next.supplierName) params.set("supplierName", next.supplierName);
     if (next.outstandingOnly) params.set("outstandingOnly", "true");
     if (next.startDate) params.set("startDate", next.startDate);
     if (next.endDate) params.set("endDate", next.endDate);
@@ -102,6 +120,10 @@ export default function SalesListing() {
       queryParams.customerTypeId = currentFilters.customerTypeId;
     if (currentFilters.sourcePayment)
       queryParams.sourcePayment = currentFilters.sourcePayment;
+    if (currentFilters.status) queryParams.entryStatus = currentFilters.status;
+    if (currentFilters.brandId) queryParams.brandId = currentFilters.brandId;
+    if (currentFilters.supplierName)
+      queryParams.supplierName = currentFilters.supplierName;
     if (currentFilters.outstandingOnly) queryParams.outstandingOnly = "true";
     if (currentFilters.startDate) queryParams.startDate = currentFilters.startDate;
     if (currentFilters.endDate) queryParams.endDate = currentFilters.endDate;
@@ -111,6 +133,8 @@ export default function SalesListing() {
 
   useEffect(() => {
     getCustomerTypes(setCustomerTypes);
+    getBrands(setBrands);
+    getVendors(setVendors);
     const initial = filtersFromSearchParams(searchParams);
     setFilters(initial);
     fetchSales(initial);
@@ -183,6 +207,8 @@ export default function SalesListing() {
   const columns = [
     "Sr No.",
     "Date",
+    "Status",
+    "Brand",
     "Customer Type",
     "Customer Name",
     "Products",
@@ -358,6 +384,69 @@ export default function SalesListing() {
           </select>
         </div>
 
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[150px]">
+          <label htmlFor="saleStatus" className="text-xs text-foreground font-medium whitespace-nowrap">
+            Entry Status
+          </label>
+          <select
+            id="saleStatus"
+            value={filters.status}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, status: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
+          >
+            <option value="">All</option>
+            {COMMERCE_ENTRY_STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label htmlFor="brandId" className="text-xs text-foreground font-medium whitespace-nowrap">
+            Brand
+          </label>
+          <select
+            id="brandId"
+            value={filters.brandId}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, brandId: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-44 bg-card"
+          >
+            <option value="">All Brands</option>
+            {brands.map((brand) => (
+              <option key={brand.id} value={brand.id}>
+                {brand.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label htmlFor="supplierName" className="text-xs text-foreground font-medium whitespace-nowrap">
+            Vendor
+          </label>
+          <select
+            id="supplierName"
+            value={filters.supplierName}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, supplierName: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-44 bg-card"
+          >
+            <option value="">All Vendors</option>
+            {vendors.map((vendor) => (
+              <option key={vendor.id} value={vendor.name}>
+                {vendor.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
           <label htmlFor="outstandingOnly" className="text-xs text-foreground font-medium whitespace-nowrap">
             Balance Status
@@ -451,6 +540,18 @@ export default function SalesListing() {
                         {(filters.page - 1) * filters.limit + index + 1}
                       </td>
                       <td className="table-td">{formatDate(sale?.date)}</td>
+                      <td className="table-td">
+                        <span
+                          className={`px-2.5 py-1 text-xs font-bold tracking-wide rounded-md ${
+                            isDraftEntry(sale?.status)
+                              ? "bg-warning-bg text-warning-text border border-panel-border"
+                              : "bg-success-bg text-success-text border border-panel-border"
+                          }`}
+                        >
+                          {isDraftEntry(sale?.status) ? "Draft" : "Posted"}
+                        </span>
+                      </td>
+                      <td className="table-td">{formatSaleBrandsLabel(sale)}</td>
                       <td className="table-td font-semibold text-foreground">
                         {sale?.customerType?.name || "--"}
                       </td>
