@@ -22,7 +22,10 @@ import {
   prospectEditPath,
   prospectViewPath,
   resolveProspectModule,
+  type ProspectTypeValue,
 } from "@/utils/helpers/models/prospects/prospect-module";
+
+type ProspectTypeFilter = ProspectTypeValue | "";
 
 interface Prospect {
   id: string;
@@ -31,11 +34,7 @@ interface Prospect {
   email: string;
   notes: string;
   status: "New" | "Contacted" | "Qualified" | "Negotiation" | "Lost" | "Converted";
-  prospectType?:
-    | "Construction Prospect"
-    | "Design Prospect"
-    | "Shop Prospect"
-    | null;
+  prospectType?: ProspectTypeValue | null;
   project?: string;
   leadSource?: string;
   created_at: string;
@@ -59,12 +58,14 @@ export default function ProspectsListing() {
   // Applied (active) filter state — triggers API call
   const [activeSearch, setActiveSearch] = useState("");
   const [activeStatus, setActiveStatus] = useState("");
-  const [activeProspectType, setActiveProspectType] = useState(moduleDefaultType);
+  const [activeProspectType, setActiveProspectType] =
+    useState<ProspectTypeFilter>(moduleDefaultType);
 
   // Draft states inside the filters card
   const [draftSearch, setDraftSearch] = useState("");
   const [draftStatus, setDraftStatus] = useState("");
-  const [draftProspectType, setDraftProspectType] = useState(moduleDefaultType);
+  const [draftProspectType, setDraftProspectType] =
+    useState<ProspectTypeFilter>(moduleDefaultType);
 
   // Pagination states
   const [page, setPage] = useState(1);
@@ -258,7 +259,9 @@ export default function ProspectsListing() {
           <select
             id="prospectType"
             value={draftProspectType}
-            onChange={(e) => setDraftProspectType(e.target.value)}
+            onChange={(e) =>
+              setDraftProspectType(e.target.value as ProspectTypeFilter)
+            }
             className="common-input text-sm h-10 w-full sm:w-52 bg-card text-sm"
           >
             <option value="">All Types</option>
