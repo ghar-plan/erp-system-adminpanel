@@ -8,6 +8,8 @@ export type ModuleAnalytics = {
   netProfit: number;
   netLoss: number;
   totalSale?: number;
+  /** Signed cash position (cash in − cash out). */
+  netCash?: number;
 };
 
 export type DashboardAnalytics = {
@@ -26,6 +28,7 @@ const emptyModule = (): ModuleAnalytics => ({
   netProfit: 0,
   netLoss: 0,
   totalSale: 0,
+  netCash: 0,
 });
 
 const useDashboard = () => {

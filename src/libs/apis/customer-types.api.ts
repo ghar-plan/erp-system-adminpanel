@@ -9,10 +9,13 @@ import {
 export const CustomerTypes_APIS = {
   create: (body: any) => postRequest("/v1/customer-types", body),
   getAll: (params: any = {}) => getRequest("/v1/customer-types", params),
-  getAllWithoutPagination: () => getRequest("/v1/customer-types/all"),
+  getAllWithoutPagination: (params: any = {}) =>
+    getRequest("/v1/customer-types/all", params),
   getById: (id: string) => getRequest(`/v1/customer-types/${id}`),
   update: (id: string, body: any) =>
     patchRequest(`/v1/customer-types/${id}`, body),
+  setStatus: (id: string, isActive: boolean) =>
+    patchRequest(`/v1/customer-types/${id}/status`, { isActive }),
   delete: (id: string) => deleteRequest(`/v1/customer-types/${id}`),
   getPrices: (id: string, params: any = {}) =>
     getRequest(`/v1/customer-types/${id}/prices`, params),

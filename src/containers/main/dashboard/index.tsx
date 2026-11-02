@@ -104,6 +104,8 @@ type MetricCardProps = {
   trendType?: "positive" | "negative" | "neutral";
   badgeText?: string;
   loading?: boolean;
+  /** When set, the whole card navigates here (e.g. filtered sales list). */
+  to?: string;
 };
 
 function MetricCard({
@@ -117,12 +119,14 @@ function MetricCard({
   trendType = "neutral",
   badgeText,
   loading = false,
+  to,
 }: MetricCardProps) {
-  return (
-    <div
-      className={`group relative bg-card/80 backdrop-blur-xs rounded-xl border border-border-main p-4.5 sm:p-5 flex flex-col justify-between shadow-2xs transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 ${accentBorderClass} overflow-hidden`}
-    >
-      {/* Subtle top ambient highlight */}
+  const className = `group relative bg-card/80 backdrop-blur-xs rounded-xl border border-border-main p-4.5 sm:p-5 flex flex-col justify-between shadow-2xs transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 ${accentBorderClass} overflow-hidden ${
+    to ? "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" : ""
+  }`;
+
+  const body = (
+    <>
       <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
       <div className="flex items-center justify-between gap-3">
@@ -132,18 +136,27 @@ function MetricCard({
           <Icon size={19} className="stroke-[2.2]" />
         </div>
 
-        {badgeText ? (
-          <span
-            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border tracking-wide uppercase ${trendType === "positive"
-                ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400"
-                : trendType === "negative"
-                  ? "bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-400"
-                  : "bg-muted-foreground/10 text-muted-foreground border-border-main"
+        <div className="flex items-center gap-1.5">
+          {badgeText ? (
+            <span
+              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border tracking-wide uppercase ${
+                trendType === "positive"
+                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400"
+                  : trendType === "negative"
+                    ? "bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-400"
+                    : "bg-muted-foreground/10 text-muted-foreground border-border-main"
               }`}
-          >
-            {badgeText}
-          </span>
-        ) : null}
+            >
+              {badgeText}
+            </span>
+          ) : null}
+          {to ? (
+            <ArrowUpRight
+              size={14}
+              className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+            />
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-4">
@@ -155,14 +168,17 @@ function MetricCard({
           <div className="h-7 w-32 bg-muted-foreground/10 rounded-md animate-pulse mt-1.5" />
         ) : (
           <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-xs font-semibold text-muted-foreground">PKR</span>
+            <span className="text-xs font-semibold text-muted-foreground">
+              PKR
+            </span>
             <h3
-              className={`text-xl sm:text-2xl font-bold tracking-tight ${trendType === "positive"
+              className={`text-xl sm:text-2xl font-bold tracking-tight ${
+                trendType === "positive"
                   ? "text-emerald-600 dark:text-emerald-400"
                   : trendType === "negative"
                     ? "text-red-600 dark:text-red-400"
                     : "text-foreground"
-                }`}
+              }`}
             >
               {formatCurrency(value)}
             </h3>
@@ -175,9 +191,28 @@ function MetricCard({
           </p>
         ) : null}
       </div>
-    </div>
+    </>
   );
+
+  if (to) {
+    return (
+      <Link to={to} className={className}>
+        {body}
+      </Link>
+    );
+  }
+
+  return <div className={className}>{body}</div>;
 }
+
+type MetricLinks = {
+  revenue?: string;
+  cashIn?: string;
+  cashOut?: string;
+  costs?: string;
+  netCash?: string;
+  profitLoss?: string;
+};
 
 type AnalyticsSectionProps = {
   title: string;
@@ -187,8 +222,11 @@ type AnalyticsSectionProps = {
   badge: string;
   quickLink?: { text: string; to: string };
   data: ModuleAnalytics;
+  /** Shop layout: Revenue, Cash In/Out, Costs, Net Cash, Net P&L */
+  variant?: "default" | "shop";
   showSale?: boolean;
   loading?: boolean;
+  metricLinks?: MetricLinks;
 };
 
 function AnalyticsSection({
@@ -199,11 +237,18 @@ function AnalyticsSection({
   badge,
   quickLink,
   data,
+  variant = "default",
   showSale = false,
   loading,
+  metricLinks,
 }: AnalyticsSectionProps) {
   const isProfitable = data.netProfit > 0;
   const hasLoss = data.netLoss > 0;
+  const netCash =
+    data.netCash ?? data.totalCashIn - data.totalCashOut;
+  const netCashPositive = netCash >= 0;
+  const netProfitOrLoss = isProfitable ? data.netProfit : data.netLoss;
+  const isShop = variant === "shop";
 
   return (
     <div className="bg-card rounded-2xl border border-border-main p-5 sm:p-6 shadow-2xs space-y-5 transition-all duration-300 hover:shadow-xs">
@@ -242,84 +287,202 @@ function AnalyticsSection({
       </div>
 
       <div
-        className={`grid grid-cols-1 sm:grid-cols-2 ${showSale ? "xl:grid-cols-3 2xl:grid-cols-6" : "xl:grid-cols-5"
-          } gap-3.5 sm:gap-4`}
+        className={`grid grid-cols-1 sm:grid-cols-2 ${
+          isShop || showSale
+            ? "xl:grid-cols-3 2xl:grid-cols-6"
+            : "xl:grid-cols-5"
+        } gap-3.5 sm:gap-4`}
       >
-        {showSale ? (
-          <MetricCard
-            label="Total Gross Sale"
-            value={data.totalSale ?? 0}
-            icon={ShoppingBag}
-            iconBgClass="bg-violet-500/10"
-            iconColorClass="text-violet-600 dark:text-violet-400"
-            accentBorderClass="hover:border-violet-500/40"
-            hint="Gross billing & contract volume"
-            badgeText="Revenue"
-            loading={loading}
-          />
-        ) : null}
+        {isShop ? (
+          <>
+            <MetricCard
+              label="Revenue"
+              value={data.totalSale ?? 0}
+              icon={ShoppingBag}
+              iconBgClass="bg-violet-500/10"
+              iconColorClass="text-violet-600 dark:text-violet-400"
+              accentBorderClass="hover:border-violet-500/40"
+              hint="Gross sales billing for the period"
+              badgeText="Sales"
+              loading={loading}
+              to={metricLinks?.revenue}
+            />
+            <MetricCard
+              label="Cash In"
+              value={data.totalCashIn}
+              icon={ArrowDownCircle}
+              iconBgClass="bg-primary/10"
+              iconColorClass="text-primary dark:text-primary/90"
+              accentBorderClass="hover:border-primary/40"
+              hint="Payments collected on sales"
+              badgeText="Inflow"
+              loading={loading}
+              to={metricLinks?.cashIn}
+            />
+            <MetricCard
+              label="Cash Out"
+              value={data.totalCashOut}
+              icon={ArrowUpCircle}
+              iconBgClass="bg-amber-500/10"
+              iconColorClass="text-amber-600 dark:text-amber-400"
+              accentBorderClass="hover:border-amber-500/40"
+              hint="Purchase payments + fixed costs paid"
+              badgeText="Outflow"
+              loading={loading}
+              to={metricLinks?.cashOut}
+            />
+            <MetricCard
+              label="Costs"
+              value={data.totalCost}
+              icon={DollarSign}
+              iconBgClass="bg-orange-500/10"
+              iconColorClass="text-orange-600 dark:text-orange-400"
+              accentBorderClass="hover:border-orange-500/40"
+              hint="Purchase cost + fixed overheads"
+              badgeText="Expenses"
+              loading={loading}
+              to={metricLinks?.costs}
+            />
+            <MetricCard
+              label={netCashPositive ? "Net Cash In" : "Net Cash Out"}
+              value={Math.abs(netCash)}
+              icon={Wallet}
+              iconBgClass={
+                netCashPositive ? "bg-emerald-500/10" : "bg-red-500/10"
+              }
+              iconColorClass={
+                netCashPositive
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-600 dark:text-red-400"
+              }
+              accentBorderClass={
+                netCashPositive
+                  ? "hover:border-emerald-500/40"
+                  : "hover:border-red-500/40"
+              }
+              trendType={
+                netCashPositive
+                  ? "positive"
+                  : netCash < 0
+                    ? "negative"
+                    : "neutral"
+              }
+              hint="Cash in minus cash out"
+              badgeText={netCashPositive ? "In" : "Out"}
+              loading={loading}
+              to={metricLinks?.netCash}
+            />
+            <MetricCard
+              label={isProfitable ? "Net Profit" : "Net Loss"}
+              value={netProfitOrLoss}
+              icon={isProfitable ? TrendingUp : TrendingDown}
+              iconBgClass={
+                isProfitable ? "bg-emerald-500/10" : "bg-red-500/10"
+              }
+              iconColorClass={
+                isProfitable
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-600 dark:text-red-400"
+              }
+              accentBorderClass={
+                isProfitable
+                  ? "hover:border-emerald-500/40"
+                  : "hover:border-red-500/40"
+              }
+              trendType={
+                isProfitable ? "positive" : hasLoss ? "negative" : "neutral"
+              }
+              hint="Revenue minus costs"
+              badgeText={isProfitable ? "Profit" : hasLoss ? "Loss" : "Break-even"}
+              loading={loading}
+              to={metricLinks?.profitLoss}
+            />
+          </>
+        ) : (
+          <>
+            {showSale ? (
+              <MetricCard
+                label="Total Gross Sale"
+                value={data.totalSale ?? 0}
+                icon={ShoppingBag}
+                iconBgClass="bg-violet-500/10"
+                iconColorClass="text-violet-600 dark:text-violet-400"
+                accentBorderClass="hover:border-violet-500/40"
+                hint="Gross billing & contract volume"
+                badgeText="Revenue"
+                loading={loading}
+                to={metricLinks?.revenue}
+              />
+            ) : null}
 
-        <MetricCard
-          label="Total Cash In"
-          value={data.totalCashIn}
-          icon={ArrowDownCircle}
-          iconBgClass="bg-primary/10"
-          iconColorClass="text-primary dark:text-primary/90"
-          accentBorderClass="hover:border-primary/40"
-          hint="Receipts & cash collected"
-          badgeText="Inflow"
-          loading={loading}
-        />
+            <MetricCard
+              label="Total Cash In"
+              value={data.totalCashIn}
+              icon={ArrowDownCircle}
+              iconBgClass="bg-primary/10"
+              iconColorClass="text-primary dark:text-primary/90"
+              accentBorderClass="hover:border-primary/40"
+              hint="Receipts & cash collected"
+              badgeText="Inflow"
+              loading={loading}
+              to={metricLinks?.cashIn}
+            />
 
-        <MetricCard
-          label="Total Cash Out"
-          value={data.totalCashOut}
-          icon={ArrowUpCircle}
-          iconBgClass="bg-amber-500/10"
-          iconColorClass="text-amber-600 dark:text-amber-400"
-          accentBorderClass="hover:border-amber-500/40"
-          hint="Actual capital paid out"
-          badgeText="Disbursed"
-          loading={loading}
-        />
+            <MetricCard
+              label="Total Cash Out"
+              value={data.totalCashOut}
+              icon={ArrowUpCircle}
+              iconBgClass="bg-amber-500/10"
+              iconColorClass="text-amber-600 dark:text-amber-400"
+              accentBorderClass="hover:border-amber-500/40"
+              hint="Actual capital paid out"
+              badgeText="Disbursed"
+              loading={loading}
+              to={metricLinks?.cashOut}
+            />
 
-        <MetricCard
-          label="Total Committed Cost"
-          value={data.totalCost}
-          icon={DollarSign}
-          iconBgClass="bg-orange-500/10"
-          iconColorClass="text-orange-600 dark:text-orange-400"
-          accentBorderClass="hover:border-orange-500/40"
-          hint="Paid + unpaid obligations"
-          badgeText="Liabilities"
-          loading={loading}
-        />
+            <MetricCard
+              label="Total Committed Cost"
+              value={data.totalCost}
+              icon={DollarSign}
+              iconBgClass="bg-orange-500/10"
+              iconColorClass="text-orange-600 dark:text-orange-400"
+              accentBorderClass="hover:border-orange-500/40"
+              hint="Paid + unpaid obligations"
+              badgeText="Liabilities"
+              loading={loading}
+              to={metricLinks?.costs}
+            />
 
-        <MetricCard
-          label="Net Operating Profit"
-          value={data.netProfit}
-          icon={TrendingUp}
-          iconBgClass="bg-emerald-500/10"
-          iconColorClass="text-emerald-600 dark:text-emerald-400"
-          accentBorderClass="hover:border-emerald-500/40"
-          trendType={isProfitable ? "positive" : "neutral"}
-          hint="Net operational surplus"
-          badgeText={isProfitable ? "+ Surplus" : "Zero"}
-          loading={loading}
-        />
+            <MetricCard
+              label="Net Operating Profit"
+              value={data.netProfit}
+              icon={TrendingUp}
+              iconBgClass="bg-emerald-500/10"
+              iconColorClass="text-emerald-600 dark:text-emerald-400"
+              accentBorderClass="hover:border-emerald-500/40"
+              trendType={isProfitable ? "positive" : "neutral"}
+              hint="Net operational surplus"
+              badgeText={isProfitable ? "+ Surplus" : "Zero"}
+              loading={loading}
+              to={metricLinks?.profitLoss}
+            />
 
-        <MetricCard
-          label="Net Deficit / Loss"
-          value={data.netLoss}
-          icon={TrendingDown}
-          iconBgClass="bg-red-500/10"
-          iconColorClass="text-red-600 dark:text-red-400"
-          accentBorderClass="hover:border-red-500/40"
-          trendType={hasLoss ? "negative" : "neutral"}
-          hint="Net cash deficit"
-          badgeText={hasLoss ? "- Deficit" : "Zero"}
-          loading={loading}
-        />
+            <MetricCard
+              label="Net Deficit / Loss"
+              value={data.netLoss}
+              icon={TrendingDown}
+              iconBgClass="bg-red-500/10"
+              iconColorClass="text-red-600 dark:text-red-400"
+              accentBorderClass="hover:border-red-500/40"
+              trendType={hasLoss ? "negative" : "neutral"}
+              hint="Net cash deficit"
+              badgeText={hasLoss ? "- Deficit" : "Zero"}
+              loading={loading}
+              to={metricLinks?.profitLoss}
+            />
+          </>
+        )}
       </div>
     </div>
   );
@@ -328,12 +491,19 @@ function AnalyticsSection({
 export default function Dashboard() {
   const { stats, analytics, getStats, getAnalytics } = useDashboard();
 
-  const [preset, setPreset] = useState<DatePreset>("all");
+  const initialRange = useMemo(
+    () => getPresetRange("current_month")!,
+    [],
+  );
+
+  const [preset, setPreset] = useState<DatePreset>("current_month");
   const [activeTab, setActiveTab] = useState<ModuleTab>("all");
-  const [draftStartDate, setDraftStartDate] = useState("");
-  const [draftEndDate, setDraftEndDate] = useState("");
-  const [appliedStartDate, setAppliedStartDate] = useState("");
-  const [appliedEndDate, setAppliedEndDate] = useState("");
+  const [draftStartDate, setDraftStartDate] = useState(initialRange.startDate);
+  const [draftEndDate, setDraftEndDate] = useState(initialRange.endDate);
+  const [appliedStartDate, setAppliedStartDate] = useState(
+    initialRange.startDate,
+  );
+  const [appliedEndDate, setAppliedEndDate] = useState(initialRange.endDate);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   useEffect(() => {
@@ -346,7 +516,10 @@ export default function Dashboard() {
     try {
       await Promise.all([
         getStats(),
-        loadAnalytics(appliedStartDate || undefined, appliedEndDate || undefined),
+        loadAnalytics(
+          appliedStartDate || undefined,
+          appliedEndDate || undefined,
+        ),
       ]);
     } finally {
       setAnalyticsLoading(false);
@@ -400,12 +573,13 @@ export default function Dashboard() {
   };
 
   const handleResetFilters = () => {
-    setPreset("all");
-    setDraftStartDate("");
-    setDraftEndDate("");
-    setAppliedStartDate("");
-    setAppliedEndDate("");
-    loadAnalytics();
+    const range = getPresetRange("current_month")!;
+    setPreset("current_month");
+    setDraftStartDate(range.startDate);
+    setDraftEndDate(range.endDate);
+    setAppliedStartDate(range.startDate);
+    setAppliedEndDate(range.endDate);
+    loadAnalytics(range.startDate, range.endDate);
   };
 
   const empty: ModuleAnalytics = {
@@ -426,6 +600,23 @@ export default function Dashboard() {
   const rangeLabel = hasDateFilter
     ? `${appliedStartDate || "Start"} → ${appliedEndDate || "Present"}`
     : "All Time";
+
+  const withDateQuery = (path: string) => {
+    const params = new URLSearchParams();
+    if (appliedStartDate) params.set("startDate", appliedStartDate);
+    if (appliedEndDate) params.set("endDate", appliedEndDate);
+    const qs = params.toString();
+    return qs ? `${path}?${qs}` : path;
+  };
+
+  const shopMetricLinks: MetricLinks = {
+    revenue: withDateQuery("/sales/list"),
+    cashIn: withDateQuery("/sales/list"),
+    cashOut: withDateQuery("/purchases/list"),
+    costs: withDateQuery("/fixed-costs/list"),
+    netCash: withDateQuery("/sales/list"),
+    profitLoss: withDateQuery("/sales/list"),
+  };
 
   // Financial ratios & metrics
   const financialSummary = useMemo(() => {
@@ -889,14 +1080,18 @@ export default function Dashboard() {
         {(activeTab === "all" || activeTab === "shop") && (
           <AnalyticsSection
             title="Shop & Retail Analytics"
-            description={`Inventory sales, purchase costs, and fixed overheads (${rangeLabel}).`}
+            description={`Revenue, cash movement, costs, and profit for the shop (${rangeLabel}). Click a card to open the related list.`}
             icon={Store}
             accentClass="bg-amber-500/10 text-amber-600 dark:text-amber-400"
             badge="Retail & Stock"
-            quickLink={{ text: "View Sales", to: "/sales" }}
+            quickLink={{
+              text: "View Sales",
+              to: withDateQuery("/sales/list"),
+            }}
             data={shop}
-            showSale
+            variant="shop"
             loading={analyticsLoading}
+            metricLinks={shopMetricLinks}
           />
         )}
 

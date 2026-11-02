@@ -8,16 +8,24 @@ import {
   Hash,
   Wallet,
   StickyNote,
-  Tag,
-  CalendarClock,
+  Layers,
 } from "lucide-react";
 import { IoArrowBackOutline } from "react-icons/io5";
 import usePurchases from "../useHooks";
-import { Purchase, formatMoney } from "@/utils/helpers/models/purchases/purchase.dto";
+import {
+  Purchase,
+  formatMoney,
+  formatPurchaseProductsLabel,
+} from "@/utils/helpers/models/purchases/purchase.dto";
 import { Can } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { canAccessPurchasePrice } from "@/utils/helpers/permissions/purchase-price-access";
 import useStore from "@/hooks/useStore";
+import ExpiryStatusBadge from "@/components/ui/ExpiryStatusBadge";
+import {
+  getExpiryStatus,
+  getWorstExpiryStatus,
+} from "@/utils/helpers/common/expiry-status";
 
 export default function PurchaseView() {
   const { id } = useParams<{ id: string }>();
@@ -68,20 +76,31 @@ export default function PurchaseView() {
     return null;
   }
 
+  const lines =
+    purchase.items && purchase.items.length > 0
+      ? purchase.items
+      : [
+          {
+            productId: purchase.productId,
+            productName: purchase.productName,
+            quantity: purchase.quantity,
+            rate: purchase.rate,
+            lineTotal: purchase.paymentMade,
+            expiryDate: purchase.expiryDate,
+          },
+        ];
+
   const hasPrice =
     canViewPurchasePrice &&
-    purchase.rate != null &&
-    Number.isFinite(Number(purchase.rate));
-  const total = hasPrice
-    ? Math.round(Number(purchase.quantity || 0) * Number(purchase.rate))
-    : 0;
-  const remaining = hasPrice
-    ? Math.max(total - Number(purchase.paymentMade || 0), 0)
-    : 0;
+    purchase.paymentMade != null &&
+    Number.isFinite(Number(purchase.paymentMade));
+
+  const overallExpiry = getWorstExpiryStatus(
+    lines.map((item) => item.expiryDate),
+  );
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center gap-4 flex-wrap animate-fade-in">
         <div className="flex items-center gap-3">
           <button
@@ -133,10 +152,10 @@ export default function PurchaseView() {
             </div>
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Product
+                Products
               </label>
               <p className="text-sm font-semibold text-foreground mt-0.5">
-                {purchase?.productName || "--"}
+                {formatPurchaseProductsLabel(purchase)}
               </p>
             </div>
           </div>
@@ -147,7 +166,7 @@ export default function PurchaseView() {
             </div>
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Quantity
+                Total Quantity
               </label>
               <p className="text-sm font-semibold text-foreground mt-0.5">
                 {purchase?.quantity ?? "--"}
@@ -155,64 +174,20 @@ export default function PurchaseView() {
             </div>
           </div>
 
-          {canViewPurchasePrice ? (
-            <>
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-lg bg-warning-bg text-warning-text">
-                  <Tag size={18} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                    Per Item
-                  </label>
-                  <p className="text-sm font-semibold text-foreground mt-0.5">
-                    {formatMoney(purchase?.rate)}
-                  </p>
-                </div>
+          {hasPrice ? (
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-lg bg-accent-bg text-accent-text">
+                <Wallet size={18} />
               </div>
-
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-lg bg-accent-bg text-accent-text">
-                  <Wallet size={18} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                    Total Amount
-                  </label>
-                  <p className="text-sm font-semibold text-foreground mt-0.5">
-                    {formatMoney(total)}
-                  </p>
-                </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                  Total Price
+                </label>
+                <p className="text-sm font-semibold text-foreground mt-0.5">
+                  {formatMoney(purchase?.paymentMade)}
+                </p>
               </div>
-
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-lg bg-success-bg text-success-text">
-                  <Wallet size={18} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                    Price
-                  </label>
-                  <p className="text-sm font-semibold text-foreground mt-0.5">
-                    {formatMoney(purchase?.paymentMade)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-lg bg-danger-bg text-danger-text">
-                  <Wallet size={18} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                    Remaining
-                  </label>
-                  <p className="text-sm font-semibold text-foreground mt-0.5">
-                    {formatMoney(remaining)}
-                  </p>
-                </div>
-              </div>
-            </>
+            </div>
           ) : null}
 
           <div className="flex items-start gap-3">
@@ -231,15 +206,20 @@ export default function PurchaseView() {
 
           <div className="flex items-start gap-3">
             <div className="p-2.5 rounded-lg bg-warning-bg text-warning-text">
-              <CalendarClock size={18} />
+              <Calendar size={18} />
             </div>
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Expiry Date
+                Expiry Status
               </label>
-              <p className="text-sm font-semibold text-foreground mt-0.5">
-                {purchase?.expiryDate ? formatDate(purchase.expiryDate) : "--"}
-              </p>
+              <div className="mt-1">
+                <ExpiryStatusBadge info={overallExpiry} />
+              </div>
+              {lines.length > 1 ? (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Worst status across {lines.length} products
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -258,7 +238,79 @@ export default function PurchaseView() {
           </div>
         </div>
 
-        {/* Remarks */}
+        <div className="border-t border-border-main pt-6 space-y-3">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Layers size={18} />
+            <span className="text-xs font-bold uppercase tracking-wide">
+              Line Items
+            </span>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-border-main">
+            <table className="min-w-full divide-y divide-border-main text-sm">
+              <thead className="bg-muted-foreground/5">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Product
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Qty
+                  </th>
+                  {canViewPurchasePrice ? (
+                    <>
+                      <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Rate
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Line Total
+                      </th>
+                    </>
+                  ) : null}
+                  <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Expiry Date
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-main">
+                {lines.map((item, index) => {
+                  const lineExpiry = getExpiryStatus(item.expiryDate);
+                  return (
+                  <tr
+                    key={item.productId + "-" + index}
+                    className={lineExpiry.toneClass}
+                  >
+                    <td className="px-3 py-2 font-semibold text-foreground">
+                      {item.productName || "--"}
+                    </td>
+                    <td className="px-3 py-2">{item.quantity ?? "--"}</td>
+                    {canViewPurchasePrice ? (
+                      <>
+                        <td className="px-3 py-2">
+                          {item.rate != null ? formatMoney(item.rate) : "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          {item.lineTotal != null
+                            ? formatMoney(item.lineTotal)
+                            : "—"}
+                        </td>
+                      </>
+                    ) : null}
+                    <td className="px-3 py-2">
+                      {item.expiryDate ? formatDate(item.expiryDate) : "--"}
+                    </td>
+                    <td className="px-3 py-2">
+                      <ExpiryStatusBadge info={lineExpiry} />
+                    </td>
+                  </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <div className="border-t border-border-main pt-6">
           <div className="flex items-center gap-2 mb-3 text-muted-foreground">
             <StickyNote size={18} />

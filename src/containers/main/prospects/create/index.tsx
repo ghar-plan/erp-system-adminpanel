@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { PlusSquare, Loader2, Save } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Controller, useForm } from "react-hook-form";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import useProspects from "../useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
-import { validatePakistanMobile } from "@/utils/helpers/common/phone";
-import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
+import {
+  defaultProspectTypeForModule,
+  resolveProspectModule,
+} from "@/utils/helpers/models/prospects/prospect-module";
 
 interface ProspectFormInputs {
   name: string;
@@ -14,7 +16,11 @@ interface ProspectFormInputs {
   email: string;
   notes: string;
   status: "New" | "Contacted" | "Qualified" | "Negotiation" | "Lost" | "Converted";
-  prospectType: "Construction Prospect" | "Design Prospect" | "";
+  prospectType:
+    | "Construction Prospect"
+    | "Design Prospect"
+    | "Shop Prospect"
+    | "";
   project: string;
   leadSource: string;
 }
@@ -23,13 +29,18 @@ export default function ProspectCreate() {
   const { id } = useParams<{ id: string }>();
   const isEditMode = !!id;
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const module = resolveProspectModule(pathname);
+  const defaultProspectType = useMemo(
+    () => defaultProspectTypeForModule(module),
+    [module],
+  );
   const { createProspect, getProspectById, updateProspect } = useProspects();
   const { isLoading } = useStore();
   const [prospect, setProspect] = useState<any>(null);
 
   const {
     register,
-    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -40,11 +51,21 @@ export default function ProspectCreate() {
       email: "",
       notes: "",
       status: "" as any,
-      prospectType: "",
+      prospectType: isEditMode ? "" : defaultProspectType,
       project: "",
       leadSource: "",
     },
   });
+
+  // Keep module default when opening create under Construction / Shop
+  useEffect(() => {
+    if (!isEditMode) {
+      reset((prev) => ({
+        ...prev,
+        prospectType: defaultProspectType,
+      }));
+    }
+  }, [defaultProspectType, isEditMode, reset]);
 
   // Load prospect details if editing
   useEffect(() => {
@@ -131,25 +152,20 @@ export default function ProspectCreate() {
             )}
           </div>
 
-          {/* Phone */}
+          {/* Phone — any international / local number */}
           <div>
             <label className="mb-2 block ui-form-label">Phone Number</label>
-            <Controller
-              name="phone"
-              control={control}
-              rules={{
+            <input
+              type="tel"
+              placeholder="e.g. +923001234567 or 03001234567"
+              className="common-input"
+              {...register("phone", {
                 required: "Phone number is required",
-                validate: (value) => validatePakistanMobile(value),
-              }}
-              render={({ field }) => (
-                <PakistanPhoneInput
-                  name={field.name}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  hasError={!!errors.phone}
-                />
-              )}
+                maxLength: {
+                  value: 50,
+                  message: "Phone number must be at most 50 characters",
+                },
+              })}
             />
             {errors.phone && (
               <p className="mt-1 text-xs text-danger-text font-semibold">
@@ -197,6 +213,7 @@ export default function ProspectCreate() {
               <option value="">Select Prospect Type</option>
               <option value="Construction Prospect">Construction Prospect</option>
               <option value="Design Prospect">Design Prospect</option>
+              <option value="Shop Prospect">Shop Prospect</option>
             </select>
             {errors.prospectType && (
               <p className="mt-1 text-xs text-danger-text font-semibold">
@@ -222,6 +239,7 @@ export default function ProspectCreate() {
               <option value="WhatsApp">WhatsApp</option>
               <option value="Call">Call</option>
               <option value="Website">Website</option>
+              <option value="Shop">Shop</option>
               <option value="Other">Other</option>
             </select>
           </div>

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -16,6 +16,13 @@ import Button from "@/components/ui/Button";
 import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import {
+  defaultProspectTypeForModule,
+  prospectCreatePath,
+  prospectEditPath,
+  prospectViewPath,
+  resolveProspectModule,
+} from "@/utils/helpers/models/prospects/prospect-module";
 
 interface Prospect {
   id: string;
@@ -24,7 +31,11 @@ interface Prospect {
   email: string;
   notes: string;
   status: "New" | "Contacted" | "Qualified" | "Negotiation" | "Lost" | "Converted";
-  prospectType?: "Construction Prospect" | "Design Prospect" | null;
+  prospectType?:
+    | "Construction Prospect"
+    | "Design Prospect"
+    | "Shop Prospect"
+    | null;
   project?: string;
   leadSource?: string;
   created_at: string;
@@ -32,6 +43,12 @@ interface Prospect {
 
 export default function ProspectsListing() {
   const { hasPermission } = usePermissions();
+  const { pathname } = useLocation();
+  const module = resolveProspectModule(pathname);
+  const moduleDefaultType = useMemo(
+    () => defaultProspectTypeForModule(module),
+    [module],
+  );
   const { getProspects, deleteProspect } = useProspects();
   const canView = hasPermission(PERMISSIONS.PROSPECT_READ);
   const canUpdate = hasPermission(PERMISSIONS.PROSPECT_UPDATE);
@@ -42,12 +59,12 @@ export default function ProspectsListing() {
   // Applied (active) filter state — triggers API call
   const [activeSearch, setActiveSearch] = useState("");
   const [activeStatus, setActiveStatus] = useState("");
-  const [activeProspectType, setActiveProspectType] = useState("");
+  const [activeProspectType, setActiveProspectType] = useState(moduleDefaultType);
 
   // Draft states inside the filters card
   const [draftSearch, setDraftSearch] = useState("");
   const [draftStatus, setDraftStatus] = useState("");
-  const [draftProspectType, setDraftProspectType] = useState("");
+  const [draftProspectType, setDraftProspectType] = useState(moduleDefaultType);
 
   // Pagination states
   const [page, setPage] = useState(1);
@@ -65,10 +82,14 @@ export default function ProspectsListing() {
     getProspects(setProspects, params);
   };
 
-  // Initial load
+  // Initial load — filter by Construction / Shop based on section
   useEffect(() => {
-    fetchProspectsList("", "", "");
-  }, []);
+    setActiveProspectType(moduleDefaultType);
+    setDraftProspectType(moduleDefaultType);
+    setPage(1);
+    fetchProspectsList("", "", moduleDefaultType);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moduleDefaultType]);
 
   const handleApplyFilters = () => {
     setActiveSearch(draftSearch);
@@ -81,12 +102,12 @@ export default function ProspectsListing() {
   const handleResetFilters = () => {
     setDraftSearch("");
     setDraftStatus("");
-    setDraftProspectType("");
+    setDraftProspectType(moduleDefaultType);
     setActiveSearch("");
     setActiveStatus("");
-    setActiveProspectType("");
+    setActiveProspectType(moduleDefaultType);
     setPage(1);
-    fetchProspectsList("", "", "");
+    fetchProspectsList("", "", moduleDefaultType);
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -175,7 +196,7 @@ export default function ProspectsListing() {
 
         <Can permission={PERMISSIONS.PROSPECT_CREATE}>
           <Link
-            to="/prospects/create"
+            to={prospectCreatePath(module)}
             className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
           >
             <Plus size={18} />
@@ -243,6 +264,7 @@ export default function ProspectsListing() {
             <option value="">All Types</option>
             <option value="Construction Prospect">Construction Prospect</option>
             <option value="Design Prospect">Design Prospect</option>
+            <option value="Shop Prospect">Shop Prospect</option>
           </select>
         </div>
 
@@ -346,7 +368,7 @@ export default function ProspectsListing() {
                         <div className="flex gap-2">
                           {canView ? (
                             <Link
-                              to={`/prospects/view/${prospect.id}`}
+                              to={prospectViewPath(module, prospect.id)}
                               className="btn-action-view"
                               title="View Details"
                             >
@@ -355,7 +377,7 @@ export default function ProspectsListing() {
                           ) : null}
                           {canUpdate ? (
                             <Link
-                              to={`/prospects/edit/${prospect.id}`}
+                              to={prospectEditPath(module, prospect.id)}
                               className="btn-action-edit"
                               title="Edit Prospect"
                             >

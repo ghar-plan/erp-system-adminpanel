@@ -1,9 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Plus, Search, Eye, Pencil, Trash2, ShoppingCart } from "lucide-react";
 import useSales from "../useHooks";
-import { Sale } from "@/utils/helpers/models/sales/sale.dto";
-import { formatMoney } from "@/utils/helpers/models/purchases/purchase.dto";
+import {
+  Sale,
+  computeSaleSubtotal,
+  formatSaleProductsLabel,
+} from "@/utils/helpers/models/sales/sale.dto";
+import {
+  formatMoney,
+  SOURCE_PAYMENT_OPTIONS,
+  CashOutPaymentSource,
+} from "@/utils/helpers/models/purchases/purchase.dto";
 import {
   customerTypeCategoryLabel,
   WALK_IN_CUSTOMER_TYPE,
@@ -15,10 +23,17 @@ import Button from "@/components/ui/Button";
 import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
+import { isErpAdminEmail } from "@/utils/helpers/permissions/erp-admin-access";
+import useStore from "@/hooks/useStore";
 
 interface SaleFilters {
   search: string;
   customerTypeId: string;
+  sourcePayment: string;
+  outstandingOnly: boolean;
+  startDate: string;
+  endDate: string;
   page: number;
   limit: number;
 }
@@ -26,16 +41,36 @@ interface SaleFilters {
 const emptyFilters: SaleFilters = {
   search: "",
   customerTypeId: "",
+  sourcePayment: "",
+  outstandingOnly: false,
+  startDate: "",
+  endDate: "",
   page: 1,
   limit: 10,
 };
 
+const filtersFromSearchParams = (searchParams: URLSearchParams): SaleFilters => ({
+  ...emptyFilters,
+  sourcePayment: searchParams.get("sourcePayment") || "",
+  outstandingOnly:
+    searchParams.get("outstandingOnly") === "true" ||
+    searchParams.get("outstandingOnly") === "1",
+  startDate: searchParams.get("startDate") || "",
+  endDate: searchParams.get("endDate") || "",
+  customerTypeId: searchParams.get("customerTypeId") || "",
+  page: 1,
+});
+
 export default function SalesListing() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { hasPermission } = usePermissions();
+  const { getUser } = useStore();
   const { getSales, deleteSale, getCustomerTypes } = useSales();
   const canView = hasPermission(PERMISSIONS.SALES_READ);
   const canUpdate = hasPermission(PERMISSIONS.SALES_UPDATE);
-  const canDelete = hasPermission(PERMISSIONS.SALES_DELETE);
+  const canDelete =
+    hasPermission(PERMISSIONS.SALES_DELETE) &&
+    isErpAdminEmail(getUser()?.email);
   const showActions = canView || canUpdate || canDelete;
 
   const [sales, setSales] = useState<Sale[]>([]);
@@ -43,7 +78,19 @@ export default function SalesListing() {
   const [customerTypes, setCustomerTypes] = useState<{ id: string; name: string }[]>([]);
 
   const [searchVal, setSearchVal] = useState("");
-  const [filters, setFilters] = useState<SaleFilters>(emptyFilters);
+  const [filters, setFilters] = useState<SaleFilters>(() =>
+    filtersFromSearchParams(searchParams),
+  );
+
+  const syncUrl = (next: SaleFilters) => {
+    const params = new URLSearchParams();
+    if (next.sourcePayment) params.set("sourcePayment", next.sourcePayment);
+    if (next.outstandingOnly) params.set("outstandingOnly", "true");
+    if (next.startDate) params.set("startDate", next.startDate);
+    if (next.endDate) params.set("endDate", next.endDate);
+    if (next.customerTypeId) params.set("customerTypeId", next.customerTypeId);
+    setSearchParams(params, { replace: true });
+  };
 
   const fetchSales = (currentFilters: SaleFilters) => {
     const queryParams: any = {
@@ -53,30 +100,65 @@ export default function SalesListing() {
     if (currentFilters.search) queryParams.search = currentFilters.search;
     if (currentFilters.customerTypeId)
       queryParams.customerTypeId = currentFilters.customerTypeId;
+    if (currentFilters.sourcePayment)
+      queryParams.sourcePayment = currentFilters.sourcePayment;
+    if (currentFilters.outstandingOnly) queryParams.outstandingOnly = "true";
+    if (currentFilters.startDate) queryParams.startDate = currentFilters.startDate;
+    if (currentFilters.endDate) queryParams.endDate = currentFilters.endDate;
 
     getSales(setSales, queryParams, setTotalElements);
   };
 
   useEffect(() => {
     getCustomerTypes(setCustomerTypes);
-    fetchSales({ ...emptyFilters, page: 1 });
+    const initial = filtersFromSearchParams(searchParams);
+    setFilters(initial);
+    fetchSales(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const applyFilters = (next: SaleFilters) => {
+    setFilters(next);
+    syncUrl(next);
+    fetchSales(next);
+  };
+
   const handleApplyFilters = () => {
-    const updatedFilters = { ...filters, search: searchVal, page: 1 };
-    setFilters(updatedFilters);
-    fetchSales(updatedFilters);
+    applyFilters({ ...filters, search: searchVal, page: 1 });
   };
 
   const handleResetFilters = () => {
     setSearchVal("");
-    setFilters(emptyFilters);
-    fetchSales(emptyFilters);
+    applyFilters({ ...emptyFilters });
+  };
+
+  const applyQuickFilter = (patch: Partial<SaleFilters>) => {
+    applyFilters({ ...filters, ...patch, search: searchVal, page: 1 });
+  };
+
+  const getSourceBadgeClass = (source: string) => {
+    switch (source) {
+      case CashOutPaymentSource.CASH:
+        return "bg-success-bg text-success-text border border-panel-border";
+      case CashOutPaymentSource.CREDIT:
+        return "bg-danger-bg text-danger-text border border-panel-border";
+      case CashOutPaymentSource.PARTIAL:
+        return "bg-warning-bg text-warning-text border border-panel-border";
+      case CashOutPaymentSource.ADVANCE:
+        return "bg-info-bg text-info-text border border-panel-border";
+      default:
+        return "bg-panel-bg text-muted-foreground border border-panel-border";
+    }
   };
 
   const onPageChange = (pageInfo: { selected: number; limit: number }) => {
     const nextPage = pageInfo.selected + 1;
-    const updatedFilters = { ...filters, page: nextPage, limit: pageInfo.limit };
+    const updatedFilters = {
+      ...filters,
+      search: searchVal,
+      page: nextPage,
+      limit: pageInfo.limit,
+    };
     setFilters(updatedFilters);
     fetchSales(updatedFilters);
   };
@@ -103,13 +185,19 @@ export default function SalesListing() {
     "Date",
     "Customer Type",
     "Customer Name",
-    "Product",
-    "Quantity",
-    "Rate",
+    "Products",
+    "Qty",
+    "Amount",
     "Payment",
     "Balance",
+    "Source",
     ...(showActions ? ["Actions"] : []),
   ];
+
+  const isCreditQuick =
+    filters.sourcePayment === CashOutPaymentSource.CREDIT &&
+    !filters.outstandingOnly;
+  const isOutstandingQuick = filters.outstandingOnly;
 
   return (
     <div className="space-y-6">
@@ -119,10 +207,13 @@ export default function SalesListing() {
           <h1 className="text-2xl sm:text-3xl text-foreground font-bold">
             Sales
           </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Filter credit and outstanding dues to follow up regularly.
+          </p>
         </div>
         <Can permission={PERMISSIONS.SALES_CREATE}>
           <Link
-            to="/sales/create"
+            to={siteRoutes.sales}
             className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
           >
             <Plus size={18} />
@@ -139,13 +230,69 @@ export default function SalesListing() {
           </div>
           <div>
             <span className="text-[10px] font-bold text-muted-foreground block uppercase tracking-wider">
-              Total Sales
+              Matching Sales
             </span>
             <span className="text-xl font-bold text-foreground mt-0.5 block">
               {totalElements}
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Quick follow-up chips */}
+      <div className="flex flex-wrap items-center gap-2 animate-fade-in">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">
+          Quick:
+        </span>
+        <button
+          type="button"
+          onClick={() =>
+            applyQuickFilter({
+              sourcePayment: CashOutPaymentSource.CREDIT,
+              outstandingOnly: false,
+            })
+          }
+          className={`px-3 py-1.5 rounded-md text-xs font-bold border transition-all cursor-pointer ${
+            isCreditQuick
+              ? "bg-danger-bg text-danger-text border-panel-border"
+              : "bg-card text-foreground border-border-main hover:bg-muted-foreground/5"
+          }`}
+        >
+          Credit Sales
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            applyQuickFilter({
+              outstandingOnly: true,
+              sourcePayment: "",
+            })
+          }
+          className={`px-3 py-1.5 rounded-md text-xs font-bold border transition-all cursor-pointer ${
+            isOutstandingQuick
+              ? "bg-warning-bg text-warning-text border-panel-border"
+              : "bg-card text-foreground border-border-main hover:bg-muted-foreground/5"
+          }`}
+        >
+          Outstanding Balance
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            applyQuickFilter({
+              sourcePayment: CashOutPaymentSource.PARTIAL,
+              outstandingOnly: false,
+            })
+          }
+          className={`px-3 py-1.5 rounded-md text-xs font-bold border transition-all cursor-pointer ${
+            filters.sourcePayment === CashOutPaymentSource.PARTIAL &&
+            !filters.outstandingOnly
+              ? "bg-warning-bg text-warning-text border-panel-border"
+              : "bg-card text-foreground border-border-main hover:bg-muted-foreground/5"
+          }`}
+        >
+          Partial Payments
+        </button>
       </div>
 
       {/* Filters */}
@@ -188,6 +335,77 @@ export default function SalesListing() {
                 </option>
               ))}
           </select>
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label htmlFor="sourcePayment" className="text-xs text-foreground font-medium whitespace-nowrap">
+            Payment Source
+          </label>
+          <select
+            id="sourcePayment"
+            value={filters.sourcePayment}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, sourcePayment: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-44 bg-card"
+          >
+            <option value="">All Sources</option>
+            {SOURCE_PAYMENT_OPTIONS.map((source) => (
+              <option key={source} value={source}>
+                {source}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label htmlFor="outstandingOnly" className="text-xs text-foreground font-medium whitespace-nowrap">
+            Balance Status
+          </label>
+          <select
+            id="outstandingOnly"
+            value={filters.outstandingOnly ? "outstanding" : ""}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                outstandingOnly: e.target.value === "outstanding",
+              }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-44 bg-card"
+          >
+            <option value="">All Balances</option>
+            <option value="outstanding">Outstanding only</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[150px]">
+          <label htmlFor="startDate" className="text-xs text-foreground font-medium">
+            From
+          </label>
+          <input
+            id="startDate"
+            type="date"
+            value={filters.startDate}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, startDate: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
+          />
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[150px]">
+          <label htmlFor="endDate" className="text-xs text-foreground font-medium">
+            To
+          </label>
+          <input
+            id="endDate"
+            type="date"
+            value={filters.endDate}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, endDate: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
+          />
         </div>
 
         <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
@@ -237,12 +455,32 @@ export default function SalesListing() {
                         {sale?.customerType?.name || "--"}
                       </td>
                       <td className="table-td">{sale?.customerName || "--"}</td>
-                      <td className="table-td">{sale?.productName || "--"}</td>
+                      <td className="table-td max-w-[260px]">
+                        <span className="line-clamp-2" title={formatSaleProductsLabel(sale)}>
+                          {formatSaleProductsLabel(sale)}
+                        </span>
+                      </td>
                       <td className="table-td">{sale?.quantity ?? "--"}</td>
-                      <td className="table-td">{formatMoney(sale?.rate)}</td>
+                      <td className="table-td">
+                        {formatMoney(
+                          sale?.items?.length
+                            ? computeSaleSubtotal(sale.items)
+                            : Number(sale?.payment || 0) +
+                                Number(sale?.balance || 0),
+                        )}
+                      </td>
                       <td className="table-td">{formatMoney(sale?.payment)}</td>
                       <td className="table-td font-semibold">
                         {formatMoney(sale?.balance)}
+                      </td>
+                      <td className="table-td">
+                        <span
+                          className={`px-2.5 py-1 text-xs font-bold tracking-wide rounded-md ${getSourceBadgeClass(
+                            sale?.sourcePayment || "",
+                          )}`}
+                        >
+                          {sale?.sourcePayment || "--"}
+                        </span>
                       </td>
                       {showActions ? (
                         <td className="px-6 py-4 whitespace-nowrap">

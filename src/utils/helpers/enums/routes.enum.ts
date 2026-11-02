@@ -81,15 +81,31 @@ export enum siteRoutes {
   customerTypes = "/customer-types",
   customerTypesCreate = "/customer-types/create",
   customerTypesEdit = "/customer-types/edit/:id",
+  customerLedger = "/customer-ledger",
   sales = "/sales",
+  salesList = "/sales/list",
   salesCreate = "/sales/create",
   salesEdit = "/sales/edit/:id",
   salesView = "/sales/view/:id",
   fixedCosts = "/fixed-costs",
+  fixedCostsList = "/fixed-costs/list",
   fixedCostsCreate = "/fixed-costs/create",
   fixedCostsEdit = "/fixed-costs/edit/:id",
   fixedCostsView = "/fixed-costs/view/:id",
   stocks = "/stocks",
   timeSpan = "/time-span",
   productPrices = "/product-prices",
+
+  // Quotations & Bills (manual rates; product from Gharplans catalog)
+  documentsQuotations = "/documents/quotations",
+  documentsQuotationsList = "/documents/quotations/list",
+  documentsBills = "/documents/bills",
+  documentsBillsList = "/documents/bills/list",
+  documentsView = "/documents/view/:id",
+
+  // Shop / Commerce prospects (reuses construction prospects API)
+  shopProspects = "/shop/prospects",
+  shopProspectsCreate = "/shop/prospects/create",
+  shopProspectsView = "/shop/prospects/view/:id",
+  shopProspectsEdit = "/shop/prospects/edit/:id",
 }

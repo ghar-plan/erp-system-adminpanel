@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { PlusSquare, Loader2, Save, Upload, FileText } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { PlusSquare, Loader2, Save, Upload, FileText, List } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import useFixedCosts from "../useHooks";
@@ -13,6 +13,9 @@ import {
 } from "@/utils/helpers/models/fixed-costs/fixed-cost.dto";
 import { errorToaster } from "@/utils/helpers/common/alert-service";
 import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
+import { Can } from "@/components/auth/Can";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 
 interface FixedCostFormInputs {
   category: FixedCostCategory | "";
@@ -149,6 +152,17 @@ export default function FixedCostCreate() {
             {isEditMode ? "Edit Fixed Cost" : "Record Fixed Cost"}
           </h1>
         </div>
+        {!isEditMode && (
+          <Can permission={PERMISSIONS.FIXED_COSTS_READ}>
+            <Link
+              to={siteRoutes.fixedCostsList}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
+            >
+              <List size={18} />
+              Fixed Costs List
+            </Link>
+          </Can>
+        )}
       </div>
 
       <form

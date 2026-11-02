@@ -13,6 +13,7 @@ export const WALK_IN_CUSTOMER_TYPE: CustomerType = {
   id: WALK_IN_CUSTOMER_TYPE_ID,
   name: WALK_IN_CUSTOMER_TYPE_NAME,
   category: CustomerTypeCategory.WALK_IN,
+  isActive: true,
 };
 
 export const CUSTOMER_TYPE_CATEGORY_OPTIONS: { value: CustomerTypeCategory; label: string }[] = [
@@ -67,7 +68,19 @@ export interface CustomerType {
   category: CustomerTypeCategory;
   pickupPointId?: string | null;
   pickupPointName?: string | null;
+  /** false = closed (not offered for new sales) */
+  isActive?: boolean;
   created_at?: string;
   updated_at?: string;
   prices?: CustomerTypeProductPrice[];
 }
+
+export const customerTypeStatusLabel = (isActive?: boolean | null): string =>
+  isActive === false ? "Closed" : "Open";
+
+export const getCustomerTypeStatusBadgeClass = (
+  isActive?: boolean | null,
+): string =>
+  isActive === false
+    ? "bg-danger-bg text-danger-text border border-panel-border"
+    : "bg-success-bg text-success-text border border-panel-border";

@@ -79,6 +79,7 @@ import PurchaseView from "@/containers/main/purchases/view";
 import CustomerTypesListing from "@/containers/main/customer-types/listing";
 import CustomerTypeCreate from "@/containers/main/customer-types/create";
 import CustomerTypeEdit from "@/containers/main/customer-types/edit";
+import CustomerLedger from "@/containers/main/customer-ledger";
 import SalesListing from "@/containers/main/sales/listing";
 import SaleCreate from "@/containers/main/sales/create";
 import SaleEdit from "@/containers/main/sales/edit";
@@ -90,6 +91,11 @@ import FixedCostView from "@/containers/main/fixed-costs/view";
 import StocksListing from "@/containers/main/stocks/listing";
 import TimeSpanListing from "@/containers/main/time-span/listing";
 import ProductPricesListing from "@/containers/main/product-prices/listing";
+import QuotationCreate from "@/containers/main/documents/quotation-create";
+import BillCreate from "@/containers/main/documents/bill-create";
+import QuotationsList from "@/containers/main/documents/quotations-list";
+import BillsList from "@/containers/main/documents/bills-list";
+import DocumentView from "@/containers/main/documents/view";
 
 function guard(
   element: ReactElement,
@@ -203,6 +209,23 @@ const DashboardRoutes = () => {
         />
         <Route
           path={siteRoutes.prospectsEdit}
+          element={guard(<ProspectCreate />, PERMISSIONS.PROSPECT_UPDATE)}
+        />
+        {/* Shop prospects — same screens, module inferred from /shop/prospects */}
+        <Route
+          path={siteRoutes.shopProspects}
+          element={guard(<ProspectsListing />, PERMISSIONS.PROSPECT_READ)}
+        />
+        <Route
+          path={siteRoutes.shopProspectsCreate}
+          element={guard(<ProspectCreate />, PERMISSIONS.PROSPECT_CREATE)}
+        />
+        <Route
+          path={siteRoutes.shopProspectsView}
+          element={guard(<ProspectView />, PERMISSIONS.PROSPECT_READ)}
+        />
+        <Route
+          path={siteRoutes.shopProspectsEdit}
           element={guard(<ProspectCreate />, PERMISSIONS.PROSPECT_UPDATE)}
         />
         <Route
@@ -448,7 +471,16 @@ const DashboardRoutes = () => {
           element={guard(<CustomerTypeEdit />, PERMISSIONS.CUSTOMER_TYPES_UPDATE)}
         />
         <Route
+          path={siteRoutes.customerLedger}
+          element={guard(<CustomerLedger />, PERMISSIONS.SALES_READ)}
+        />
+        {/* /sales and /fixed-costs land on Record forms (same pattern as purchases) */}
+        <Route
           path={siteRoutes.sales}
+          element={guard(<SaleCreate />, PERMISSIONS.SALES_CREATE)}
+        />
+        <Route
+          path={siteRoutes.salesList}
           element={guard(<SalesListing />, PERMISSIONS.SALES_READ)}
         />
         <Route
@@ -464,7 +496,31 @@ const DashboardRoutes = () => {
           element={guard(<SaleEdit />, PERMISSIONS.SALES_UPDATE)}
         />
         <Route
+          path={siteRoutes.documentsQuotations}
+          element={guard(<QuotationCreate />, PERMISSIONS.DOCUMENTS_CREATE)}
+        />
+        <Route
+          path={siteRoutes.documentsQuotationsList}
+          element={guard(<QuotationsList />, PERMISSIONS.DOCUMENTS_READ)}
+        />
+        <Route
+          path={siteRoutes.documentsBills}
+          element={guard(<BillCreate />, PERMISSIONS.DOCUMENTS_CREATE)}
+        />
+        <Route
+          path={siteRoutes.documentsBillsList}
+          element={guard(<BillsList />, PERMISSIONS.DOCUMENTS_READ)}
+        />
+        <Route
+          path={siteRoutes.documentsView}
+          element={guard(<DocumentView />, PERMISSIONS.DOCUMENTS_READ)}
+        />
+        <Route
           path={siteRoutes.fixedCosts}
+          element={guard(<FixedCostCreate />, PERMISSIONS.FIXED_COSTS_CREATE)}
+        />
+        <Route
+          path={siteRoutes.fixedCostsList}
           element={guard(<FixedCostsListing />, PERMISSIONS.FIXED_COSTS_READ)}
         />
         <Route

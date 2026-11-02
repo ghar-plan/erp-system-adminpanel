@@ -1,21 +1,30 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Plus, Search, Eye, Pencil, Trash2, ShoppingBag } from "lucide-react";
 import usePurchases from "../useHooks";
-import { Purchase, formatMoney, SOURCE_PAYMENT_OPTIONS } from "@/utils/helpers/models/purchases/purchase.dto";
+import {
+  Purchase,
+  formatMoney,
+  formatPurchaseProductsLabel,
+  SOURCE_PAYMENT_OPTIONS,
+} from "@/utils/helpers/models/purchases/purchase.dto";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
+import ExpiryStatusBadge from "@/components/ui/ExpiryStatusBadge";
 import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { canAccessPurchasePrice } from "@/utils/helpers/permissions/purchase-price-access";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import useStore from "@/hooks/useStore";
+import { getWorstExpiryStatus } from "@/utils/helpers/common/expiry-status";
 
 interface PurchaseFilters {
   search: string;
   sourcePayment: string;
+  startDate: string;
+  endDate: string;
   page: number;
   limit: number;
 }
@@ -23,11 +32,14 @@ interface PurchaseFilters {
 const emptyFilters: PurchaseFilters = {
   search: "",
   sourcePayment: "",
+  startDate: "",
+  endDate: "",
   page: 1,
   limit: 10,
 };
 
 export default function PurchasesListing() {
+  const [searchParams] = useSearchParams();
   const { hasPermission } = usePermissions();
   const { getUser } = useStore();
   const { getPurchases, deletePurchase } = usePurchases();
@@ -41,7 +53,11 @@ export default function PurchasesListing() {
   const [totalElements, setTotalElements] = useState(0);
 
   const [searchVal, setSearchVal] = useState("");
-  const [filters, setFilters] = useState<PurchaseFilters>(emptyFilters);
+  const [filters, setFilters] = useState<PurchaseFilters>({
+    ...emptyFilters,
+    startDate: searchParams.get("startDate") || "",
+    endDate: searchParams.get("endDate") || "",
+  });
 
   const fetchPurchases = (currentFilters: PurchaseFilters) => {
     const queryParams: any = {
@@ -51,13 +67,23 @@ export default function PurchasesListing() {
     if (currentFilters.search) queryParams.search = currentFilters.search;
     if (currentFilters.sourcePayment)
       queryParams.sourcePayment = currentFilters.sourcePayment;
+    if (currentFilters.startDate) queryParams.startDate = currentFilters.startDate;
+    if (currentFilters.endDate) queryParams.endDate = currentFilters.endDate;
 
     getPurchases(setPurchases, queryParams, setTotalElements);
   };
 
   useEffect(() => {
-    fetchPurchases({ ...emptyFilters, page: 1 });
-  }, []);
+    const initial = {
+      ...emptyFilters,
+      startDate: searchParams.get("startDate") || "",
+      endDate: searchParams.get("endDate") || "",
+      page: 1,
+    };
+    setFilters(initial);
+    fetchPurchases(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleApplyFilters = () => {
     const updatedFilters = { ...filters, search: searchVal, page: 1 };
@@ -118,8 +144,17 @@ export default function PurchasesListing() {
     ...(canViewPurchasePrice ? ["Per Item", "Price"] : []),
     "Source",
     "Date",
+    "Expiry",
     ...(showActions ? ["Actions"] : []),
   ];
+
+  const purchaseExpiryInfo = (purchase: Purchase) => {
+    const dates =
+      purchase.items && purchase.items.length > 0
+        ? purchase.items.map((item) => item.expiryDate)
+        : [purchase.expiryDate];
+    return getWorstExpiryStatus(dates);
+  };
 
   return (
     <div className="space-y-6">
@@ -139,6 +174,31 @@ export default function PurchasesListing() {
             New Purchase
           </Link>
         </Can>
+      </div>
+
+      {/* Expiry legend */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs animate-fade-in">
+        <span className="font-semibold text-muted-foreground uppercase tracking-wider">
+          Expiry key
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="px-2 py-0.5 rounded-md bg-success-bg text-success-text border border-panel-border font-bold">
+            Fresh
+          </span>
+          <span className="text-muted-foreground">&gt; 30 days left</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="px-2 py-0.5 rounded-md bg-warning-bg text-warning-text border border-panel-border font-bold">
+            Near expiry
+          </span>
+          <span className="text-muted-foreground">≤ 30 days left</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="px-2 py-0.5 rounded-md bg-danger-bg text-danger-text border border-panel-border font-bold">
+            Expired
+          </span>
+          <span className="text-muted-foreground">Past expiry date</span>
+        </span>
       </div>
 
       {/* Stats */}
@@ -195,6 +255,36 @@ export default function PurchasesListing() {
           </select>
         </div>
 
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[150px]">
+          <label htmlFor="startDate" className="text-xs text-foreground font-medium">
+            From
+          </label>
+          <input
+            id="startDate"
+            type="date"
+            value={filters.startDate}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, startDate: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
+          />
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[150px]">
+          <label htmlFor="endDate" className="text-xs text-foreground font-medium">
+            To
+          </label>
+          <input
+            id="endDate"
+            type="date"
+            value={filters.endDate}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, endDate: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
+          />
+        </div>
+
         <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
           <Button
             variant="primary"
@@ -232,15 +322,22 @@ export default function PurchasesListing() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-main bg-card text-foreground">
-                  {purchases.map((purchase, index) => (
-                    <tr key={purchase.id} className="hover:bg-muted-foreground/5 transition-colors">
+                  {purchases.map((purchase, index) => {
+                    const expiryInfo = purchaseExpiryInfo(purchase);
+                    return (
+                    <tr
+                      key={purchase.id}
+                      className={`hover:bg-muted-foreground/5 transition-colors ${expiryInfo.toneClass}`}
+                    >
                       <td className="table-td">
                         {(filters.page - 1) * filters.limit + index + 1}
                       </td>
                       <td className="table-td font-semibold text-foreground">
                         {purchase?.supplierName || "--"}
                       </td>
-                      <td className="table-td">{purchase?.productName || "--"}</td>
+                      <td className="table-td">
+                        {formatPurchaseProductsLabel(purchase)}
+                      </td>
                       <td className="table-td">{purchase?.quantity ?? "--"}</td>
                       {canViewPurchasePrice ? (
                         <>
@@ -258,6 +355,9 @@ export default function PurchasesListing() {
                         </span>
                       </td>
                       <td className="table-td">{formatDate(purchase?.date)}</td>
+                      <td className="table-td">
+                        <ExpiryStatusBadge info={expiryInfo} compact />
+                      </td>
                       {showActions ? (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex gap-2">
@@ -292,7 +392,8 @@ export default function PurchasesListing() {
                         </td>
                       ) : null}
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

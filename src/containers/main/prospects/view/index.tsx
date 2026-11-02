@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
+import {
+  prospectEditPath,
+  resolveProspectModule,
+} from "@/utils/helpers/models/prospects/prospect-module";
 import {
   User,
   Phone,
@@ -24,7 +28,10 @@ interface Prospect {
   email: string;
   notes: string;
   status: "New" | "Contacted" | "Qualified" | "Negotiation" | "Lost" | "Converted";
-  prospectType?: "Construction Prospect" | "Design Prospect";
+  prospectType?:
+    | "Construction Prospect"
+    | "Design Prospect"
+    | "Shop Prospect";
   project?: string;
   leadSource?: string;
   created_at: string;
@@ -34,6 +41,8 @@ interface Prospect {
 export default function ProspectView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const module = resolveProspectModule(pathname);
   const { getProspectById, updateProspectStatus } = useProspects();
   const { isLoading } = useStore();
 
@@ -123,7 +132,7 @@ export default function ProspectView() {
         </div>
         <Can permission={PERMISSIONS.PROSPECT_UPDATE}>
           <Link
-            to={`/prospects/edit/${prospect.id}`}
+            to={prospectEditPath(module, prospect.id)}
             className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
           >
             <Pencil size={16} />

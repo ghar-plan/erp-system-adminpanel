@@ -14,17 +14,24 @@ import {
 } from "lucide-react";
 import { IoArrowBackOutline } from "react-icons/io5";
 import useSales from "../useHooks";
-import { Sale } from "@/utils/helpers/models/sales/sale.dto";
+import {
+  Sale,
+  computeSaleSubtotal,
+} from "@/utils/helpers/models/sales/sale.dto";
 import { formatMoney } from "@/utils/helpers/models/purchases/purchase.dto";
 import { customerTypeCategoryLabel } from "@/utils/helpers/models/customer-types/customer-type.dto";
 import { Can } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { isErpAdminEmail } from "@/utils/helpers/permissions/erp-admin-access";
+import useStore from "@/hooks/useStore";
 
 export default function SaleView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { getUser } = useStore();
   const { getSaleById } = useSales();
   const [sale, setSale] = useState<Sale | null>(null);
+  const canViewSaleRates = isErpAdminEmail(getUser()?.email);
 
   useEffect(() => {
     if (id) {
@@ -177,26 +184,12 @@ export default function SaleView() {
           ) : null}
 
           <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-lg bg-info-bg text-info-text">
-              <Package size={18} />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Product
-              </label>
-              <p className="text-sm font-semibold text-foreground mt-0.5">
-                {sale?.productName || "--"}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
             <div className="p-2.5 rounded-lg bg-success-bg text-success-text">
               <Hash size={18} />
             </div>
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Quantity
+                Total Quantity
               </label>
               <p className="text-sm font-semibold text-foreground mt-0.5">
                 {sale?.quantity ?? "--"}
@@ -210,10 +203,14 @@ export default function SaleView() {
             </div>
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                Rate
+                Amount
               </label>
               <p className="text-sm font-semibold text-foreground mt-0.5">
-                {formatMoney(sale?.rate)}
+                {formatMoney(
+                  sale?.items?.length
+                    ? computeSaleSubtotal(sale.items)
+                    : Number(sale?.payment || 0) + Number(sale?.balance || 0),
+                )}
               </p>
             </div>
           </div>
@@ -245,6 +242,68 @@ export default function SaleView() {
               </p>
             </div>
           </div>
+        </div>
+
+        <div className="pt-2">
+          <div className="flex items-center gap-2 mb-3">
+            <Package size={16} className="text-primary" />
+            <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">
+              Products
+            </h3>
+          </div>
+          {sale.items && sale.items.length > 0 ? (
+            <div className="overflow-x-auto rounded-lg border border-border-main">
+              <table className="min-w-full text-sm">
+                <thead className="bg-muted-foreground/5">
+                  <tr className="text-left">
+                    <th className="px-3 py-2 text-xs font-bold text-muted-foreground">
+                      Product
+                    </th>
+                    <th className="px-3 py-2 text-xs font-bold text-muted-foreground">
+                      Qty
+                    </th>
+                    {canViewSaleRates ? (
+                      <>
+                        <th className="px-3 py-2 text-xs font-bold text-muted-foreground">
+                          Rate
+                        </th>
+                        <th className="px-3 py-2 text-xs font-bold text-muted-foreground">
+                          Line Total
+                        </th>
+                      </>
+                    ) : null}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-main">
+                  {sale.items.map((item, index) => (
+                    <tr key={item.id || `${item.productId}-${index}`}>
+                      <td className="px-3 py-2 font-semibold">
+                        {item.productName || "--"}
+                      </td>
+                      <td className="px-3 py-2">{item.quantity ?? "--"}</td>
+                      {canViewSaleRates ? (
+                        <>
+                          <td className="px-3 py-2">{formatMoney(item.rate)}</td>
+                          <td className="px-3 py-2">
+                            {formatMoney(
+                              item.lineTotal ??
+                                Number(item.quantity || 0) *
+                                  Number(item.rate || 0),
+                            )}
+                          </td>
+                        </>
+                      ) : null}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {sale.productName || "--"} × {sale.quantity ?? "--"}
+              {canViewSaleRates ? <> @ {formatMoney(sale.rate)}</> : null}
+            </p>
+          )}
         </div>
 
         {/* Remarks */}

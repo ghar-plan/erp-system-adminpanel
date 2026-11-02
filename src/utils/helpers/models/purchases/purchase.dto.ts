@@ -8,9 +8,21 @@ import {
 export { CashOutPaymentSource };
 export const SOURCE_PAYMENT_OPTIONS = CASH_OUT_PAYMENT_SOURCE_OPTIONS;
 
+export interface PurchaseItem {
+  id?: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  rate?: number | null;
+  lineTotal?: number | null;
+  expiryDate?: string | null;
+  sortOrder?: number;
+}
+
 export interface Purchase {
   id: string;
   supplierName: string;
+  /** Denormalized summary (first product / "Name + N more") */
   productId: string;
   productName: string;
   quantity: number;
@@ -20,9 +32,31 @@ export interface Purchase {
   sourcePayment: CashOutPaymentSource;
   expiryDate?: string | null;
   date: string;
+  items?: PurchaseItem[];
   created_at?: string;
   updated_at?: string;
 }
+
+export const formatPurchaseProductsLabel = (purchase: Purchase): string => {
+  if (purchase.items && purchase.items.length > 1) {
+    return `${purchase.items[0].productName} + ${purchase.items.length - 1} more`;
+  }
+  if (purchase.items && purchase.items.length === 1) {
+    return purchase.items[0].productName;
+  }
+  return purchase.productName || "--";
+};
+
+export const computePurchaseLineTotal = (
+  quantity: number | string,
+  rate?: number | string | null,
+): number | null => {
+  if (rate === null || rate === undefined || rate === "") return null;
+  const qty = Number(quantity) || 0;
+  const r = Number(rate);
+  if (!Number.isFinite(r)) return null;
+  return Math.round(qty * r * 100) / 100;
+};
 
 export interface GharplansProductVariant {
   price: number;

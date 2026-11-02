@@ -8,6 +8,8 @@ import Button from "@/components/ui/Button";
 import { formatMoney } from "@/utils/helpers/models/purchases/purchase.dto";
 import { canAccessPurchasePrice } from "@/utils/helpers/permissions/purchase-price-access";
 import useStore from "@/hooks/useStore";
+import ExpiryStatusBadge from "@/components/ui/ExpiryStatusBadge";
+import { getExpiryStatus } from "@/utils/helpers/common/expiry-status";
 
 interface StockFilters {
   search: string;
@@ -134,6 +136,30 @@ export default function StocksListing() {
             first.
           </p>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs animate-fade-in">
+        <span className="font-semibold text-muted-foreground uppercase tracking-wider">
+          Expiry key
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="px-2 py-0.5 rounded-md bg-success-bg text-success-text border border-panel-border font-bold">
+            Fresh
+          </span>
+          <span className="text-muted-foreground">&gt; 30 days left</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="px-2 py-0.5 rounded-md bg-warning-bg text-warning-text border border-panel-border font-bold">
+            Near expiry
+          </span>
+          <span className="text-muted-foreground">≤ 30 days left</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="px-2 py-0.5 rounded-md bg-danger-bg text-danger-text border border-panel-border font-bold">
+            Expired
+          </span>
+          <span className="text-muted-foreground">Past expiry date</span>
+        </span>
       </div>
 
       <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 animate-fade-in">
@@ -295,6 +321,9 @@ export default function StocksListing() {
                                             Expires on
                                           </th>
                                           <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
+                                            Expiry status
+                                          </th>
+                                          <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
                                             Qty purchased
                                           </th>
                                           <th className="px-3 py-2 text-left text-xs font-bold text-muted-foreground">
@@ -308,13 +337,23 @@ export default function StocksListing() {
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-border-main">
-                                        {batches.map((batch) => (
-                                          <tr key={batch.id}>
+                                        {batches.map((batch) => {
+                                          const expiry = getExpiryStatus(
+                                            batch.expiryDate,
+                                          );
+                                          return (
+                                          <tr
+                                            key={batch.id}
+                                            className={expiry.toneClass}
+                                          >
                                             <td className="px-3 py-2">
                                               {formatDate(batch.purchaseDate)}
                                             </td>
                                             <td className="px-3 py-2">
                                               {formatDate(batch.expiryDate)}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                              <ExpiryStatusBadge info={expiry} />
                                             </td>
                                             <td className="px-3 py-2">
                                               {formatQty(batch.quantity)}
@@ -330,7 +369,8 @@ export default function StocksListing() {
                                               </td>
                                             ) : null}
                                           </tr>
-                                        ))}
+                                          );
+                                        })}
                                       </tbody>
                                     </table>
                                   </div>

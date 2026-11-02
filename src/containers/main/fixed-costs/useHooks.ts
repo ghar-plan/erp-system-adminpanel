@@ -6,6 +6,7 @@ import {
   errorToaster,
 } from "@/utils/helpers/common/alert-service";
 import { getCategoryLabel } from "@/utils/helpers/models/fixed-costs/fixed-cost.dto";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 
 const useFixedCosts = () => {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ const useFixedCosts = () => {
     const { status = false, message = "" } = response || {};
     if (status) {
       successToaster(message);
-      navigate("/fixed-costs");
+      navigate(siteRoutes.fixedCostsList);
       return response;
     }
   };
@@ -49,7 +50,7 @@ const useFixedCosts = () => {
     const { status = false, message = "" } = response || {};
     if (status) {
       successToaster(message);
-      navigate("/fixed-costs");
+      navigate(siteRoutes.fixedCostsList);
       return response;
     }
   };

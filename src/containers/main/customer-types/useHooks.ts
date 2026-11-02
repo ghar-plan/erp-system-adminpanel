@@ -22,8 +22,11 @@ const useCustomerTypes = () => {
     }
   };
 
-  const getAllCustomerTypes = async (setData: Function) => {
-    const response = await CustomerTypes_APIS.getAllWithoutPagination();
+  const getAllCustomerTypes = async (
+    setData: Function,
+    params: { activeOnly?: boolean } = {},
+  ) => {
+    const response = await CustomerTypes_APIS.getAllWithoutPagination(params);
     const { status = false, data = [] } = response || {};
     if (status && data) {
       setData(data);
@@ -56,6 +59,26 @@ const useCustomerTypes = () => {
       successToaster(message);
       return response;
     }
+  };
+
+  const setCustomerTypeStatus = async (
+    id: string,
+    isActive: boolean,
+    onSuccess?: () => void,
+  ) => {
+    const response = await CustomerTypes_APIS.setStatus(id, isActive);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(
+        message ||
+          (isActive
+            ? "Customer type opened successfully"
+            : "Customer type closed successfully"),
+      );
+      onSuccess?.();
+      return true;
+    }
+    return false;
   };
 
   const deleteCustomerType = async (
@@ -160,6 +183,7 @@ const useCustomerTypes = () => {
     getCustomerTypeById,
     createCustomerType,
     updateCustomerType,
+    setCustomerTypeStatus,
     deleteCustomerType,
     getPrices,
     getAllPrices,

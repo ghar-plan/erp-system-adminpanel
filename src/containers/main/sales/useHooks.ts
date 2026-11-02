@@ -6,6 +6,7 @@ import {
   successToaster,
   confirmationPopup,
 } from "@/utils/helpers/common/alert-service";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 
 const useSales = () => {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ const useSales = () => {
     const { status = false, message = "" } = response || {};
     if (status) {
       successToaster(message);
-      navigate("/sales");
+      navigate(siteRoutes.salesList);
       return response;
     }
   };
@@ -49,7 +50,7 @@ const useSales = () => {
     const { status = false, message = "" } = response || {};
     if (status) {
       successToaster(message);
-      navigate("/sales");
+      navigate(siteRoutes.salesList);
       return response;
     }
   };
@@ -73,8 +74,11 @@ const useSales = () => {
     }
   };
 
-  const getCustomerTypes = async (setData: Function) => {
-    const response = await CustomerTypes_APIS.getAllWithoutPagination();
+  const getCustomerTypes = async (
+    setData: Function,
+    params: { activeOnly?: boolean } = {},
+  ) => {
+    const response = await CustomerTypes_APIS.getAllWithoutPagination(params);
     const { status = false, data = [] } = response || {};
     if (status && data) {
       setData(data);

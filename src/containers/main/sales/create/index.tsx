@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { PlusSquare, Loader2, Save } from "lucide-react";
+import { PlusSquare, Loader2, Save, Plus, Trash2, List } from "lucide-react";
 import ProductSearchSelect from "@/components/ui/ProductSearchSelect";
-import { useNavigate, useParams } from "react-router-dom";
-import { Controller, useForm } from "react-hook-form";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { Can } from "@/components/auth/Can";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import useSales from "../useHooks";
 import useStocks from "@/containers/main/stocks/useHooks";
@@ -13,6 +16,7 @@ import {
   CashOutPaymentSource,
   SOURCE_PAYMENT_OPTIONS,
   GharplansProduct,
+  formatMoney,
 } from "@/utils/helpers/models/purchases/purchase.dto";
 import {
   CustomerType,
@@ -21,24 +25,41 @@ import {
   WALK_IN_CUSTOMER_TYPE,
   WALK_IN_CUSTOMER_TYPE_ID,
 } from "@/utils/helpers/models/customer-types/customer-type.dto";
-import { computeSaleBalance } from "@/utils/helpers/models/sales/sale.dto";
+import {
+  computeLineTotal,
+  computeSaleBalanceFromItems,
+  computeSaleSubtotal,
+  resolveSalePayment,
+} from "@/utils/helpers/models/sales/sale.dto";
 import { StockAvailability } from "@/utils/helpers/models/stocks/stock.dto";
+import { errorToaster } from "@/utils/helpers/common/alert-service";
+
+interface SaleLineInput {
+  productId: string;
+  productName: string;
+  quantity: number | string;
+  rate: number | string;
+}
 
 interface SaleFormInputs {
   customerTypeId: string;
   date: string;
   customerName: string;
   telephone: string;
-  productId: string;
-  productName: string;
-  quantity: number | string;
-  rate: number | string;
+  items: SaleLineInput[];
   payment: number | string;
   sourcePayment: CashOutPaymentSource | "";
   remarks: string;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+const emptyLine = (): SaleLineInput => ({
+  productId: "",
+  productName: "",
+  quantity: "",
+  rate: "",
+});
 
 export default function SaleCreate() {
   const { id } = useParams<{ id: string }>();
@@ -56,11 +77,13 @@ export default function SaleCreate() {
   const { isLoading } = useStore();
 
   const [customerTypes, setCustomerTypes] = useState<CustomerType[]>([]);
-  const [selectedProductName, setSelectedProductName] = useState("");
-  const [loadingRate, setLoadingRate] = useState(false);
-  const [stockInfo, setStockInfo] = useState<StockAvailability | null>(null);
-  const [originalSaleQty, setOriginalSaleQty] = useState(0);
-  const [originalSaleProductId, setOriginalSaleProductId] = useState("");
+  const [stockByProduct, setStockByProduct] = useState<
+    Record<string, StockAvailability | null>
+  >({});
+  const [originalQtyByProduct, setOriginalQtyByProduct] = useState<
+    Record<string, number>
+  >({});
+  const [loadingRateIndex, setLoadingRateIndex] = useState<number | null>(null);
 
   const {
     register,
@@ -76,21 +99,22 @@ export default function SaleCreate() {
       date: today(),
       customerName: "",
       telephone: "",
-      productId: "",
-      productName: "",
-      quantity: "",
-      rate: "",
+      items: [emptyLine()],
       payment: "",
       sourcePayment: "",
       remarks: "",
     },
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "items",
+  });
+
   const customerTypeId = watch("customerTypeId");
-  const productId = watch("productId");
-  const quantity = watch("quantity");
-  const rate = watch("rate");
+  const items = watch("items");
   const payment = watch("payment");
+  const sourcePayment = watch("sourcePayment");
 
   const customerTypeOptions = (() => {
     const withoutWalkIn = customerTypes.filter(
@@ -105,13 +129,21 @@ export default function SaleCreate() {
   const isWalkIn =
     selectedCustomerType?.category === CustomerTypeCategory.WALK_IN ||
     String(customerTypeId) === WALK_IN_CUSTOMER_TYPE_ID;
-  // Show name/phone for Customer and Walk-in (required only for Customer)
   const isCustomerCategory =
     selectedCustomerType?.category === CustomerTypeCategory.CUSTOMER || isWalkIn;
   const requiresCustomerDetails =
     selectedCustomerType?.category === CustomerTypeCategory.CUSTOMER;
 
-  const balance = computeSaleBalance(quantity, rate, payment);
+  const subtotal = computeSaleSubtotal(items || []);
+  const resolvedPayment = resolveSalePayment(
+    sourcePayment,
+    subtotal,
+    payment,
+  );
+  const balance = computeSaleBalanceFromItems(items || [], resolvedPayment);
+  const paymentIsLocked =
+    sourcePayment === CashOutPaymentSource.CASH ||
+    sourcePayment === CashOutPaymentSource.CREDIT;
 
   const loadProductsForSelect = async (params: {
     name?: string;
@@ -133,91 +165,193 @@ export default function SaleCreate() {
   };
 
   useEffect(() => {
-    getCustomerTypes(setCustomerTypes);
+    // New sales only offer open customers; edit may keep a closed one.
+    getCustomerTypes(setCustomerTypes, { activeOnly: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load sale details if editing
   useEffect(() => {
     if (isEditMode && id) {
       getSaleById(id, (data: any) => {
+        const lines: SaleLineInput[] =
+          Array.isArray(data?.items) && data.items.length > 0
+            ? data.items.map((item: any) => ({
+                productId: String(item.productId || ""),
+                productName: item.productName || "",
+                quantity: item.quantity ?? "",
+                rate: item.rate ?? "",
+              }))
+            : [
+                {
+                  productId: String(data?.productId || ""),
+                  productName: data?.productName || "",
+                  quantity: data?.quantity ?? "",
+                  rate: data?.rate ?? "",
+                },
+              ];
+
+        // Keep a closed customer type selectable when editing an existing sale
+        if (data?.customerType && data.customerType.isActive === false) {
+          setCustomerTypes((prev) => {
+            if (prev.some((ct) => ct.id === data.customerType.id)) return prev;
+            return [...prev, data.customerType];
+          });
+        }
+
         reset({
           customerTypeId: data?.customerTypeId || "",
           date: data?.date ? String(data.date).slice(0, 10) : today(),
           customerName: data?.customerName || "",
           telephone: data?.telephone || "",
-          productId: data?.productId || "",
-          productName: data?.productName || "",
-          quantity: data?.quantity ?? "",
-          rate: data?.rate ?? "",
+          items: lines,
           payment: data?.payment ?? "",
           sourcePayment: data?.sourcePayment || "",
           remarks: data?.remarks || "",
         });
-        if (data?.productName) {
-          setSelectedProductName(data.productName);
+
+        const original: Record<string, number> = {};
+        for (const line of lines) {
+          if (!line.productId) continue;
+          original[String(line.productId)] =
+            (original[String(line.productId)] || 0) + Number(line.quantity || 0);
         }
-        setOriginalSaleQty(Number(data?.quantity) || 0);
-        setOriginalSaleProductId(String(data?.productId || ""));
+        setOriginalQtyByProduct(original);
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isEditMode]);
 
-  // Prefill rate from customer-type product price when configured (always editable).
+  // Prefill empty rates when customer type changes (keep existing rates on edit load)
   useEffect(() => {
-    if (!customerTypeId || !productId) return;
-    if (String(customerTypeId) === WALK_IN_CUSTOMER_TYPE_ID) return;
-    setLoadingRate(true);
-    getProductRate(customerTypeId, String(productId), (fetchedRate) => {
-      setLoadingRate(false);
-      if (fetchedRate !== null && fetchedRate !== undefined) {
-        setValue("rate", fetchedRate, { shouldValidate: true });
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerTypeId, productId]);
-
-  // Load stock when product changes
-  useEffect(() => {
-    if (!productId) {
-      setStockInfo(null);
+    if (!customerTypeId || String(customerTypeId) === WALK_IN_CUSTOMER_TYPE_ID) {
       return;
     }
-    getStockByProduct(String(productId)).then(setStockInfo);
+    (items || []).forEach((item, index) => {
+      if (!item?.productId) return;
+      const currentRate = Number(item.rate);
+      if (Number.isFinite(currentRate) && currentRate > 0) return;
+      setLoadingRateIndex(index);
+      getProductRate(customerTypeId, String(item.productId), (fetchedRate) => {
+        setLoadingRateIndex(null);
+        if (fetchedRate !== null && fetchedRate !== undefined) {
+          setValue(`items.${index}.rate`, fetchedRate, { shouldValidate: true });
+        }
+      });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId]);
+  }, [customerTypeId]);
 
-  /** Available for this sale: on-hand + this sale's qty when editing same product. */
-  const availableForSale = (() => {
-    const onHand = Number(stockInfo?.quantity ?? 0);
+  // Load stock for each selected product
+  useEffect(() => {
+    const productIds = [
+      ...new Set(
+        (items || [])
+          .map((item) => String(item?.productId || ""))
+          .filter(Boolean),
+      ),
+    ];
+    productIds.forEach((pid) => {
+      if (stockByProduct[pid] !== undefined) return;
+      getStockByProduct(pid).then((info) => {
+        setStockByProduct((prev) => ({ ...prev, [pid]: info }));
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
+
+  // Keep Payment in sync with Source Payment + subtotal (Cash = full, Credit = 0)
+  useEffect(() => {
+    if (!sourcePayment) return;
     if (
-      isEditMode &&
-      productId &&
-      String(productId) === String(originalSaleProductId)
+      sourcePayment !== CashOutPaymentSource.CASH &&
+      sourcePayment !== CashOutPaymentSource.CREDIT
     ) {
-      return onHand + originalSaleQty;
+      return;
+    }
+    const next = resolveSalePayment(sourcePayment, subtotal, payment);
+    const current = Number(payment);
+    if (!Number.isFinite(current) || Math.abs(current - next) > 0.001) {
+      setValue("payment", next, { shouldValidate: true, shouldDirty: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourcePayment, subtotal]);
+
+  const availableForProduct = (productId: string) => {
+    if (!productId) return 0;
+    const onHand = Number(stockByProduct[productId]?.quantity ?? 0);
+    if (isEditMode) {
+      return onHand + Number(originalQtyByProduct[productId] || 0);
     }
     return onHand;
-  })();
+  };
 
-  const handleProductSelect = (id: string, name: string) => {
-    setValue("productId", id, { shouldValidate: true });
-    setValue("productName", name, { shouldValidate: true });
-    setSelectedProductName(name);
+  const handleProductSelect = async (index: number, pid: string, name: string) => {
+    setValue(`items.${index}.productId`, pid, { shouldValidate: true });
+    setValue(`items.${index}.productName`, name, { shouldValidate: true });
+
+    if (customerTypeId && String(customerTypeId) !== WALK_IN_CUSTOMER_TYPE_ID) {
+      setLoadingRateIndex(index);
+      getProductRate(customerTypeId, pid, (fetchedRate) => {
+        setLoadingRateIndex(null);
+        if (fetchedRate !== null && fetchedRate !== undefined) {
+          setValue(`items.${index}.rate`, fetchedRate, { shouldValidate: true });
+        }
+      });
+    }
+
+    if (stockByProduct[pid] === undefined) {
+      const info = await getStockByProduct(pid);
+      setStockByProduct((prev) => ({ ...prev, [pid]: info }));
+    }
   };
 
   const onSubmitForm = async (data: SaleFormInputs) => {
-    const qty = Number(data.quantity);
+    const cleanedItems = (data.items || [])
+      .filter((item) => item.productId && item.productName)
+      .map((item) => ({
+        productId: String(item.productId),
+        productName: item.productName,
+        quantity: Number(item.quantity),
+        rate: Number(item.rate),
+      }));
+
+    if (!cleanedItems.length) {
+      errorToaster("Add at least one product");
+      return;
+    }
+
+    for (const [index, item] of cleanedItems.entries()) {
+      if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
+        errorToaster(`Line ${index + 1}: quantity must be greater than 0`);
+        return;
+      }
+      if (!Number.isFinite(item.rate) || item.rate <= 0) {
+        errorToaster(`Line ${index + 1}: rate must be greater than 0`);
+        return;
+      }
+    }
+
+    const saleSubtotal = computeSaleSubtotal(cleanedItems);
+    const paymentAmount = resolveSalePayment(
+      data.sourcePayment,
+      saleSubtotal,
+      data.payment,
+    );
+
+    if (data.sourcePayment === CashOutPaymentSource.PARTIAL) {
+      if (paymentAmount <= 0 || paymentAmount >= saleSubtotal) {
+        errorToaster(
+          "Partial payment must be greater than 0 and less than the subtotal",
+        );
+        return;
+      }
+    }
 
     const payload: any = {
       customerTypeId: data.customerTypeId,
       date: data.date,
-      productId: String(data.productId),
-      productName: data.productName,
-      quantity: qty,
-      rate: Number(data.rate),
-      payment: data.payment === "" ? 0 : Number(data.payment),
+      items: cleanedItems,
+      payment: paymentAmount,
       sourcePayment: data.sourcePayment,
       ...(data.remarks ? { remarks: data.remarks.trim() } : {}),
     };
@@ -236,13 +370,10 @@ export default function SaleCreate() {
     }
   };
 
-  const goToBack = () => {
-    navigate(-1);
-  };
+  const goToBack = () => navigate(-1);
 
   return (
     <div>
-      {/* Header */}
       <div className="flex justify-between items-center gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <button
@@ -257,9 +388,19 @@ export default function SaleCreate() {
             {isEditMode ? "Edit Sale" : "Record Sale"}
           </h1>
         </div>
+        {!isEditMode && (
+          <Can permission={PERMISSIONS.SALES_READ}>
+            <Link
+              to={siteRoutes.salesList}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
+            >
+              <List size={18} />
+              Sales List
+            </Link>
+          </Can>
+        )}
       </div>
 
-      {/* Form Card Layout */}
       <form
         id="sale-create-form"
         onSubmit={handleSubmit(onSubmitForm)}
@@ -268,7 +409,6 @@ export default function SaleCreate() {
         <hr className="border-border-main" />
 
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-          {/* Customer Type */}
           <div>
             <label className="mb-2 block ui-form-label">Customer Type</label>
             <select
@@ -282,7 +422,9 @@ export default function SaleCreate() {
                 <option key={ct.id} value={ct.id}>
                   {ct.id === WALK_IN_CUSTOMER_TYPE_ID
                     ? ct.name
-                    : `${ct.name} (${customerTypeCategoryLabel(ct.category)})`}
+                    : `${ct.name} (${customerTypeCategoryLabel(ct.category)})${
+                        ct.isActive === false ? " — Closed" : ""
+                      }`}
                 </option>
               ))}
             </select>
@@ -293,7 +435,6 @@ export default function SaleCreate() {
             )}
           </div>
 
-          {/* Date */}
           <div>
             <label className="mb-2 block ui-form-label">Date</label>
             <input
@@ -308,7 +449,6 @@ export default function SaleCreate() {
             )}
           </div>
 
-          {/* Customer Name + Telephone — required for Customer, optional for Walk-in */}
           {isCustomerCategory ? (
             <>
               <div>
@@ -375,121 +515,162 @@ export default function SaleCreate() {
               </div>
             </>
           ) : null}
+        </div>
 
-          {/* Product Name */}
-          <div>
-            <label className="mb-2 block ui-form-label">Product Name</label>
-            <ProductSearchSelect
-              value={productId || ""}
-              selectedName={selectedProductName || watch("productName")}
-              onSelect={handleProductSelect}
-              onLoad={loadProductsForSelect}
-              error={errors.productId?.message}
-            />
-            <input
-              type="hidden"
-              {...register("productId", { required: "Product is required" })}
-            />
+        {/* Products */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-base font-bold text-foreground">Products</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Add one or more products to this sale
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => append(emptyLine())}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border-main bg-card text-foreground text-xs font-semibold hover:bg-muted-foreground/5 cursor-pointer"
+            >
+              <Plus size={14} />
+              Add Product
+            </button>
           </div>
 
-          {/* Quantity */}
-          <div>
-            <label className="mb-2 block ui-form-label">Quantity</label>
-            <input
-              type="number"
-              step="1"
-              min="1"
-              placeholder="e.g. 10"
-              className={`common-input ${errors.quantity ? "border-red-500 focus:border-red-500" : ""}`}
-              {...register("quantity", {
-                required: "Quantity is required",
-                valueAsNumber: true,
-                min: { value: 1, message: "Quantity must be at least 1" },
-              })}
-            />
-            {productId ? (
-              <p
-                className={`mt-1 text-xs font-semibold ${
-                  availableForSale <= 0
-                    ? "text-muted-foreground"
-                    : "text-emerald-600"
-                }`}
-              >
-                Available stock: {availableForSale}
-                {stockInfo?.totalPurchased != null
-                  ? ` ? Purchased: ${Number(stockInfo.totalPurchased)} ? Sold: ${Number(stockInfo.totalSold)}`
-                  : ""}
-                {availableForSale <= 0
-                  ? " ? Sales allowed while stock is being finalized"
-                  : ""}
-              </p>
-            ) : null}
-            {errors.quantity && (
-              <p className="mt-1 text-xs text-danger-text font-semibold">
-                {errors.quantity.message}
-              </p>
-            )}
-          </div>
+          <div className="space-y-4">
+            {fields.map((field, index) => {
+              const line = items?.[index];
+              const pid = String(line?.productId || "");
+              const available = availableForProduct(pid);
+              const lineTotal = computeLineTotal(
+                line?.quantity ?? 0,
+                line?.rate ?? 0,
+              );
 
-          {/* Rate */}
-          <div>
-            <label className="mb-2 block ui-form-label">Rate</label>
-            <input
-              type="number"
-              step="1"
-              min="1"
-              placeholder={loadingRate ? "Loading price..." : "e.g. 1300"}
-              className={`common-input ${errors.rate ? "border-red-500 focus:border-red-500" : ""}`}
-              {...register("rate", {
-                required: "Rate is required",
-                valueAsNumber: true,
-                min: { value: 1, message: "Rate must be at least 1" },
-              })}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Uses the price set under Customer Types for this product when
-              available; you can change it before saving.
-            </p>
-            {errors.rate && (
-              <p className="mt-1 text-xs text-danger-text font-semibold">
-                {errors.rate.message}
-              </p>
-            )}
-          </div>
+              return (
+                <div
+                  key={field.id}
+                  className="rounded-xl border border-border-main bg-card p-4 space-y-4"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Product {index + 1}
+                    </span>
+                    {fields.length > 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => remove(index)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-danger-text hover:opacity-80 cursor-pointer"
+                      >
+                        <Trash2 size={14} />
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
 
-          {/* Payment */}
-          <div>
-            <label className="mb-2 block ui-form-label">Payment</label>
-            <input
-              type="number"
-              step="1"
-              min="0"
-              placeholder="e.g. 5000"
-              className={`common-input ${errors.payment ? "border-red-500 focus:border-red-500" : ""}`}
-              {...register("payment", {
-                valueAsNumber: true,
-                min: { value: 0, message: "Payment cannot be negative" },
-              })}
-            />
-            {errors.payment && (
-              <p className="mt-1 text-xs text-danger-text font-semibold">
-                {errors.payment.message}
-              </p>
-            )}
-          </div>
+                  <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="md:col-span-2">
+                      <label className="mb-2 block ui-form-label">
+                        Product Name
+                      </label>
+                      <ProductSearchSelect
+                        value={pid}
+                        selectedName={line?.productName || ""}
+                        onSelect={(id, name) =>
+                          handleProductSelect(index, id, name)
+                        }
+                        onLoad={loadProductsForSelect}
+                        error={errors.items?.[index]?.productId?.message}
+                      />
+                      <input
+                        type="hidden"
+                        {...register(`items.${index}.productId` as const, {
+                          required: "Product is required",
+                        })}
+                      />
+                      <input
+                        type="hidden"
+                        {...register(`items.${index}.productName` as const)}
+                      />
+                    </div>
 
-          {/* Balance (display only) */}
+                    <div>
+                      <label className="mb-2 block ui-form-label">
+                        Quantity
+                      </label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="1"
+                        placeholder="e.g. 10"
+                        className={`common-input ${errors.items?.[index]?.quantity ? "border-red-500 focus:border-red-500" : ""}`}
+                        {...register(`items.${index}.quantity` as const, {
+                          required: "Quantity is required",
+                          valueAsNumber: true,
+                          min: {
+                            value: 1,
+                            message: "Quantity must be at least 1",
+                          },
+                        })}
+                      />
+                      {pid ? (
+                        <p
+                          className={`mt-1 text-xs font-semibold ${
+                            available <= 0
+                              ? "text-muted-foreground"
+                              : "text-emerald-600"
+                          }`}
+                        >
+                          Available stock: {available}
+                          {available <= 0
+                            ? " — sales allowed while stock is being finalized"
+                            : ""}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block ui-form-label">Rate</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        placeholder={
+                          loadingRateIndex === index
+                            ? "Loading price..."
+                            : "e.g. 1300"
+                        }
+                        className={`common-input ${errors.items?.[index]?.rate ? "border-red-500 focus:border-red-500" : ""}`}
+                        {...register(`items.${index}.rate` as const, {
+                          required: "Rate is required",
+                          valueAsNumber: true,
+                          min: {
+                            value: 0.01,
+                            message: "Rate must be greater than 0",
+                          },
+                        })}
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Line total: {formatMoney(lineTotal)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
           <div>
-            <label className="mb-2 block ui-form-label">Balance</label>
+            <label className="mb-2 block ui-form-label">Subtotal</label>
             <input
               type="text"
               readOnly
-              value={Number.isFinite(balance) ? balance : "0"}
+              value={formatMoney(subtotal)}
               className="common-input bg-muted-foreground/5 cursor-not-allowed text-muted-foreground font-semibold"
             />
           </div>
 
-          {/* Source Payment */}
           <div>
             <label className="mb-2 block ui-form-label">Source Payment</label>
             <select
@@ -512,7 +693,50 @@ export default function SaleCreate() {
             )}
           </div>
 
-          {/* Remarks */}
+          <div>
+            <label className="mb-2 block ui-form-label">Payment</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder={
+                sourcePayment === CashOutPaymentSource.CASH
+                  ? "Full amount (Cash)"
+                  : sourcePayment === CashOutPaymentSource.CREDIT
+                    ? "0 (Credit)"
+                    : "e.g. 5000.50"
+              }
+              readOnly={paymentIsLocked}
+              className={`common-input ${paymentIsLocked ? "bg-muted-foreground/5 cursor-not-allowed text-muted-foreground font-semibold" : ""} ${errors.payment ? "border-red-500 focus:border-red-500" : ""}`}
+              {...register("payment", {
+                valueAsNumber: true,
+                min: { value: 0, message: "Payment cannot be negative" },
+              })}
+            />
+            {paymentIsLocked ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {sourcePayment === CashOutPaymentSource.CASH
+                  ? "Cash sales auto-fill payment with the full subtotal."
+                  : "Credit sales set payment to 0; balance equals the subtotal."}
+              </p>
+            ) : null}
+            {errors.payment && (
+              <p className="mt-1 text-xs text-danger-text font-semibold">
+                {errors.payment.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-2 block ui-form-label">Balance</label>
+            <input
+              type="text"
+              readOnly
+              value={formatMoney(balance)}
+              className="common-input bg-muted-foreground/5 cursor-not-allowed text-muted-foreground font-semibold"
+            />
+          </div>
+
           <div className="md:col-span-2">
             <label className="mb-2 block ui-form-label">Remarks</label>
             <textarea
@@ -524,7 +748,6 @@ export default function SaleCreate() {
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex justify-end pt-4 border-t border-border-main/60">
           <button
             type="submit"

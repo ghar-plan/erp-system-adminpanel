@@ -153,6 +153,11 @@ export const PERMISSIONS = {
   PRODUCT_PRICES_READ: "product_prices.read",
   PRODUCT_PRICES_UPDATE: "product_prices.update",
 
+  DOCUMENTS_CREATE: "documents.create",
+  DOCUMENTS_READ: "documents.read",
+  DOCUMENTS_UPDATE: "documents.update",
+  DOCUMENTS_DELETE: "documents.delete",
+
   GHARPLANS_READ: "gharplans.read",
 } as const;
 

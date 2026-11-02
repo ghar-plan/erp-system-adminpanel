@@ -1,12 +1,18 @@
 import { Prospects_APIS } from "@/libs/apis/prospects.api";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   successToaster,
   confirmationPopup,
 } from "@/utils/helpers/common/alert-service";
+import {
+  prospectBasePath,
+  resolveProspectModule,
+} from "@/utils/helpers/models/prospects/prospect-module";
 
 const useProspects = () => {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const listPath = prospectBasePath(resolveProspectModule(pathname));
 
   const getProspects = async (
     setData: Function,
@@ -37,7 +43,7 @@ const useProspects = () => {
     const { status = false, message = "" } = response || {};
     if (status) {
       successToaster(message);
-      navigate("/prospects");
+      navigate(listPath);
       return response;
     }
   };
@@ -47,7 +53,7 @@ const useProspects = () => {
     const { status = false, message = "" } = response || {};
     if (status) {
       successToaster(message);
-      navigate("/prospects");
+      navigate(listPath);
       return response;
     }
   };

@@ -12,7 +12,7 @@ import {
 import ProductSearchSelect from "@/components/ui/ProductSearchSelect";
 import Button from "@/components/ui/Button";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import usePurchases from "../useHooks";
 import useTimeSpan from "@/containers/main/time-span/useHooks";
@@ -32,21 +32,33 @@ import { Can } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { canAccessPurchasePrice } from "@/utils/helpers/permissions/purchase-price-access";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
+import { errorToaster } from "@/utils/helpers/common/alert-service";
 
 type PurchaseSupplierOption = { id: string; name: string };
 
-interface PurchaseFormInputs {
-  supplierName: string;
+type PurchaseLineInput = {
   productId: string;
   productName: string;
   quantity: number | string;
+  expiryDate: string;
+};
+
+interface PurchaseFormInputs {
+  supplierName: string;
+  items: PurchaseLineInput[];
   remarks: string;
   sourcePayment: CashOutPaymentSource | "";
-  expiryDate: string;
   date: string;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+const emptyLine = (): PurchaseLineInput => ({
+  productId: "",
+  productName: "",
+  quantity: "",
+  expiryDate: "",
+});
 
 export default function PurchaseCreate() {
   const { id } = useParams<{ id: string }>();
@@ -66,13 +78,14 @@ export default function PurchaseCreate() {
   const { isLoading, getUser } = useStore();
   const canViewPurchasePrice = canAccessPurchasePrice(getUser()?.email);
 
-  const [selectedProductName, setSelectedProductName] = useState("");
-  const [lifespan, setLifespan] = useState<ProductLifespanAvailability | null>(
-    null,
-  );
-  const [snapshotRate, setSnapshotRate] = useState<number | null>(null);
+  const [lifespansByProduct, setLifespansByProduct] = useState<
+    Record<string, ProductLifespanAvailability | null>
+  >({});
   const [snapshotPayment, setSnapshotPayment] = useState<number | null>(null);
-  const expiryTouchedRef = useRef(false);
+  const [snapshotItems, setSnapshotItems] = useState<
+    Array<{ rate?: number | null; lineTotal?: number | null }>
+  >([]);
+  const expiryTouchedRef = useRef<Record<number, boolean>>({});
   const loadedEditRef = useRef(false);
 
   const [suppliers, setSuppliers] = useState<PurchaseSupplierOption[]>([]);
@@ -90,22 +103,25 @@ export default function PurchaseCreate() {
     setValue,
     watch,
     reset,
+    control,
     clearErrors,
     formState: { errors },
   } = useForm<PurchaseFormInputs>({
     defaultValues: {
       supplierName: "",
-      productId: "",
-      productName: "",
-      quantity: "",
+      items: [emptyLine()],
       remarks: "",
       sourcePayment: "",
-      expiryDate: "",
       date: today(),
     },
   });
 
-  const productId = watch("productId");
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "items",
+  });
+
+  const items = watch("items");
   const date = watch("date");
   const selectedSupplierName = watch("supplierName");
 
@@ -170,7 +186,6 @@ export default function PurchaseCreate() {
     setSupplierSaving(false);
     if (saved) {
       const nextName = saved.name || trimmed;
-      // Update options first so the <select> has a matching value before setValue
       setSuppliers((prev) => {
         const exists = prev.some((s) => s.id === saved.id);
         const next = exists
@@ -220,102 +235,154 @@ export default function PurchaseCreate() {
     return { products, total };
   };
 
+  const ensureLifespan = async (productId: string) => {
+    if (!productId || lifespansByProduct[productId] !== undefined) return;
+    const lifespan = await getByProduct(String(productId));
+    setLifespansByProduct((prev) => ({ ...prev, [productId]: lifespan }));
+  };
+
   // Load purchase details if editing
   useEffect(() => {
     if (isEditMode && id) {
       getPurchaseById(id, (data: any) => {
+        const lines: PurchaseLineInput[] =
+          Array.isArray(data?.items) && data.items.length > 0
+            ? data.items.map((item: any) => ({
+                productId: String(item.productId || ""),
+                productName: item.productName || "",
+                quantity: item.quantity ?? "",
+                expiryDate: item.expiryDate
+                  ? String(item.expiryDate).slice(0, 10)
+                  : "",
+              }))
+            : [
+                {
+                  productId: String(data?.productId || ""),
+                  productName: data?.productName || "",
+                  quantity: data?.quantity ?? "",
+                  expiryDate: data?.expiryDate
+                    ? String(data.expiryDate).slice(0, 10)
+                    : "",
+                },
+              ];
+
         reset({
           supplierName: data?.supplierName || "",
-          productId: data?.productId || "",
-          productName: data?.productName || "",
-          quantity: data?.quantity ?? "",
+          items: lines,
           remarks: data?.remarks || "",
           sourcePayment: data?.sourcePayment || "",
-          expiryDate: data?.expiryDate
-            ? String(data.expiryDate).slice(0, 10)
-            : "",
           date: data?.date ? String(data.date).slice(0, 10) : today(),
         });
-        if (data?.productName) {
-          setSelectedProductName(data.productName);
-        }
-        setSnapshotRate(
-          data?.rate != null && Number.isFinite(Number(data.rate))
-            ? Number(data.rate)
-            : null,
-        );
+
         setSnapshotPayment(
           data?.paymentMade != null &&
             Number.isFinite(Number(data.paymentMade))
             ? Number(data.paymentMade)
             : null,
         );
-        // Keep existing expiry on edit unless user changes product/date
-        expiryTouchedRef.current = !!data?.expiryDate;
+        setSnapshotItems(
+          Array.isArray(data?.items)
+            ? data.items.map((item: any) => ({
+                rate: item?.rate ?? null,
+                lineTotal: item?.lineTotal ?? null,
+              }))
+            : [
+                {
+                  rate: data?.rate ?? null,
+                  lineTotal:
+                    data?.paymentMade ??
+                    (data?.rate != null
+                      ? Number(data.quantity) * Number(data.rate)
+                      : null),
+                },
+              ],
+        );
+
+        const touched: Record<number, boolean> = {};
+        lines.forEach((line, index) => {
+          touched[index] = !!line.expiryDate;
+          if (line.productId) {
+            ensureLifespan(line.productId);
+          }
+        });
+        expiryTouchedRef.current = touched;
         loadedEditRef.current = true;
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isEditMode]);
 
-  // Load product time span
+  // Auto-fill expiry per line from time span when product/date changes
   useEffect(() => {
-    if (!productId) {
-      setLifespan(null);
-      return;
-    }
-    getByProduct(String(productId)).then(setLifespan);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId]);
+    if (!date || !items?.length) return;
 
-  // Auto-fill expiry from time span when product/date changes (unless user edited expiry)
-  useEffect(() => {
-    if (!productId || !date || !lifespan) return;
-    if (lifespan.isLifetime) {
-      if (!expiryTouchedRef.current && !isEditMode) {
-        setValue("expiryDate", "");
+    items.forEach((line, index) => {
+      const pid = String(line?.productId || "");
+      if (!pid) return;
+      const lifespan = lifespansByProduct[pid];
+      if (!lifespan) {
+        ensureLifespan(pid);
+        return;
       }
-      return;
-    }
+      if (expiryTouchedRef.current[index]) return;
+      if (isEditMode && loadedEditRef.current && line.expiryDate) return;
 
-    // On edit load, don't overwrite existing expiry until product/date changes after load
-    if (isEditMode && loadedEditRef.current && expiryTouchedRef.current) {
-      return;
-    }
+      if (lifespan.isLifetime) {
+        if (!isEditMode) {
+          setValue(`items.${index}.expiryDate`, "");
+        }
+        return;
+      }
 
-    const computed = computeExpiryFromLifespan(
-      date,
-      lifespan.years,
-      lifespan.months,
-      lifespan.days,
-    );
-    if (computed) {
-      setValue("expiryDate", computed, { shouldDirty: true });
-    }
-  }, [productId, date, lifespan, isEditMode, setValue]);
+      const computed = computeExpiryFromLifespan(
+        date,
+        lifespan.years,
+        lifespan.months,
+        lifespan.days,
+      );
+      if (computed) {
+        setValue(`items.${index}.expiryDate`, computed, { shouldDirty: true });
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, items, lifespansByProduct, isEditMode, setValue]);
 
-  const handleProductSelect = (id: string, name: string) => {
-    setValue("productId", id, { shouldValidate: true });
-    setValue("productName", name, { shouldValidate: true });
-    setSelectedProductName(name);
-    // Allow auto-expiry for newly selected product
-    expiryTouchedRef.current = false;
+  const handleProductSelect = (index: number, id: string, name: string) => {
+    setValue(`items.${index}.productId`, id, { shouldValidate: true });
+    setValue(`items.${index}.productName`, name, { shouldValidate: true });
+    expiryTouchedRef.current[index] = false;
     loadedEditRef.current = false;
+    ensureLifespan(id);
   };
 
   const onSubmitForm = async (data: PurchaseFormInputs) => {
-    const quantity = Number(data.quantity);
+    const cleanedItems = (data.items || [])
+      .filter((item) => item.productId && item.productName)
+      .map((item) => ({
+        productId: String(item.productId),
+        productName: item.productName,
+        quantity: Number(item.quantity),
+        ...(item.expiryDate ? { expiryDate: item.expiryDate } : {}),
+      }));
 
-    // Prices are never sent from the form — backend snapshots from Product Prices.
+    if (!cleanedItems.length) {
+      errorToaster("Add at least one product");
+      return;
+    }
+
+    for (const [index, item] of cleanedItems.entries()) {
+      if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
+        errorToaster(`Line ${index + 1}: quantity must be greater than 0`);
+        return;
+      }
+    }
+
     const payload: Record<string, unknown> = {
       supplierName: data.supplierName.trim(),
-      productId: String(data.productId),
-      productName: data.productName,
-      quantity,
+      items: cleanedItems,
       sourcePayment: data.sourcePayment,
       date: data.date,
       ...(data.remarks ? { remarks: data.remarks.trim() } : {}),
-      ...(data.expiryDate ? { expiryDate: data.expiryDate } : {}),
     };
 
     if (isEditMode && id) {
@@ -328,12 +395,6 @@ export default function PurchaseCreate() {
   const goToBack = () => {
     navigate(-1);
   };
-
-  const lifespanHint = lifespan
-    ? lifespan.isLifetime
-      ? "Lifetime product (no auto expiry)"
-      : `Time span: ${formatLifespanLabel(lifespan.years, lifespan.months, lifespan.days)}`
-    : null;
 
   return (
     <div>
@@ -369,7 +430,7 @@ export default function PurchaseCreate() {
                 className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
               >
                 <List size={18} />
-                Record Purchase
+                Purchase List
               </Link>
             </Can>
           )}
@@ -415,72 +476,24 @@ export default function PurchaseCreate() {
           </div>
 
           <div>
-            <label className="mb-2 block ui-form-label">Product Name</label>
-            <ProductSearchSelect
-              value={productId || ""}
-              selectedName={selectedProductName || watch("productName")}
-              onSelect={handleProductSelect}
-              onLoad={loadProductsForSelect}
-              error={errors.productId?.message}
-            />
+            <label className="mb-2 block ui-form-label">Date</label>
             <input
-              type="hidden"
-              {...register("productId", { required: "Product is required" })}
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block ui-form-label">Quantity</label>
-            <input
-              type="number"
-              step="1"
-              min="1"
-              placeholder="e.g. 100"
-              className={`common-input ${errors.quantity ? "border-red-500 focus:border-red-500" : ""}`}
-              {...register("quantity", {
-                required: "Quantity is required",
-                valueAsNumber: true,
-                min: { value: 1, message: "Quantity must be at least 1" },
+              type="date"
+              className={`common-input ${errors.date ? "border-red-500 focus:border-red-500" : ""}`}
+              {...register("date", {
+                required: "Date is required",
+                onChange: () => {
+                  expiryTouchedRef.current = {};
+                  loadedEditRef.current = false;
+                },
               })}
             />
-            {errors.quantity && (
+            {errors.date && (
               <p className="mt-1 text-xs text-danger-text font-semibold">
-                {errors.quantity.message}
+                {errors.date.message}
               </p>
             )}
           </div>
-
-          {canViewPurchasePrice && isEditMode ? (
-            <>
-              <div>
-                <label className="mb-2 block ui-form-label">Per Item</label>
-                <input
-                  type="text"
-                  readOnly
-                  value={
-                    snapshotRate != null ? formatMoney(snapshotRate) : "—"
-                  }
-                  className="common-input bg-muted-foreground/5 cursor-not-allowed"
-                />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Snapshot from Product Prices at purchase time (read-only)
-                </p>
-              </div>
-              <div>
-                <label className="mb-2 block ui-form-label">Price</label>
-                <input
-                  type="text"
-                  readOnly
-                  value={
-                    snapshotPayment != null
-                      ? formatMoney(snapshotPayment)
-                      : "—"
-                  }
-                  className="common-input bg-muted-foreground/5 cursor-not-allowed"
-                />
-              </div>
-            </>
-          ) : null}
 
           <div>
             <label className="mb-2 block ui-form-label">Source Payment</label>
@@ -504,57 +517,206 @@ export default function PurchaseCreate() {
             )}
           </div>
 
-          <div>
-            <label className="mb-2 block ui-form-label">Date</label>
-            <input
-              type="date"
-              className={`common-input ${errors.date ? "border-red-500 focus:border-red-500" : ""}`}
-              {...register("date", {
-                required: "Date is required",
-                onChange: () => {
-                  if (!isEditMode) {
-                    expiryTouchedRef.current = false;
-                  } else {
-                    loadedEditRef.current = false;
-                    expiryTouchedRef.current = false;
-                  }
-                },
-              })}
-            />
-            {errors.date && (
-              <p className="mt-1 text-xs text-danger-text font-semibold">
-                {errors.date.message}
+          {canViewPurchasePrice && isEditMode ? (
+            <div>
+              <label className="mb-2 block ui-form-label">Total Price</label>
+              <input
+                type="text"
+                readOnly
+                value={
+                  snapshotPayment != null ? formatMoney(snapshotPayment) : "—"
+                }
+                className="common-input bg-muted-foreground/5 cursor-not-allowed"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Snapshot from Product Prices at purchase time (read-only)
               </p>
-            )}
+            </div>
+          ) : null}
+        </div>
+
+        {/* Products */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-base font-bold text-foreground">Products</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Add one or more products to this purchase
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => append(emptyLine())}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border-main bg-card text-foreground text-xs font-semibold hover:bg-muted-foreground/5 cursor-pointer"
+            >
+              <Plus size={14} />
+              Add Product
+            </button>
           </div>
 
-          <div>
-            <label className="mb-2 block ui-form-label">
-              Expiry Date (Optional)
-            </label>
-            <input
-              type="date"
-              className="common-input"
-              {...register("expiryDate", {
-                onChange: () => {
-                  expiryTouchedRef.current = true;
-                },
-              })}
-            />
-            {lifespanHint ? (
-              <p className="mt-1 text-xs text-muted-foreground">{lifespanHint}</p>
-            ) : null}
-          </div>
+          <div className="space-y-4">
+            {fields.map((field, index) => {
+              const line = items?.[index];
+              const pid = String(line?.productId || "");
+              const lifespan = pid ? lifespansByProduct[pid] : null;
+              const lifespanHint = lifespan
+                ? lifespan.isLifetime
+                  ? "Lifetime product (no auto expiry)"
+                  : `Time span: ${formatLifespanLabel(lifespan.years, lifespan.months, lifespan.days)}`
+                : null;
+              const snap = snapshotItems[index];
 
-          <div className="md:col-span-2">
-            <label className="mb-2 block ui-form-label">Remarks</label>
-            <textarea
-              placeholder="e.g. Urgent delivery requested"
-              rows={3}
-              className="common-input py-3 resize-none"
-              {...register("remarks")}
-            />
+              return (
+                <div
+                  key={field.id}
+                  className="rounded-xl border border-border-main bg-card p-4 space-y-4"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Product {index + 1}
+                    </span>
+                    {fields.length > 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          remove(index);
+                          const nextTouched: Record<number, boolean> = {};
+                          Object.entries(expiryTouchedRef.current).forEach(
+                            ([key, value]) => {
+                              const i = Number(key);
+                              if (i < index) nextTouched[i] = value;
+                              if (i > index) nextTouched[i - 1] = value;
+                            },
+                          );
+                          expiryTouchedRef.current = nextTouched;
+                        }}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-danger-text hover:opacity-80 cursor-pointer"
+                      >
+                        <Trash2 size={14} />
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="md:col-span-2 lg:col-span-1">
+                      <label className="mb-2 block ui-form-label">
+                        Product Name
+                      </label>
+                      <ProductSearchSelect
+                        value={pid}
+                        selectedName={line?.productName || ""}
+                        onSelect={(productId, name) =>
+                          handleProductSelect(index, productId, name)
+                        }
+                        onLoad={loadProductsForSelect}
+                        error={errors.items?.[index]?.productId?.message}
+                      />
+                      <input
+                        type="hidden"
+                        {...register(`items.${index}.productId` as const, {
+                          required: "Product is required",
+                        })}
+                      />
+                      <input
+                        type="hidden"
+                        {...register(`items.${index}.productName` as const)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block ui-form-label">
+                        Quantity
+                      </label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="1"
+                        placeholder="e.g. 100"
+                        className={`common-input ${errors.items?.[index]?.quantity ? "border-red-500 focus:border-red-500" : ""}`}
+                        {...register(`items.${index}.quantity` as const, {
+                          required: "Quantity is required",
+                          valueAsNumber: true,
+                          min: {
+                            value: 1,
+                            message: "Quantity must be at least 1",
+                          },
+                        })}
+                      />
+                      {errors.items?.[index]?.quantity && (
+                        <p className="mt-1 text-xs text-danger-text font-semibold">
+                          {errors.items[index]?.quantity?.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block ui-form-label">
+                        Expiry Date (Optional)
+                      </label>
+                      <input
+                        type="date"
+                        className="common-input"
+                        {...register(`items.${index}.expiryDate` as const, {
+                          onChange: () => {
+                            expiryTouchedRef.current[index] = true;
+                          },
+                        })}
+                      />
+                      {lifespanHint ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {lifespanHint}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    {canViewPurchasePrice && isEditMode && snap ? (
+                      <>
+                        <div>
+                          <label className="mb-2 block ui-form-label">
+                            Per Item
+                          </label>
+                          <input
+                            type="text"
+                            readOnly
+                            value={
+                              snap.rate != null ? formatMoney(snap.rate) : "—"
+                            }
+                            className="common-input bg-muted-foreground/5 cursor-not-allowed"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-2 block ui-form-label">
+                            Line Total
+                          </label>
+                          <input
+                            type="text"
+                            readOnly
+                            value={
+                              snap.lineTotal != null
+                                ? formatMoney(snap.lineTotal)
+                                : "—"
+                            }
+                            className="common-input bg-muted-foreground/5 cursor-not-allowed"
+                          />
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
           </div>
+        </div>
+
+        <div>
+          <label className="mb-2 block ui-form-label">Remarks</label>
+          <textarea
+            placeholder="e.g. Urgent delivery requested"
+            rows={3}
+            className="common-input py-3 resize-none"
+            {...register("remarks")}
+          />
         </div>
 
         <div className="flex justify-end pt-4 border-t border-border-main/60">

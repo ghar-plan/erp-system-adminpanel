@@ -2,6 +2,7 @@
 export enum DesignProspectType {
   CONSTRUCTION = "Construction Prospect",
   DESIGN = "Design Prospect",
+  SHOP = "Shop Prospect",
 }
 
 export const DESIGN_PROSPECT_TYPE_OPTIONS: Array<{
@@ -10,6 +11,7 @@ export const DESIGN_PROSPECT_TYPE_OPTIONS: Array<{
 }> = [
   { value: DesignProspectType.CONSTRUCTION, label: "Construction Prospect" },
   { value: DesignProspectType.DESIGN, label: "Design Prospect" },
+  { value: DesignProspectType.SHOP, label: "Shop Prospect" },
 ];
 
 export const prospectTypeLabel = (value?: string | null): string => {

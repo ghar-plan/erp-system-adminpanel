@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, Pencil, Trash2, Tags } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Tags, BookOpen } from "lucide-react";
 import useCustomerTypes from "../useHooks";
 import {
   CustomerType,
   CustomerTypeCategory,
   CUSTOMER_TYPE_CATEGORY_OPTIONS,
   customerTypeCategoryLabel,
+  customerTypeStatusLabel,
   getCustomerTypeCategoryBadgeClass,
+  getCustomerTypeStatusBadgeClass,
+  WALK_IN_CUSTOMER_TYPE_ID,
 } from "@/utils/helpers/models/customer-types/customer-type.dto";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
@@ -15,6 +18,9 @@ import Button from "@/components/ui/Button";
 import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { isErpAdminEmail } from "@/utils/helpers/permissions/erp-admin-access";
+import useStore from "@/hooks/useStore";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 
 interface PickupPoint {
   id: string | number;
@@ -24,6 +30,8 @@ interface PickupPoint {
 interface CustomerTypeFilters {
   search: string;
   category: string;
+  /** "" | "true" | "false" */
+  isActive: string;
   page: number;
   limit: number;
 }
@@ -31,21 +39,27 @@ interface CustomerTypeFilters {
 const emptyFilters: CustomerTypeFilters = {
   search: "",
   category: "",
+  isActive: "",
   page: 1,
   limit: 10,
 };
 
 export default function CustomerTypesListing() {
   const { hasPermission } = usePermissions();
+  const { getUser } = useStore();
   const {
     getCustomerTypes,
     getAllCustomerTypes,
     getPickupPoints,
+    setCustomerTypeStatus,
     deleteCustomerType,
   } = useCustomerTypes();
   const canUpdate = hasPermission(PERMISSIONS.CUSTOMER_TYPES_UPDATE);
-  const canDelete = hasPermission(PERMISSIONS.CUSTOMER_TYPES_DELETE);
-  const showActions = canUpdate || canDelete;
+  const canDelete =
+    hasPermission(PERMISSIONS.CUSTOMER_TYPES_DELETE) &&
+    isErpAdminEmail(getUser()?.email);
+  const canViewLedger = hasPermission(PERMISSIONS.SALES_READ);
+  const showActions = canUpdate || canDelete || canViewLedger;
 
   const [customerTypes, setCustomerTypes] = useState<CustomerType[]>([]);
   const [allCustomerTypes, setAllCustomerTypes] = useState<CustomerType[]>([]);
@@ -62,6 +76,9 @@ export default function CustomerTypesListing() {
     };
     if (currentFilters.search) queryParams.search = currentFilters.search;
     if (currentFilters.category) queryParams.category = currentFilters.category;
+    if (currentFilters.isActive === "true" || currentFilters.isActive === "false") {
+      queryParams.isActive = currentFilters.isActive;
+    }
 
     getCustomerTypes(setCustomerTypes, queryParams, setTotalElements);
   };
@@ -126,6 +143,15 @@ export default function CustomerTypesListing() {
     });
   };
 
+  const handleToggleStatus = async (customerType: CustomerType) => {
+    if (customerType.id === WALK_IN_CUSTOMER_TYPE_ID) return;
+    const nextActive = customerType.isActive === false;
+    await setCustomerTypeStatus(customerType.id, nextActive, () => {
+      fetchCustomerTypes(filters);
+      refreshCreateEligibility();
+    });
+  };
+
   const formatDate = (dateString?: string | Date | null) => {
     if (!dateString) return "--";
     try {
@@ -144,6 +170,7 @@ export default function CustomerTypesListing() {
     "Name",
     "Category",
     "Pickup Point",
+    "Status",
     "Created",
     ...(showActions ? ["Actions"] : []),
   ];
@@ -224,6 +251,24 @@ export default function CustomerTypesListing() {
           </select>
         </div>
 
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[140px]">
+          <label htmlFor="isActive" className="text-xs text-foreground font-medium whitespace-nowrap">
+            Status
+          </label>
+          <select
+            id="isActive"
+            value={filters.isActive}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, isActive: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
+          >
+            <option value="">All</option>
+            <option value="true">Open</option>
+            <option value="false">Closed</option>
+          </select>
+        </div>
+
         <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
           <Button
             variant="primary"
@@ -261,8 +306,19 @@ export default function CustomerTypesListing() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-main bg-card text-foreground">
-                  {customerTypes.map((customerType, index) => (
-                    <tr key={customerType.id} className="hover:bg-muted-foreground/5 transition-colors">
+                  {customerTypes.map((customerType, index) => {
+                    const isOpen = customerType.isActive !== false;
+                    const isWalkIn =
+                      customerType.id === WALK_IN_CUSTOMER_TYPE_ID;
+                    return (
+                    <tr
+                      key={customerType.id}
+                      className={`transition-colors ${
+                        isOpen
+                          ? "hover:bg-muted-foreground/5"
+                          : "bg-muted-foreground/[0.03] opacity-80"
+                      }`}
+                    >
                       <td className="table-td">
                         {(filters.page - 1) * filters.limit + index + 1}
                       </td>
@@ -280,11 +336,53 @@ export default function CustomerTypesListing() {
                         {customerType?.pickupPointName || "--"}
                       </td>
                       <td className="table-td">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`px-2.5 py-1 text-xs font-bold tracking-wide rounded-md ${getCustomerTypeStatusBadgeClass(customerType.isActive)}`}
+                          >
+                            {customerTypeStatusLabel(customerType.isActive)}
+                          </span>
+                          {canUpdate && !isWalkIn ? (
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isOpen}
+                              title={
+                                isOpen
+                                  ? "Close customer / pickup point"
+                                  : "Reopen customer / pickup point"
+                              }
+                              onClick={() => handleToggleStatus(customerType)}
+                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                                isOpen
+                                  ? "bg-primary"
+                                  : "bg-muted-foreground/30"
+                              }`}
+                            >
+                              <span
+                                className={`pointer-events-none absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                                  isOpen ? "translate-x-5" : "translate-x-0"
+                                }`}
+                              />
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="table-td">
                         {formatDate(customerType?.created_at)}
                       </td>
                       {showActions ? (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex gap-2">
+                            {canViewLedger ? (
+                              <Link
+                                to={`${siteRoutes.customerLedger}?customerTypeId=${customerType.id}`}
+                                className="btn-action-edit"
+                                title="View Ledger"
+                              >
+                                <BookOpen size={16} />
+                              </Link>
+                            ) : null}
                             {canUpdate ? (
                               <Link
                                 to={`/customer-types/edit/${customerType.id}`}
@@ -294,7 +392,8 @@ export default function CustomerTypesListing() {
                                 <Pencil size={16} />
                               </Link>
                             ) : null}
-                            {canDelete ? (
+                            {/* {canDelete &&
+                            customerType.id !== WALK_IN_CUSTOMER_TYPE_ID ? (
                               <button
                                 onClick={() => handleDelete(customerType.id, customerType.name)}
                                 className="btn-action-delete"
@@ -302,12 +401,13 @@ export default function CustomerTypesListing() {
                               >
                                 <Trash2 size={16} />
                               </button>
-                            ) : null}
+                            ) : null} */}
                           </div>
                         </td>
                       ) : null}
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

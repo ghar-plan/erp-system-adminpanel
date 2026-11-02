@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { PlusSquare, Loader2, Save } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import useStore from "@/hooks/useStore";
 import useDesignProspects from "../useHooks";
 import { IoArrowBackOutline } from "react-icons/io5";
-import { validatePakistanMobile } from "@/utils/helpers/common/phone";
-import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
 import {
   DESIGN_PROSPECT_TYPE_OPTIONS,
   DesignProspectType,
@@ -34,7 +32,6 @@ export default function DesignProspectCreate() {
 
   const {
     register,
-    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -45,7 +42,7 @@ export default function DesignProspectCreate() {
       email: "",
       notes: "",
       status: "" as any,
-      prospectType: "",
+      prospectType: isEditMode ? "" : DesignProspectType.DESIGN,
       project: "",
       leadSource: "",
     },
@@ -136,25 +133,20 @@ export default function DesignProspectCreate() {
             )}
           </div>
 
-          {/* Phone */}
+          {/* Phone — any international / local number */}
           <div>
             <label className="mb-2 block ui-form-label">Phone Number</label>
-            <Controller
-              name="phone"
-              control={control}
-              rules={{
+            <input
+              type="tel"
+              placeholder="e.g. +923001234567 or 03001234567"
+              className="common-input"
+              {...register("phone", {
                 required: "Phone number is required",
-                validate: (value) => validatePakistanMobile(value),
-              }}
-              render={({ field }) => (
-                <PakistanPhoneInput
-                  name={field.name}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  hasError={!!errors.phone}
-                />
-              )}
+                maxLength: {
+                  value: 50,
+                  message: "Phone number must be at most 50 characters",
+                },
+              })}
             />
             {errors.phone && (
               <p className="mt-1 text-xs text-danger-text font-semibold">
@@ -230,6 +222,7 @@ export default function DesignProspectCreate() {
               <option value="WhatsApp">WhatsApp</option>
               <option value="Call">Call</option>
               <option value="Website">Website</option>
+              <option value="Shop">Shop</option>
               <option value="Other">Other</option>
             </select>
           </div>

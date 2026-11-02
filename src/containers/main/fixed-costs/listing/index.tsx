@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Plus, Search, Eye, Pencil, Trash2, Banknote } from "lucide-react";
 import useFixedCosts from "../useHooks";
 import {
@@ -16,11 +16,14 @@ import Button from "@/components/ui/Button";
 import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 
 interface FixedCostFilters {
   search: string;
   category: string;
   paymentType: string;
+  startDate: string;
+  endDate: string;
   page: number;
   limit: number;
 }
@@ -29,11 +32,14 @@ const emptyFilters: FixedCostFilters = {
   search: "",
   category: "",
   paymentType: "",
+  startDate: "",
+  endDate: "",
   page: 1,
   limit: 10,
 };
 
 export default function FixedCostsListing() {
+  const [searchParams] = useSearchParams();
   const { hasPermission } = usePermissions();
   const { getFixedCosts, deleteFixedCost } = useFixedCosts();
   const canView = hasPermission(PERMISSIONS.FIXED_COSTS_READ);
@@ -45,7 +51,11 @@ export default function FixedCostsListing() {
   const [totalElements, setTotalElements] = useState(0);
 
   const [searchVal, setSearchVal] = useState("");
-  const [filters, setFilters] = useState<FixedCostFilters>(emptyFilters);
+  const [filters, setFilters] = useState<FixedCostFilters>({
+    ...emptyFilters,
+    startDate: searchParams.get("startDate") || "",
+    endDate: searchParams.get("endDate") || "",
+  });
 
   const fetchFixedCosts = (currentFilters: FixedCostFilters) => {
     const queryParams: any = {
@@ -56,13 +66,23 @@ export default function FixedCostsListing() {
     if (currentFilters.category) queryParams.category = currentFilters.category;
     if (currentFilters.paymentType)
       queryParams.paymentType = currentFilters.paymentType;
+    if (currentFilters.startDate) queryParams.startDate = currentFilters.startDate;
+    if (currentFilters.endDate) queryParams.endDate = currentFilters.endDate;
 
     getFixedCosts(setFixedCosts, queryParams, setTotalElements);
   };
 
   useEffect(() => {
-    fetchFixedCosts({ ...emptyFilters, page: 1 });
-  }, []);
+    const initial = {
+      ...emptyFilters,
+      startDate: searchParams.get("startDate") || "",
+      endDate: searchParams.get("endDate") || "",
+      page: 1,
+    };
+    setFilters(initial);
+    fetchFixedCosts(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleApplyFilters = () => {
     const updatedFilters = { ...filters, search: searchVal, page: 1 };
@@ -135,7 +155,7 @@ export default function FixedCostsListing() {
         </div>
         <Can permission={PERMISSIONS.FIXED_COSTS_CREATE}>
           <Link
-            to="/fixed-costs/create"
+            to={siteRoutes.fixedCosts}
             className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
           >
             <Plus size={18} />
@@ -229,6 +249,36 @@ export default function FixedCostsListing() {
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[150px]">
+          <label htmlFor="startDate" className="text-xs text-foreground font-medium">
+            From
+          </label>
+          <input
+            id="startDate"
+            type="date"
+            value={filters.startDate}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, startDate: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
+          />
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[150px]">
+          <label htmlFor="endDate" className="text-xs text-foreground font-medium">
+            To
+          </label>
+          <input
+            id="endDate"
+            type="date"
+            value={filters.endDate}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, endDate: e.target.value }))
+            }
+            className="common-input text-sm h-10 w-full sm:w-40 bg-card"
+          />
         </div>
 
         <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
