@@ -17,7 +17,10 @@ import {
   CustomerType,
   customerTypeCategoryLabel,
 } from "@/utils/helpers/models/customer-types/customer-type.dto";
-import { formatMoney } from "@/utils/helpers/models/purchases/purchase.dto";
+import {
+  formatMoney,
+  SOURCE_PAYMENT_OPTIONS,
+} from "@/utils/helpers/models/purchases/purchase.dto";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import { Can } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
@@ -59,6 +62,9 @@ export default function CustomerLedger() {
   );
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [sourcePayment, setSourcePayment] = useState(
+    searchParams.get("sourcePayment") || "",
+  );
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [totalElements, setTotalElements] = useState(0);
@@ -90,7 +96,7 @@ export default function CustomerLedger() {
           if (!fromUrl || fromUrl !== nextId) {
             setSearchParams({ customerTypeId: nextId }, { replace: true });
           }
-          fetchLedger(1, limit, nextId, startDate, endDate);
+          fetchLedger(1, limit, nextId, startDate, endDate, sourcePayment);
         }
       }
     });
@@ -99,9 +105,13 @@ export default function CustomerLedger() {
 
   useEffect(() => {
     const fromUrl = searchParams.get("customerTypeId");
+    const sourceFromUrl = searchParams.get("sourcePayment") || "";
+    if (sourceFromUrl !== sourcePayment) {
+      setSourcePayment(sourceFromUrl);
+    }
     if (fromUrl && fromUrl !== selectedCustomerTypeId) {
       setSelectedCustomerTypeId(fromUrl);
-      fetchLedger(1, limit, fromUrl, startDate, endDate);
+      fetchLedger(1, limit, fromUrl, startDate, endDate, sourceFromUrl);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -112,6 +122,7 @@ export default function CustomerLedger() {
     customerTypeId = selectedCustomerTypeId,
     from = startDate,
     to = endDate,
+    paymentSource = sourcePayment,
   ) => {
     if (!customerTypeId) {
       setEntries([]);
@@ -137,6 +148,7 @@ export default function CustomerLedger() {
       };
       if (from) params.startDate = from;
       if (to) params.endDate = to;
+      if (paymentSource) params.sourcePayment = paymentSource;
 
       const response: any = await Sales_APIS.getLedger(params);
       if (response?.status && response.data) {
@@ -163,12 +175,22 @@ export default function CustomerLedger() {
   };
 
   const handleApply = () => {
+    const params = new URLSearchParams();
     if (selectedCustomerTypeId) {
-      setSearchParams({ customerTypeId: selectedCustomerTypeId });
-    } else {
-      setSearchParams({});
+      params.set("customerTypeId", selectedCustomerTypeId);
     }
-    fetchLedger(1, limit, selectedCustomerTypeId, startDate, endDate);
+    if (sourcePayment) {
+      params.set("sourcePayment", sourcePayment);
+    }
+    setSearchParams(params);
+    fetchLedger(
+      1,
+      limit,
+      selectedCustomerTypeId,
+      startDate,
+      endDate,
+      sourcePayment,
+    );
   };
 
   const handleReset = () => {
@@ -176,10 +198,11 @@ export default function CustomerLedger() {
     setSelectedCustomerTypeId(firstId);
     setStartDate("");
     setEndDate("");
+    setSourcePayment("");
     setPage(1);
     if (firstId) {
       setSearchParams({ customerTypeId: firstId }, { replace: true });
-      fetchLedger(1, limit, firstId, "", "");
+      fetchLedger(1, limit, firstId, "", "", "");
     } else {
       setSearchParams({});
       setEntries([]);
@@ -289,6 +312,28 @@ export default function CustomerLedger() {
             onChange={(e) => setEndDate(e.target.value)}
             className="common-input text-sm h-10 w-full sm:w-44 bg-card"
           />
+        </div>
+
+        <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[170px]">
+          <label
+            htmlFor="sourcePayment"
+            className="text-xs text-foreground font-medium whitespace-nowrap"
+          >
+            Payment Source
+          </label>
+          <select
+            id="sourcePayment"
+            value={sourcePayment}
+            onChange={(e) => setSourcePayment(e.target.value)}
+            className="common-input text-sm h-10 w-full sm:w-44 bg-card"
+          >
+            <option value="">All Sources</option>
+            {SOURCE_PAYMENT_OPTIONS.map((source) => (
+              <option key={source} value={source}>
+                {source}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">

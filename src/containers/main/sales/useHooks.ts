@@ -145,6 +145,44 @@ const useSales = () => {
     setData(status && data ? data : []);
   };
 
+  const recordInstallment = async (
+    id: string,
+    body: any,
+    callback?: Function,
+  ) => {
+    const response = await Sales_APIS.recordInstallment(id, body);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message || "Installment recorded successfully");
+      callback?.();
+      return response;
+    }
+  };
+
+  const getInstallments = async (id: string, setData: Function) => {
+    const response = await Sales_APIS.getInstallments(id);
+    const { status = false, data = [] } = response || {};
+    if (status && data) {
+      setData(data);
+    } else {
+      setData([]);
+    }
+  };
+
+  const remitPickupPoint = async (
+    id: string,
+    body: any,
+    callback?: Function,
+  ) => {
+    const response = await Sales_APIS.remitPickupPoint(id, body);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message || "Payment remitted to pickup point");
+      callback?.(response?.data);
+      return response;
+    }
+  };
+
   return {
     getSales,
     getSaleById,
@@ -157,6 +195,9 @@ const useSales = () => {
     getProducts,
     getBrands,
     getVendors,
+    recordInstallment,
+    getInstallments,
+    remitPickupPoint,
   };
 };
 

@@ -37,10 +37,45 @@ export enum CommerceEntryStatus {
   POSTED = "posted",
 }
 
+export enum PaymentCollectedBy {
+  ADMIN = "admin",
+  PICKUP_POINT = "pickup_point",
+}
+
+export enum PickupRemittanceStatus {
+  NOT_APPLICABLE = "not_applicable",
+  PENDING = "pending",
+  SETTLED = "settled",
+}
+
 export const COMMERCE_ENTRY_STATUS_OPTIONS = [
   { value: CommerceEntryStatus.DRAFT, label: "Draft" },
   { value: CommerceEntryStatus.POSTED, label: "Posted" },
 ];
+
+export const PAYMENT_COLLECTED_BY_OPTIONS = [
+  {
+    value: PaymentCollectedBy.ADMIN,
+    label: "Collected by Admin (Ghar Plans)",
+  },
+  {
+    value: PaymentCollectedBy.PICKUP_POINT,
+    label: "Collected at Pickup Point",
+  },
+];
+
+export const remittanceStatusLabel = (
+  status?: PickupRemittanceStatus | string | null,
+): string => {
+  switch (status) {
+    case PickupRemittanceStatus.PENDING:
+      return "Awaiting remittance";
+    case PickupRemittanceStatus.SETTLED:
+      return "Remitted to pickup";
+    default:
+      return "—";
+  }
+};
 
 export interface Sale {
   id: string;
@@ -63,6 +98,12 @@ export interface Sale {
   payment: number;
   balance: number;
   sourcePayment: CashOutPaymentSource;
+  paymentCollectedBy?: PaymentCollectedBy | string;
+  remittanceStatus?: PickupRemittanceStatus | string;
+  remittedAmount?: number | null;
+  remittedAt?: string | null;
+  remittedBy?: string | null;
+  remittanceNotes?: string | null;
   status?: CommerceEntryStatus | string;
   remarks?: string | null;
   items?: SaleItem[];

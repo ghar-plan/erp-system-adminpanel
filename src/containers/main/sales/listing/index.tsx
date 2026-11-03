@@ -1,14 +1,28 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Plus, Search, Eye, Pencil, Trash2, ShoppingCart } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Eye,
+  Pencil,
+  Trash2,
+  ShoppingCart,
+  Coins,
+  Building2,
+} from "lucide-react";
 import useSales from "../useHooks";
+import ResolvePaymentModal from "../components/ResolvePaymentModal";
+import RemitPickupPointModal from "../components/RemitPickupPointModal";
 import {
   Sale,
   COMMERCE_ENTRY_STATUS_OPTIONS,
+  PaymentCollectedBy,
+  PickupRemittanceStatus,
   computeSaleSubtotal,
   formatSaleBrandsLabel,
   formatSaleProductsLabel,
   isDraftEntry,
+  remittanceStatusLabel,
 } from "@/utils/helpers/models/sales/sale.dto";
 import {
   formatMoney,
@@ -16,6 +30,7 @@ import {
   CashOutPaymentSource,
 } from "@/utils/helpers/models/purchases/purchase.dto";
 import {
+  CustomerTypeCategory,
   customerTypeCategoryLabel,
   WALK_IN_CUSTOMER_TYPE,
   WALK_IN_CUSTOMER_TYPE_ID,
@@ -91,11 +106,39 @@ export default function SalesListing() {
   const [customerTypes, setCustomerTypes] = useState<{ id: string; name: string }[]>([]);
   const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
   const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
+  const [resolveSale, setResolveSale] = useState<Sale | null>(null);
+  const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+  const [remitSale, setRemitSale] = useState<Sale | null>(null);
+  const [isRemitModalOpen, setIsRemitModalOpen] = useState(false);
 
   const [searchVal, setSearchVal] = useState("");
   const [filters, setFilters] = useState<SaleFilters>(() =>
     filtersFromSearchParams(searchParams),
   );
+
+  const canResolveSale = (sale: Sale) => {
+    if (isDraftEntry(sale?.status)) return false;
+    const balance = Number(sale?.balance || 0);
+    const payment = Number(sale?.payment || 0);
+    const source = String(sale?.sourcePayment || "");
+    return (
+      balance > 0 ||
+      payment > 0 ||
+      source === CashOutPaymentSource.CREDIT ||
+      source === CashOutPaymentSource.PARTIAL ||
+      source === CashOutPaymentSource.ADVANCE
+    );
+  };
+
+  const canRemitSale = (sale: Sale) => {
+    if (isDraftEntry(sale?.status)) return false;
+    return (
+      sale?.customerType?.category === CustomerTypeCategory.PICKUP_POINT &&
+      sale?.paymentCollectedBy === PaymentCollectedBy.ADMIN &&
+      sale?.remittanceStatus === PickupRemittanceStatus.PENDING &&
+      Number(sale?.payment || 0) > 0
+    );
+  };
 
   const syncUrl = (next: SaleFilters) => {
     const params = new URLSearchParams();
@@ -217,6 +260,7 @@ export default function SalesListing() {
     "Payment",
     "Balance",
     "Source",
+    "Collection / Remit",
     ...(showActions ? ["Actions"] : []),
   ];
 
@@ -583,9 +627,68 @@ export default function SalesListing() {
                           {sale?.sourcePayment || "--"}
                         </span>
                       </td>
+                      <td className="table-td">
+                        {sale?.paymentCollectedBy === PaymentCollectedBy.ADMIN ? (
+                          <div className="flex flex-col gap-1">
+                            <span className="px-2 py-0.5 text-[10px] font-bold tracking-wide rounded-md bg-info-bg text-info-text border border-panel-border w-fit">
+                              Admin collected
+                            </span>
+                            {sale?.remittanceStatus &&
+                            sale.remittanceStatus !==
+                              PickupRemittanceStatus.NOT_APPLICABLE ? (
+                              <span
+                                className={`px-2 py-0.5 text-[10px] font-bold tracking-wide rounded-md w-fit border ${
+                                  sale.remittanceStatus ===
+                                  PickupRemittanceStatus.PENDING
+                                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                                    : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+                                }`}
+                              >
+                                {remittanceStatusLabel(sale.remittanceStatus)}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
                       {showActions ? (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex gap-2">
+                            {canUpdate && canResolveSale(sale) ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setResolveSale(sale);
+                                  setIsResolveModalOpen(true);
+                                }}
+                                className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer shadow-xs ${
+                                  Number(sale?.balance || 0) > 0
+                                    ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold"
+                                    : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                                }`}
+                                title={
+                                  Number(sale?.balance || 0) > 0
+                                    ? "Resolve Payment / Add Installment"
+                                    : "Payment Resolved (View Installments)"
+                                }
+                              >
+                                <Coins size={16} />
+                              </button>
+                            ) : null}
+                            {canUpdate && canRemitSale(sale) ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRemitSale(sale);
+                                  setIsRemitModalOpen(true);
+                                }}
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer shadow-xs bg-sky-500/15 hover:bg-sky-500/25 text-sky-700 dark:text-sky-400 border border-sky-500/30"
+                                title="Remit payment to pickup point"
+                              >
+                                <Building2 size={16} />
+                              </button>
+                            ) : null}
                             {canView ? (
                               <Link
                                 to={`/sales/view/${sale.id}`}
@@ -635,6 +738,34 @@ export default function SalesListing() {
           />
         )}
       </div>
+
+      {isResolveModalOpen && resolveSale ? (
+        <ResolvePaymentModal
+          isOpen={isResolveModalOpen}
+          onClose={() => {
+            setIsResolveModalOpen(false);
+            setResolveSale(null);
+          }}
+          sale={resolveSale}
+          onSuccess={() => {
+            fetchSales(filters);
+          }}
+        />
+      ) : null}
+
+      {isRemitModalOpen && remitSale ? (
+        <RemitPickupPointModal
+          isOpen={isRemitModalOpen}
+          onClose={() => {
+            setIsRemitModalOpen(false);
+            setRemitSale(null);
+          }}
+          sale={remitSale}
+          onSuccess={() => {
+            fetchSales(filters);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -40,6 +40,8 @@ import {
 } from "@/utils/helpers/models/customer-types/customer-type.dto";
 import {
   CommerceEntryStatus,
+  PaymentCollectedBy,
+  PAYMENT_COLLECTED_BY_OPTIONS,
   computeLineTotal,
   computeSaleBalanceFromItems,
   computeSaleSubtotal,
@@ -70,6 +72,7 @@ interface SaleFormInputs {
   items: SaleLineInput[];
   payment: number | string;
   sourcePayment: CashOutPaymentSource | "";
+  paymentCollectedBy: PaymentCollectedBy | "";
   remarks: string;
 }
 
@@ -132,6 +135,7 @@ export default function SaleCreate() {
       items: [emptyLine()],
       payment: "",
       sourcePayment: "",
+      paymentCollectedBy: PaymentCollectedBy.ADMIN,
       remarks: "",
     },
   });
@@ -145,6 +149,7 @@ export default function SaleCreate() {
   const items = watch("items");
   const payment = watch("payment");
   const sourcePayment = watch("sourcePayment");
+  const paymentCollectedBy = watch("paymentCollectedBy");
 
   const customerTypeOptions = (() => {
     const withoutWalkIn = customerTypes.filter(
@@ -159,8 +164,12 @@ export default function SaleCreate() {
   const isWalkIn =
     selectedCustomerType?.category === CustomerTypeCategory.WALK_IN ||
     String(customerTypeId) === WALK_IN_CUSTOMER_TYPE_ID;
+  const isPickupPoint =
+    selectedCustomerType?.category === CustomerTypeCategory.PICKUP_POINT;
   const isCustomerCategory =
-    selectedCustomerType?.category === CustomerTypeCategory.CUSTOMER || isWalkIn;
+    selectedCustomerType?.category === CustomerTypeCategory.CUSTOMER ||
+    isWalkIn ||
+    (isPickupPoint && paymentCollectedBy === PaymentCollectedBy.ADMIN);
   const requiresCustomerDetails =
     selectedCustomerType?.category === CustomerTypeCategory.CUSTOMER;
 
@@ -227,6 +236,11 @@ export default function SaleCreate() {
           items: lines,
           payment: data?.payment ?? "",
           sourcePayment: data?.sourcePayment || "",
+          paymentCollectedBy:
+            data?.paymentCollectedBy ||
+            (data?.customerType?.category === CustomerTypeCategory.PICKUP_POINT
+              ? PaymentCollectedBy.ADMIN
+              : PaymentCollectedBy.PICKUP_POINT),
           remarks: data?.remarks || "",
         });
 
@@ -241,6 +255,14 @@ export default function SaleCreate() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isEditMode]);
+
+  // Pickup-point trust flow defaults to admin collection.
+  useEffect(() => {
+    if (!isPickupPoint) return;
+    if (!paymentCollectedBy) {
+      setValue("paymentCollectedBy", PaymentCollectedBy.ADMIN);
+    }
+  }, [isPickupPoint, paymentCollectedBy, setValue]);
 
   // Prefill empty rates when customer type changes (keep existing rates on edit load)
   useEffect(() => {
@@ -429,7 +451,12 @@ export default function SaleCreate() {
       ...(data.remarks ? { remarks: data.remarks.trim() } : {}),
     };
 
-    if (isCustomerCategory) {
+    if (isPickupPoint) {
+      payload.paymentCollectedBy =
+        data.paymentCollectedBy || PaymentCollectedBy.ADMIN;
+    }
+
+    if (isCustomerCategory || isPickupPoint) {
       const name = data.customerName?.trim();
       const phone = data.telephone?.trim();
       if (name) payload.customerName = name;
@@ -544,11 +571,34 @@ export default function SaleCreate() {
             )}
           </div>
 
+          {isPickupPoint ? (
+            <div className="md:col-span-2">
+              <label className="mb-2 block ui-form-label">
+                Payment Collected By
+              </label>
+              <select
+                className="common-input bg-card"
+                {...register("paymentCollectedBy")}
+              >
+                {PAYMENT_COLLECTED_BY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Use <strong>Collected by Admin</strong> when the customer pays
+                Ghar Plans and the pickup point only hands over the order. You
+                can remit that payment to the pickup point later.
+              </p>
+            </div>
+          ) : null}
+
           {isCustomerCategory ? (
             <>
               <div>
                 <label className="mb-2 block ui-form-label">
-                  Customer Name
+                  {isPickupPoint ? "End Customer Name" : "Customer Name"}
                   {requiresCustomerDetails ? null : (
                     <span className="text-muted-foreground font-normal">
                       {" "}

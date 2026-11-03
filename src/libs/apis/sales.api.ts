@@ -14,4 +14,10 @@ export const Sales_APIS = {
   post: (id: string, body: any = {}) =>
     postRequest(`/v1/sales/${id}/post`, body),
   delete: (id: string) => deleteRequest(`/v1/sales/${id}`),
+  recordInstallment: (id: string, body: any) =>
+    postRequest(`/v1/sales/${id}/installments`, body),
+  getInstallments: (id: string) =>
+    getRequest(`/v1/sales/${id}/installments`),
+  remitPickupPoint: (id: string, body: any) =>
+    postRequest(`/v1/sales/${id}/remit-pickup-point`, body),
 };

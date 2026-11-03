@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo, useState } from "react";
+import React, { ReactNode, useEffect, useMemo, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { useAppSelector } from "@/store/hooks";
 import Navbar from "@/components/navigation/Navbar";
@@ -137,6 +137,7 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
     Construction: false,
     "Construction-Contracts": false,
     "Construction-Reports": false,
+    Commerce: false,
   });
 
   const toggleDropdown = (text: string) => {
@@ -163,6 +164,38 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
         : isActive(child.path),
     );
   };
+
+  // Keep the active module group expanded after refresh / direct navigation.
+  useEffect(() => {
+    setOpenDropdowns((prev) => {
+      const next = { ...prev };
+      let changed = false;
+
+      for (const item of menuItems) {
+        if (!item.children?.length) continue;
+        if (!isChildActive(item.children)) continue;
+
+        if (!next[item.text]) {
+          next[item.text] = true;
+          changed = true;
+        }
+
+        for (const child of item.children) {
+          if (!child.children?.length || !isChildActive(child.children)) {
+            continue;
+          }
+          const nestedKey = `${item.text}-${child.title}`;
+          if (!next[nestedKey]) {
+            next[nestedKey] = true;
+            changed = true;
+          }
+        }
+      }
+
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, menuItems]);
 
   return (
     <div className="h-screen bg-background text-foreground flex transition-colors duration-200">

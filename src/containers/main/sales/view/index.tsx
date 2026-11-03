@@ -11,15 +11,26 @@ import {
   StickyNote,
   Tag,
   Layers,
+  Coins,
+  Building2,
 } from "lucide-react";
 import { IoArrowBackOutline } from "react-icons/io5";
 import useSales from "../useHooks";
+import ResolvePaymentModal from "../components/ResolvePaymentModal";
+import RemitPickupPointModal from "../components/RemitPickupPointModal";
 import {
   Sale,
+  PaymentCollectedBy,
+  PickupRemittanceStatus,
   computeSaleSubtotal,
+  isDraftEntry,
+  remittanceStatusLabel,
 } from "@/utils/helpers/models/sales/sale.dto";
 import { formatMoney } from "@/utils/helpers/models/purchases/purchase.dto";
-import { customerTypeCategoryLabel } from "@/utils/helpers/models/customer-types/customer-type.dto";
+import {
+  CustomerTypeCategory,
+  customerTypeCategoryLabel,
+} from "@/utils/helpers/models/customer-types/customer-type.dto";
 import { Can } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { isErpAdminEmail } from "@/utils/helpers/permissions/erp-admin-access";
@@ -31,6 +42,8 @@ export default function SaleView() {
   const { getUser } = useStore();
   const { getSaleById } = useSales();
   const [sale, setSale] = useState<Sale | null>(null);
+  const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+  const [isRemitModalOpen, setIsRemitModalOpen] = useState(false);
   const canViewSaleRates = isErpAdminEmail(getUser()?.email);
 
   useEffect(() => {
@@ -89,15 +102,51 @@ export default function SaleView() {
           </button>
           <h1 className="text-2xl text-foreground font-bold">Sale Overview</h1>
         </div>
-        <Can permission={PERMISSIONS.SALES_UPDATE}>
-          <Link
-            to={`/sales/edit/${sale.id}`}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
-          >
-            <Pencil size={16} />
-            Edit Sale
-          </Link>
-        </Can>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Can permission={PERMISSIONS.SALES_UPDATE}>
+            {!isDraftEntry(sale.status) &&
+            sale.customerType?.category === CustomerTypeCategory.PICKUP_POINT &&
+            sale.paymentCollectedBy === PaymentCollectedBy.ADMIN &&
+            sale.remittanceStatus === PickupRemittanceStatus.PENDING &&
+            Number(sale.payment || 0) > 0 ? (
+              <button
+                type="button"
+                onClick={() => setIsRemitModalOpen(true)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm border bg-sky-500/15 hover:bg-sky-500/25 text-sky-700 dark:text-sky-400 border-sky-500/30"
+              >
+                <Building2 size={16} />
+                Remit to Pickup Point
+              </button>
+            ) : null}
+          </Can>
+          <Can permission={PERMISSIONS.SALES_UPDATE}>
+            {!isDraftEntry(sale.status) ? (
+              <button
+                type="button"
+                onClick={() => setIsResolveModalOpen(true)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm border ${
+                  Number(sale.balance || 0) > 0
+                    ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                    : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+                }`}
+              >
+                <Coins size={16} />
+                {Number(sale.balance || 0) > 0
+                  ? "Resolve Payment"
+                  : "Installment History"}
+              </button>
+            ) : null}
+          </Can>
+          <Can permission={PERMISSIONS.SALES_UPDATE}>
+            <Link
+              to={`/sales/edit/${sale.id}`}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
+            >
+              <Pencil size={16} />
+              Edit Sale
+            </Link>
+          </Can>
+        </div>
       </div>
 
       <hr className="border-border-main" />
@@ -242,6 +291,53 @@ export default function SaleView() {
               </p>
             </div>
           </div>
+
+          {sale?.customerType?.category ===
+          CustomerTypeCategory.PICKUP_POINT ? (
+            <>
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-lg bg-info-bg text-info-text">
+                  <Building2 size={18} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                    Payment Collected By
+                  </label>
+                  <p className="text-sm font-semibold text-foreground mt-0.5">
+                    {sale.paymentCollectedBy === PaymentCollectedBy.ADMIN
+                      ? "Admin (Ghar Plans)"
+                      : "Pickup Point"}
+                  </p>
+                </div>
+              </div>
+              {sale.paymentCollectedBy === PaymentCollectedBy.ADMIN ? (
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-lg bg-warning-bg text-warning-text">
+                    <Building2 size={18} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                      Pickup Remittance
+                    </label>
+                    <p className="text-sm font-semibold text-foreground mt-0.5">
+                      {remittanceStatusLabel(sale.remittanceStatus)}
+                      {sale.remittedAt
+                        ? ` · ${formatDate(sale.remittedAt)}`
+                        : ""}
+                      {sale.remittedAmount != null
+                        ? ` · ${formatMoney(sale.remittedAmount)}`
+                        : ""}
+                    </p>
+                    {sale.remittedBy ? (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        By {sale.remittedBy}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ) : null}
         </div>
 
         <div className="pt-2">
@@ -329,6 +425,28 @@ export default function SaleView() {
           </div>
         </div>
       </div>
+
+      {isResolveModalOpen ? (
+        <ResolvePaymentModal
+          isOpen={isResolveModalOpen}
+          onClose={() => setIsResolveModalOpen(false)}
+          sale={sale}
+          onSuccess={() => {
+            if (id) getSaleById(id, setSale);
+          }}
+        />
+      ) : null}
+
+      {isRemitModalOpen ? (
+        <RemitPickupPointModal
+          isOpen={isRemitModalOpen}
+          onClose={() => setIsRemitModalOpen(false)}
+          sale={sale}
+          onSuccess={() => {
+            if (id) getSaleById(id, setSale);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
