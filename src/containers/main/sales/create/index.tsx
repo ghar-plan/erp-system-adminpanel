@@ -35,8 +35,6 @@ import {
   CustomerType,
   CustomerTypeCategory,
   customerTypeCategoryLabel,
-  WALK_IN_CUSTOMER_TYPE,
-  WALK_IN_CUSTOMER_TYPE_ID,
 } from "@/utils/helpers/models/customer-types/customer-type.dto";
 import {
   CommerceEntryStatus,
@@ -151,28 +149,24 @@ export default function SaleCreate() {
   const sourcePayment = watch("sourcePayment");
   const paymentCollectedBy = watch("paymentCollectedBy");
 
-  const customerTypeOptions = (() => {
-    const withoutWalkIn = customerTypes.filter(
-      (ct) => String(ct.id) !== WALK_IN_CUSTOMER_TYPE_ID,
-    );
-    return [WALK_IN_CUSTOMER_TYPE, ...withoutWalkIn];
-  })();
+  const customerTypeOptions = [...customerTypes].sort((a, b) => {
+    const aWalk = a.category === CustomerTypeCategory.WALK_IN ? 0 : 1;
+    const bWalk = b.category === CustomerTypeCategory.WALK_IN ? 0 : 1;
+    if (aWalk !== bWalk) return aWalk - bWalk;
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  });
 
   const selectedCustomerType = customerTypeOptions.find(
     (ct) => String(ct.id) === String(customerTypeId),
   );
   const isWalkIn =
-    selectedCustomerType?.category === CustomerTypeCategory.WALK_IN ||
-    String(customerTypeId) === WALK_IN_CUSTOMER_TYPE_ID;
+    selectedCustomerType?.category === CustomerTypeCategory.WALK_IN;
   const isPickupPoint =
     selectedCustomerType?.category === CustomerTypeCategory.PICKUP_POINT;
   const isCustomerCategory =
     selectedCustomerType?.category === CustomerTypeCategory.CUSTOMER ||
     isWalkIn ||
     (isPickupPoint && paymentCollectedBy === PaymentCollectedBy.ADMIN);
-  const requiresCustomerDetails =
-    selectedCustomerType?.category === CustomerTypeCategory.CUSTOMER;
-
   const subtotal = computeSaleSubtotal(items || []);
   const resolvedPayment = resolveSalePayment(
     sourcePayment,
@@ -266,7 +260,7 @@ export default function SaleCreate() {
 
   // Prefill empty rates when customer type changes (keep existing rates on edit load)
   useEffect(() => {
-    if (!customerTypeId || String(customerTypeId) === WALK_IN_CUSTOMER_TYPE_ID) {
+    if (!customerTypeId) {
       return;
     }
     (items || []).forEach((item, index) => {
@@ -355,11 +349,7 @@ export default function SaleCreate() {
     // Wait for the variant pick before loading rate/stock for multi-variant products.
     if (!pid || value.requiresVariant) return;
 
-    if (
-      pid &&
-      customerTypeId &&
-      String(customerTypeId) !== WALK_IN_CUSTOMER_TYPE_ID
-    ) {
+    if (pid && customerTypeId) {
       setLoadingRateIndex(index);
       getProductRate(
         customerTypeId,
@@ -542,11 +532,9 @@ export default function SaleCreate() {
               <option value="">Select Customer Type</option>
               {customerTypeOptions.map((ct) => (
                 <option key={ct.id} value={ct.id}>
-                  {ct.id === WALK_IN_CUSTOMER_TYPE_ID
-                    ? ct.name
-                    : `${ct.name} (${customerTypeCategoryLabel(ct.category)})${
-                        ct.isActive === false ? " — Closed" : ""
-                      }`}
+                  {`${ct.name} (${customerTypeCategoryLabel(ct.category)})${
+                    ct.isActive === false ? " — Closed" : ""
+                  }`}
                 </option>
               ))}
             </select>
@@ -599,22 +587,16 @@ export default function SaleCreate() {
               <div>
                 <label className="mb-2 block ui-form-label">
                   {isPickupPoint ? "End Customer Name" : "Customer Name"}
-                  {requiresCustomerDetails ? null : (
-                    <span className="text-muted-foreground font-normal">
-                      {" "}
-                      (optional)
-                    </span>
-                  )}
+                  <span className="text-muted-foreground font-normal">
+                    {" "}
+                    (optional)
+                  </span>
                 </label>
                 <input
                   type="text"
                   placeholder="e.g. Ali Raza"
                   className={`common-input ${errors.customerName ? "border-red-500 focus:border-red-500" : ""}`}
-                  {...register("customerName", {
-                    required: requiresCustomerDetails
-                      ? "Customer name is required"
-                      : false,
-                  })}
+                  {...register("customerName")}
                 />
                 {errors.customerName && (
                   <p className="mt-1 text-xs text-danger-text font-semibold">
@@ -626,21 +608,17 @@ export default function SaleCreate() {
               <div>
                 <label className="mb-2 block ui-form-label">
                   Telephone
-                  {requiresCustomerDetails ? null : (
-                    <span className="text-muted-foreground font-normal">
-                      {" "}
-                      (optional)
-                    </span>
-                  )}
+                  <span className="text-muted-foreground font-normal">
+                    {" "}
+                    (optional)
+                  </span>
                 </label>
                 <Controller
                   name="telephone"
                   control={control}
                   rules={{
                     validate: (value) =>
-                      requiresCustomerDetails
-                        ? validatePakistanMobile(value)
-                        : validatePakistanMobile(value, { optional: true }),
+                      validatePakistanMobile(value, { optional: true }),
                   }}
                   render={({ field }) => (
                     <PakistanPhoneInput

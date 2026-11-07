@@ -7,11 +7,11 @@ import {
   Pencil,
   Trash2,
   ShoppingCart,
-  Coins,
   Building2,
 } from "lucide-react";
 import useSales from "../useHooks";
-import ResolvePaymentModal from "../components/ResolvePaymentModal";
+// Resolve Payment / Installment History moved to Commerce Cash In
+// import ResolvePaymentModal from "../components/ResolvePaymentModal";
 import RemitPickupPointModal from "../components/RemitPickupPointModal";
 import {
   Sale,
@@ -32,8 +32,6 @@ import {
 import {
   CustomerTypeCategory,
   customerTypeCategoryLabel,
-  WALK_IN_CUSTOMER_TYPE,
-  WALK_IN_CUSTOMER_TYPE_ID,
 } from "@/utils/helpers/models/customer-types/customer-type.dto";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
@@ -106,8 +104,8 @@ export default function SalesListing() {
   const [customerTypes, setCustomerTypes] = useState<{ id: string; name: string }[]>([]);
   const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
   const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
-  const [resolveSale, setResolveSale] = useState<Sale | null>(null);
-  const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+  // const [resolveSale, setResolveSale] = useState<Sale | null>(null);
+  // const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
   const [remitSale, setRemitSale] = useState<Sale | null>(null);
   const [isRemitModalOpen, setIsRemitModalOpen] = useState(false);
 
@@ -116,19 +114,20 @@ export default function SalesListing() {
     filtersFromSearchParams(searchParams),
   );
 
-  const canResolveSale = (sale: Sale) => {
-    if (isDraftEntry(sale?.status)) return false;
-    const balance = Number(sale?.balance || 0);
-    const payment = Number(sale?.payment || 0);
-    const source = String(sale?.sourcePayment || "");
-    return (
-      balance > 0 ||
-      payment > 0 ||
-      source === CashOutPaymentSource.CREDIT ||
-      source === CashOutPaymentSource.PARTIAL ||
-      source === CashOutPaymentSource.ADVANCE
-    );
-  };
+  // Payment Details & Installment History — use Commerce Cash In instead
+  // const canResolveSale = (sale: Sale) => {
+  //   if (isDraftEntry(sale?.status)) return false;
+  //   const balance = Number(sale?.balance || 0);
+  //   const payment = Number(sale?.payment || 0);
+  //   const source = String(sale?.sourcePayment || "");
+  //   return (
+  //     balance > 0 ||
+  //     payment > 0 ||
+  //     source === CashOutPaymentSource.CREDIT ||
+  //     source === CashOutPaymentSource.PARTIAL ||
+  //     source === CashOutPaymentSource.ADVANCE
+  //   );
+  // };
 
   const canRemitSale = (sale: Sale) => {
     if (isDraftEntry(sale?.status)) return false;
@@ -394,16 +393,11 @@ export default function SalesListing() {
             className="common-input text-sm h-10 w-full sm:w-52 bg-card"
           >
             <option value="">All Customer Types</option>
-            <option value={WALK_IN_CUSTOMER_TYPE.id}>
-              {WALK_IN_CUSTOMER_TYPE.name}
-            </option>
-            {customerTypes
-              .filter((ct: any) => String(ct.id) !== WALK_IN_CUSTOMER_TYPE_ID)
-              .map((ct: any) => (
-                <option key={ct.id} value={ct.id}>
-                  {ct.name} ({customerTypeCategoryLabel(ct.category)})
-                </option>
-              ))}
+            {customerTypes.map((ct: any) => (
+              <option key={ct.id} value={ct.id}>
+                {ct.name} ({customerTypeCategoryLabel(ct.category)})
+              </option>
+            ))}
           </select>
         </div>
 
@@ -655,27 +649,11 @@ export default function SalesListing() {
                       {showActions ? (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex gap-2">
+                            {/* Resolve Payment / Installment History → Commerce Cash In
                             {canUpdate && canResolveSale(sale) ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setResolveSale(sale);
-                                  setIsResolveModalOpen(true);
-                                }}
-                                className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer shadow-xs ${
-                                  Number(sale?.balance || 0) > 0
-                                    ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold"
-                                    : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                                }`}
-                                title={
-                                  Number(sale?.balance || 0) > 0
-                                    ? "Resolve Payment / Add Installment"
-                                    : "Payment Resolved (View Installments)"
-                                }
-                              >
-                                <Coins size={16} />
-                              </button>
+                              <button ... />
                             ) : null}
+                            */}
                             {canUpdate && canRemitSale(sale) ? (
                               <button
                                 type="button"
@@ -739,19 +717,11 @@ export default function SalesListing() {
         )}
       </div>
 
+      {/* Payment Details & Installment History — handled via Commerce Cash In
       {isResolveModalOpen && resolveSale ? (
-        <ResolvePaymentModal
-          isOpen={isResolveModalOpen}
-          onClose={() => {
-            setIsResolveModalOpen(false);
-            setResolveSale(null);
-          }}
-          sale={resolveSale}
-          onSuccess={() => {
-            fetchSales(filters);
-          }}
-        />
+        <ResolvePaymentModal ... />
       ) : null}
+      */}
 
       {isRemitModalOpen && remitSale ? (
         <RemitPickupPointModal

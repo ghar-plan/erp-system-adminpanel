@@ -16,8 +16,12 @@ export const WALK_IN_CUSTOMER_TYPE: CustomerType = {
   isActive: true,
 };
 
-export const CUSTOMER_TYPE_CATEGORY_OPTIONS: { value: CustomerTypeCategory; label: string }[] = [
-  { value: CustomerTypeCategory.CUSTOMER, label: "Customer" },
+export const CUSTOMER_TYPE_CATEGORY_OPTIONS: {
+  value: CustomerTypeCategory;
+  label: string;
+}[] = [
+  { value: CustomerTypeCategory.CUSTOMER, label: "Customer (e.g. GP Shop)" },
+  { value: CustomerTypeCategory.WALK_IN, label: "Walk-in Customer" },
   { value: CustomerTypeCategory.GP_CONSTRUCTION, label: "GP Construction" },
   { value: CustomerTypeCategory.PICKUP_POINT, label: "Pickup Point" },
 ];

@@ -46,6 +46,7 @@ interface DocumentFormInputs {
   customerName: string;
   customerPhone: string;
   customerAddress: string;
+  deliveryCharges: number | string;
   remarks: string;
   items: LineInput[];
 }
@@ -92,6 +93,7 @@ export default function DocumentCreate({ type }: Props) {
       customerName: "",
       customerPhone: "",
       customerAddress: "",
+      deliveryCharges: "",
       remarks: "",
       items: [emptyLine()],
     },
@@ -103,7 +105,14 @@ export default function DocumentCreate({ type }: Props) {
   });
 
   const items = watch("items");
+  const deliveryChargesWatch = watch("deliveryCharges");
   const subtotal = computeDocumentTotal(items || []);
+  const deliveryChargesNum = Math.max(
+    0,
+    Number(deliveryChargesWatch) || 0,
+  );
+  const grandTotal =
+    Math.round((subtotal + deliveryChargesNum) * 100) / 100;
 
   const handleProductVariantChange = (
     index: number,
@@ -154,6 +163,7 @@ export default function DocumentCreate({ type }: Props) {
 
     setSubmitting(true);
     try {
+      const deliveryCharges = Math.max(0, Number(data.deliveryCharges) || 0);
       const created = await createDocument({
         type,
         documentNo: data.documentNo.trim(),
@@ -162,6 +172,7 @@ export default function DocumentCreate({ type }: Props) {
         customerPhone: data.customerPhone.trim(),
         customerAddress: data.customerAddress.trim(),
         items: cleanedItems,
+        deliveryCharges,
         ...(data.remarks?.trim() ? { remarks: data.remarks.trim() } : {}),
       });
 
@@ -443,14 +454,52 @@ export default function DocumentCreate({ type }: Props) {
               {...register("remarks")}
             />
           </div>
-          <div>
-            <label className="mb-2 block ui-form-label">Total</label>
-            <input
-              type="text"
-              readOnly
-              value={formatMoney(subtotal)}
-              className="common-input bg-muted-foreground/5 cursor-not-allowed font-semibold"
-            />
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block ui-form-label">
+                Delivery Charges (PKR)
+              </label>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                placeholder="e.g. 500 (optional)"
+                className={`common-input ${errors.deliveryCharges ? "border-red-500" : ""}`}
+                {...register("deliveryCharges", {
+                  min: {
+                    value: 0,
+                    message: "Delivery charges cannot be negative",
+                  },
+                })}
+              />
+              {errors.deliveryCharges && (
+                <p className="mt-1 text-xs text-danger-text font-semibold">
+                  {errors.deliveryCharges.message}
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl border border-border-main bg-muted/20 p-4 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span className="font-semibold text-foreground">
+                  {formatMoney(subtotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Delivery</span>
+                <span className="font-semibold text-foreground">
+                  {formatMoney(deliveryChargesNum)}
+                </span>
+              </div>
+              <div className="border-t border-border-main pt-2 flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wide text-foreground">
+                  Grand Total
+                </span>
+                <span className="text-base font-bold text-foreground">
+                  {formatMoney(grandTotal)}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 

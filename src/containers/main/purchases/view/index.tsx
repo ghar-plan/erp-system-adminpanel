@@ -9,9 +9,14 @@ import {
   Wallet,
   StickyNote,
   Layers,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
+  History,
 } from "lucide-react";
 import { IoArrowBackOutline } from "react-icons/io5";
 import usePurchases from "../useHooks";
+import useCommerceCashflow from "@/containers/main/commerce-cashflow/useHooks";
 import {
   Purchase,
   formatMoney,
@@ -27,18 +32,22 @@ import {
   getExpiryStatus,
   getWorstExpiryStatus,
 } from "@/utils/helpers/common/expiry-status";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 
 export default function PurchaseView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getUser } = useStore();
   const { getPurchaseById } = usePurchases();
+  const { getOutByPurchase } = useCommerceCashflow();
   const [purchase, setPurchase] = useState<Purchase | null>(null);
+  const [cashOuts, setCashOuts] = useState<any[]>([]);
   const canViewPurchasePrice = canAccessPurchasePrice(getUser()?.email);
 
   useEffect(() => {
     if (id) {
       getPurchaseById(id, setPurchase);
+      getOutByPurchase(id, setCashOuts);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -98,6 +107,11 @@ export default function PurchaseView() {
     purchase.paymentMade != null &&
     Number.isFinite(Number(purchase.paymentMade));
 
+  const amountPaid = Number(purchase.amountPaid || 0);
+  const balanceDue = Number(purchase.balanceDue || 0);
+  const isSettled = balanceDue <= 0.001 && (amountPaid > 0 || Number(purchase.paymentMade || 0) === 0);
+  const hasOutstanding = balanceDue > 0.001;
+
   const overallExpiry = getWorstExpiryStatus(
     lines.map((item) => item.expiryDate),
   );
@@ -140,13 +154,80 @@ export default function PurchaseView() {
             <h2 className="text-xl font-bold text-foreground">
               {purchase?.supplierName || "--"}
             </h2>
-            <span
-              className={`inline-flex items-center text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full mt-1 uppercase ${getSourceBadgeClass(purchase?.sourcePayment || "")}`}
-            >
-              {purchase?.sourcePayment || "--"}
-            </span>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <span
+                className={`inline-flex items-center text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full uppercase ${getSourceBadgeClass(purchase?.sourcePayment || "")}`}
+              >
+                {purchase?.sourcePayment || "--"}
+              </span>
+              {hasPrice || amountPaid > 0 || hasOutstanding ? (
+                isSettled ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full uppercase bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                    <CheckCircle2 size={12} />
+                    Settled
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full uppercase bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                    <AlertCircle size={12} />
+                    Remaining {formatMoney(balanceDue)}
+                  </span>
+                )
+              ) : null}
+            </div>
           </div>
         </div>
+
+        {(hasPrice || amountPaid > 0 || hasOutstanding) && (
+          <div
+            className={`rounded-xl border px-4 py-3 flex flex-wrap items-center justify-between gap-3 ${
+              isSettled
+                ? "bg-emerald-500/10 border-emerald-500/25"
+                : "bg-amber-500/10 border-amber-500/25"
+            }`}
+          >
+            <div className="flex items-start gap-2.5">
+              {isSettled ? (
+                <CheckCircle2
+                  size={18}
+                  className="text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0"
+                />
+              ) : (
+                <AlertCircle
+                  size={18}
+                  className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0"
+                />
+              )}
+              <div>
+                <p
+                  className={`text-sm font-bold ${
+                    isSettled
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : "text-amber-700 dark:text-amber-400"
+                  }`}
+                >
+                  {isSettled
+                    ? "Vendor payment settled"
+                    : "Outstanding payable to vendor"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Paid {formatMoney(amountPaid)}
+                  {hasOutstanding
+                    ? ` · Remaining due ${formatMoney(balanceDue)}`
+                    : " · No remaining balance"}
+                  {hasPrice ? ` · Invoice ${formatMoney(purchase.paymentMade)}` : ""}
+                </p>
+              </div>
+            </div>
+            {hasOutstanding ? (
+              <Link
+                to={siteRoutes.commerceCashflow}
+                className="text-xs font-bold text-primary hover:underline whitespace-nowrap"
+              >
+                Record Cash Out →
+              </Link>
+            ) : null}
+          </div>
+        )}
 
         <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
           <div className="flex items-start gap-3">
@@ -188,6 +269,12 @@ export default function PurchaseView() {
                 </label>
                 <p className="text-sm font-semibold text-foreground mt-0.5">
                   {formatMoney(purchase?.paymentMade)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Paid {formatMoney(amountPaid)}
+                  {hasOutstanding
+                    ? ` · Remaining ${formatMoney(balanceDue)}`
+                    : " · Settled"}
                 </p>
               </div>
             </div>
@@ -314,6 +401,79 @@ export default function PurchaseView() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        <div className="border-t border-border-main pt-6 space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <History size={18} />
+              <span className="text-xs font-bold uppercase tracking-wide">
+                Cash Out History ({cashOuts.length})
+              </span>
+            </div>
+            <Link
+              to={siteRoutes.commerceCashflow}
+              className="text-xs font-bold text-primary hover:underline"
+            >
+              Open Cash In / Cash Out
+            </Link>
+          </div>
+          {cashOuts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No cash-out entries recorded for this purchase yet.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-border-main">
+              <table className="min-w-full divide-y divide-border-main text-sm">
+                <thead className="bg-muted-foreground/5">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Date
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Installment
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Source
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Amount
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Entered By
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-main">
+                  {cashOuts.map((row) => (
+                    <tr key={row.id}>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {formatDate(row.entryDate)}
+                      </td>
+                      <td className="px-3 py-2">{row.installment || "—"}</td>
+                      <td className="px-3 py-2">{row.paymentSource || "—"}</td>
+                      <td className="px-3 py-2 text-right font-semibold">
+                        {formatMoney(row.amount)}
+                      </td>
+                      <td className="px-3 py-2">{row.enteredBy || "—"}</td>
+                      <td className="px-3 py-2 text-right">
+                        <Link
+                          to={`/commerce/cashflow/view/out/${row.id}`}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg btn-action-view"
+                          title="View Cash Out Details"
+                        >
+                          <Eye size={16} />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-border-main pt-6">

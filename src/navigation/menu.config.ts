@@ -212,25 +212,27 @@ export const menuConfig: MenuGroup[] = [
   {
     key: "commerce",
     text: "Commerce",
-    path: siteRoutes.purchases,
+    path: siteRoutes.commerceHub,
     children: [
       {
-        title: "Product Prices",
-        path: siteRoutes.productPrices,
+        title: "Product Prices & Time Span",
+        path: siteRoutes.productCatalog,
         icon: "product-prices",
-        permission: PERMISSIONS.PRODUCT_PRICES_READ,
+        anyOf: [
+          PERMISSIONS.PRODUCT_PRICES_READ,
+          PERMISSIONS.PRODUCT_LIFESPANS_READ,
+        ],
       },
       {
-        title: "Time Span",
-        path: siteRoutes.timeSpan,
-        icon: "time-span",
-        permission: PERMISSIONS.PRODUCT_LIFESPANS_READ,
-      },
-      {
-        title: "Purchases",
-        path: siteRoutes.purchases,
-        icon: "purchases",
-        anyOf: [PERMISSIONS.PURCHASES_CREATE, PERMISSIONS.PURCHASES_READ],
+        title: "Sale / Purchase / Cash",
+        path: siteRoutes.commerceHub,
+        icon: "sales",
+        anyOf: [
+          PERMISSIONS.SALES_CREATE,
+          PERMISSIONS.SALES_READ,
+          PERMISSIONS.PURCHASES_CREATE,
+          PERMISSIONS.PURCHASES_READ,
+        ],
       },
       {
         title: "Customer Types",
@@ -243,12 +245,6 @@ export const menuConfig: MenuGroup[] = [
         path: siteRoutes.customerLedger,
         icon: "customer-ledger",
         permission: PERMISSIONS.SALES_READ,
-      },
-      {
-        title: "Sales",
-        path: siteRoutes.sales,
-        icon: "sales",
-        anyOf: [PERMISSIONS.SALES_CREATE, PERMISSIONS.SALES_READ],
       },
       {
         title: "Generate Quotation",

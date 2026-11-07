@@ -1,5 +1,5 @@
 import { ReactElement } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import MainLayout from "@/components/layouts/main-layout";
 import Dashboard from "@/containers/main/dashboard";
 import ProjectsListing from "@/containers/main/projects/listing";
@@ -84,13 +84,14 @@ import SalesListing from "@/containers/main/sales/listing";
 import SaleCreate from "@/containers/main/sales/create";
 import SaleEdit from "@/containers/main/sales/edit";
 import SaleView from "@/containers/main/sales/view";
+import CommerceCashflowView from "@/containers/main/commerce-cashflow/view";
+import CommerceHub from "@/containers/main/commerce-hub";
+import ProductCatalogHub from "@/containers/main/product-catalog";
 import FixedCostsListing from "@/containers/main/fixed-costs/listing";
 import FixedCostCreate from "@/containers/main/fixed-costs/create";
 import FixedCostEdit from "@/containers/main/fixed-costs/edit";
 import FixedCostView from "@/containers/main/fixed-costs/view";
 import StocksListing from "@/containers/main/stocks/listing";
-import TimeSpanListing from "@/containers/main/time-span/listing";
-import ProductPricesListing from "@/containers/main/product-prices/listing";
 import QuotationCreate from "@/containers/main/documents/quotation-create";
 import BillCreate from "@/containers/main/documents/bill-create";
 import QuotationsList from "@/containers/main/documents/quotations-list";
@@ -437,10 +438,35 @@ const DashboardRoutes = () => {
           element={guard(<DesignVendorListReport />, PERMISSIONS.DESIGN_REPORTS_VENDOR_LIST)}
         />
 
-        {/* Commerce module — /purchases lands on Record Purchase form */}
+        {/* Commerce hub — Sale / Purchase / Cash In-Out tabs (Sale default) */}
+        <Route
+          path={siteRoutes.commerceHub}
+          element={guard(
+            <CommerceHub />,
+            undefined,
+            [
+              PERMISSIONS.SALES_CREATE,
+              PERMISSIONS.SALES_READ,
+              PERMISSIONS.PURCHASES_CREATE,
+              PERMISSIONS.PURCHASES_READ,
+            ],
+            "any",
+          )}
+        />
+        {/* Legacy entry points redirect into the hub tabs */}
         <Route
           path={siteRoutes.purchases}
-          element={guard(<PurchaseCreate />, PERMISSIONS.PURCHASES_CREATE)}
+          element={<Navigate to={`${siteRoutes.commerceHub}?tab=purchases`} replace />}
+        />
+        <Route
+          path={siteRoutes.sales}
+          element={<Navigate to={siteRoutes.commerceHub} replace />}
+        />
+        <Route
+          path={siteRoutes.commerceCashflow}
+          element={
+            <Navigate to={`${siteRoutes.commerceHub}?tab=cashflow`} replace />
+          }
         />
         <Route
           path={siteRoutes.purchasesList}
@@ -474,11 +500,6 @@ const DashboardRoutes = () => {
           path={siteRoutes.customerLedger}
           element={guard(<CustomerLedger />, PERMISSIONS.SALES_READ)}
         />
-        {/* /sales and /fixed-costs land on Record forms (same pattern as purchases) */}
-        <Route
-          path={siteRoutes.sales}
-          element={guard(<SaleCreate />, PERMISSIONS.SALES_CREATE)}
-        />
         <Route
           path={siteRoutes.salesList}
           element={guard(<SalesListing />, PERMISSIONS.SALES_READ)}
@@ -494,6 +515,15 @@ const DashboardRoutes = () => {
         <Route
           path={siteRoutes.salesEdit}
           element={guard(<SaleEdit />, PERMISSIONS.SALES_UPDATE)}
+        />
+        <Route
+          path={siteRoutes.commerceCashflowView}
+          element={guard(
+            <CommerceCashflowView />,
+            undefined,
+            [PERMISSIONS.SALES_READ, PERMISSIONS.PURCHASES_READ],
+            "any",
+          )}
         />
         <Route
           path={siteRoutes.documentsQuotations}
@@ -540,12 +570,29 @@ const DashboardRoutes = () => {
           element={guard(<StocksListing />, PERMISSIONS.STOCKS_READ)}
         />
         <Route
+          path={siteRoutes.productCatalog}
+          element={guard(
+            <ProductCatalogHub />,
+            undefined,
+            [
+              PERMISSIONS.PRODUCT_PRICES_READ,
+              PERMISSIONS.PRODUCT_LIFESPANS_READ,
+            ],
+            "any",
+          )}
+        />
+        <Route
           path={siteRoutes.timeSpan}
-          element={guard(<TimeSpanListing />, PERMISSIONS.PRODUCT_LIFESPANS_READ)}
+          element={
+            <Navigate
+              to={`${siteRoutes.productCatalog}?tab=timespan`}
+              replace
+            />
+          }
         />
         <Route
           path={siteRoutes.productPrices}
-          element={guard(<ProductPricesListing />, PERMISSIONS.PRODUCT_PRICES_READ)}
+          element={<Navigate to={siteRoutes.productCatalog} replace />}
         />
 
         <Route path={siteRoutes.unauthorized} element={<Unauthorized />} />

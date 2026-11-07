@@ -73,6 +73,7 @@ export enum siteRoutes {
   designReportsVendorList = "/design/reports/vendor-list",
 
   // Commerce module routes
+  commerceHub = "/commerce",
   purchases = "/purchases",
   purchasesList = "/purchases/list",
   purchasesCreate = "/purchases/create",
@@ -87,6 +88,8 @@ export enum siteRoutes {
   salesCreate = "/sales/create",
   salesEdit = "/sales/edit/:id",
   salesView = "/sales/view/:id",
+  commerceCashflow = "/commerce/cashflow",
+  commerceCashflowView = "/commerce/cashflow/view/:type/:id",
   fixedCosts = "/fixed-costs",
   fixedCostsList = "/fixed-costs/list",
   fixedCostsCreate = "/fixed-costs/create",
@@ -95,6 +98,7 @@ export enum siteRoutes {
   stocks = "/stocks",
   timeSpan = "/time-span",
   productPrices = "/product-prices",
+  productCatalog = "/product-catalog",
 
   // Quotations & Bills (manual rates; product from Gharplans catalog)
   documentsQuotations = "/documents/quotations",

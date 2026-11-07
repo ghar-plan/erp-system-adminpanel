@@ -150,6 +150,11 @@ export default function DocumentView() {
               <p className="text-sm font-semibold text-foreground mt-0.5">
                 {formatMoney(doc.total)}
               </p>
+              {Number(doc.deliveryCharges || 0) > 0 ? (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Includes delivery {formatMoney(doc.deliveryCharges)}
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="flex items-start gap-3">

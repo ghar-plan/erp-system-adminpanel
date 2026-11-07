@@ -61,6 +61,10 @@ export interface Purchase {
   quantity: number;
   rate?: number | null;
   paymentMade?: number | null;
+  /** Cash paid to supplier so far (cash-outs). */
+  amountPaid?: number;
+  /** Outstanding payable to supplier. */
+  balanceDue?: number;
   remarks?: string | null;
   sourcePayment: CashOutPaymentSource;
   status?: CommerceEntryStatus | string;

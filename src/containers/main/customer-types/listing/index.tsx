@@ -1,10 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Search, Pencil, Trash2, Tags, BookOpen } from "lucide-react";
 import useCustomerTypes from "../useHooks";
 import {
   CustomerType,
-  CustomerTypeCategory,
   CUSTOMER_TYPE_CATEGORY_OPTIONS,
   customerTypeCategoryLabel,
   customerTypeStatusLabel,
@@ -21,11 +20,6 @@ import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { isErpAdminEmail } from "@/utils/helpers/permissions/erp-admin-access";
 import useStore from "@/hooks/useStore";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
-
-interface PickupPoint {
-  id: string | number;
-  name: string;
-}
 
 interface CustomerTypeFilters {
   search: string;
@@ -49,8 +43,6 @@ export default function CustomerTypesListing() {
   const { getUser } = useStore();
   const {
     getCustomerTypes,
-    getAllCustomerTypes,
-    getPickupPoints,
     setCustomerTypeStatus,
     deleteCustomerType,
   } = useCustomerTypes();
@@ -62,8 +54,6 @@ export default function CustomerTypesListing() {
   const showActions = canUpdate || canDelete || canViewLedger;
 
   const [customerTypes, setCustomerTypes] = useState<CustomerType[]>([]);
-  const [allCustomerTypes, setAllCustomerTypes] = useState<CustomerType[]>([]);
-  const [pickupPoints, setPickupPoints] = useState<PickupPoint[]>([]);
   const [totalElements, setTotalElements] = useState(0);
 
   const [searchVal, setSearchVal] = useState("");
@@ -83,39 +73,10 @@ export default function CustomerTypesListing() {
     getCustomerTypes(setCustomerTypes, queryParams, setTotalElements);
   };
 
-  const refreshCreateEligibility = () => {
-    getAllCustomerTypes(setAllCustomerTypes);
-    getPickupPoints(setPickupPoints);
-  };
-
   useEffect(() => {
     fetchCustomerTypes({ ...emptyFilters, page: 1 });
-    refreshCreateEligibility();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const showCreateButton = useMemo(() => {
-    const hasCustomer = allCustomerTypes.some(
-      (ct) => ct.category === CustomerTypeCategory.CUSTOMER,
-    );
-    const hasGpConstruction = allCustomerTypes.some(
-      (ct) => ct.category === CustomerTypeCategory.GP_CONSTRUCTION,
-    );
-    const usedPickupIds = new Set(
-      allCustomerTypes
-        .filter(
-          (ct) =>
-            ct.category === CustomerTypeCategory.PICKUP_POINT &&
-            ct.pickupPointId,
-        )
-        .map((ct) => String(ct.pickupPointId)),
-    );
-    const hasUnlinkedPickupPoint = pickupPoints.some(
-      (pp) => !usedPickupIds.has(String(pp.id)),
-    );
-
-    return !hasCustomer || !hasGpConstruction || hasUnlinkedPickupPoint;
-  }, [allCustomerTypes, pickupPoints]);
 
   const handleApplyFilters = () => {
     const updatedFilters = { ...filters, search: searchVal, page: 1 };
@@ -139,16 +100,13 @@ export default function CustomerTypesListing() {
   const handleDelete = async (id: string, name: string) => {
     await deleteCustomerType(id, name, () => {
       fetchCustomerTypes(filters);
-      refreshCreateEligibility();
     });
   };
 
   const handleToggleStatus = async (customerType: CustomerType) => {
-    if (customerType.id === WALK_IN_CUSTOMER_TYPE_ID) return;
     const nextActive = customerType.isActive === false;
     await setCustomerTypeStatus(customerType.id, nextActive, () => {
       fetchCustomerTypes(filters);
-      refreshCreateEligibility();
     });
   };
 
@@ -184,17 +142,15 @@ export default function CustomerTypesListing() {
             Customer Types
           </h1>
         </div>
-        {showCreateButton ? (
-          <Can permission={PERMISSIONS.CUSTOMER_TYPES_CREATE}>
-            <Link
-              to="/customer-types/create"
-              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
-            >
-              <Plus size={18} />
-              Create Customer Type
-            </Link>
-          </Can>
-        ) : null}
+        <Can permission={PERMISSIONS.CUSTOMER_TYPES_CREATE}>
+          <Link
+            to="/customer-types/create"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
+          >
+            <Plus size={18} />
+            Create Customer Type
+          </Link>
+        </Can>
       </div>
 
       {/* Stats */}
@@ -308,8 +264,6 @@ export default function CustomerTypesListing() {
                 <tbody className="divide-y divide-border-main bg-card text-foreground">
                   {customerTypes.map((customerType, index) => {
                     const isOpen = customerType.isActive !== false;
-                    const isWalkIn =
-                      customerType.id === WALK_IN_CUSTOMER_TYPE_ID;
                     return (
                     <tr
                       key={customerType.id}
@@ -342,7 +296,7 @@ export default function CustomerTypesListing() {
                           >
                             {customerTypeStatusLabel(customerType.isActive)}
                           </span>
-                          {canUpdate && !isWalkIn ? (
+                          {canUpdate ? (
                             <button
                               type="button"
                               role="switch"

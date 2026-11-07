@@ -11,13 +11,18 @@ import {
   StickyNote,
   Tag,
   Layers,
-  Coins,
   Building2,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
+  History,
 } from "lucide-react";
 import { IoArrowBackOutline } from "react-icons/io5";
 import useSales from "../useHooks";
-import ResolvePaymentModal from "../components/ResolvePaymentModal";
+// Resolve Payment / Installment History moved to Commerce Cash In
+// import ResolvePaymentModal from "../components/ResolvePaymentModal";
 import RemitPickupPointModal from "../components/RemitPickupPointModal";
+import useCommerceCashflow from "@/containers/main/commerce-cashflow/useHooks";
 import {
   Sale,
   PaymentCollectedBy,
@@ -35,20 +40,24 @@ import { Can } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { isErpAdminEmail } from "@/utils/helpers/permissions/erp-admin-access";
 import useStore from "@/hooks/useStore";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 
 export default function SaleView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getUser } = useStore();
   const { getSaleById } = useSales();
+  const { getInBySale } = useCommerceCashflow();
   const [sale, setSale] = useState<Sale | null>(null);
-  const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+  const [cashIns, setCashIns] = useState<any[]>([]);
+  // const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
   const [isRemitModalOpen, setIsRemitModalOpen] = useState(false);
   const canViewSaleRates = isErpAdminEmail(getUser()?.email);
 
   useEffect(() => {
     if (id) {
       getSaleById(id, setSale);
+      getInBySale(id, setCashIns);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -87,6 +96,15 @@ export default function SaleView() {
     return null;
   }
 
+  const paidAmount = Number(sale.payment || 0);
+  const balanceAmount = Number(sale.balance || 0);
+  const invoiceTotal =
+    sale.items?.length
+      ? computeSaleSubtotal(sale.items)
+      : paidAmount + balanceAmount;
+  const isSettled = balanceAmount <= 0.001 && paidAmount > 0;
+  const hasOutstanding = balanceAmount > 0.001;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -119,24 +137,13 @@ export default function SaleView() {
               </button>
             ) : null}
           </Can>
+          {/* Payment Details & Installment History — use Commerce Cash In
           <Can permission={PERMISSIONS.SALES_UPDATE}>
             {!isDraftEntry(sale.status) ? (
-              <button
-                type="button"
-                onClick={() => setIsResolveModalOpen(true)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm border ${
-                  Number(sale.balance || 0) > 0
-                    ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 border-amber-500/30"
-                    : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
-                }`}
-              >
-                <Coins size={16} />
-                {Number(sale.balance || 0) > 0
-                  ? "Resolve Payment"
-                  : "Installment History"}
-              </button>
+              <button ... Resolve Payment / Installment History />
             ) : null}
           </Can>
+          */}
           <Can permission={PERMISSIONS.SALES_UPDATE}>
             <Link
               to={`/sales/edit/${sale.id}`}
@@ -160,12 +167,85 @@ export default function SaleView() {
             <h2 className="text-xl font-bold text-foreground">
               {sale?.customerName || sale?.customerType?.name || "--"}
             </h2>
-            <span
-              className={`inline-flex items-center text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full mt-1 uppercase ${getSourceBadgeClass(sale?.sourcePayment || "")}`}
-            >
-              {sale?.sourcePayment || "--"}
-            </span>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <span
+                className={`inline-flex items-center text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full uppercase ${getSourceBadgeClass(sale?.sourcePayment || "")}`}
+              >
+                {sale?.sourcePayment || "--"}
+              </span>
+              {isSettled ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full uppercase bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                  <CheckCircle2 size={12} />
+                  Settled
+                </span>
+              ) : hasOutstanding ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full uppercase bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                  <AlertCircle size={12} />
+                  Remaining {formatMoney(balanceAmount)}
+                </span>
+              ) : null}
+            </div>
           </div>
+        </div>
+
+        <div
+          className={`rounded-xl border px-4 py-3 flex flex-wrap items-center justify-between gap-3 ${
+            isSettled
+              ? "bg-emerald-500/10 border-emerald-500/25"
+              : hasOutstanding
+                ? "bg-amber-500/10 border-amber-500/25"
+                : "bg-muted/30 border-border-main"
+          }`}
+        >
+          <div className="flex items-start gap-2.5">
+            {isSettled ? (
+              <CheckCircle2
+                size={18}
+                className="text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0"
+              />
+            ) : hasOutstanding ? (
+              <AlertCircle
+                size={18}
+                className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0"
+              />
+            ) : (
+              <Wallet size={18} className="text-muted-foreground mt-0.5 shrink-0" />
+            )}
+            <div>
+              <p
+                className={`text-sm font-bold ${
+                  isSettled
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : hasOutstanding
+                      ? "text-amber-700 dark:text-amber-400"
+                      : "text-foreground"
+                }`}
+              >
+                {isSettled
+                  ? "Customer payment settled"
+                  : hasOutstanding
+                    ? "Outstanding receivable"
+                    : "Payment status"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Paid {formatMoney(paidAmount)}
+                {hasOutstanding
+                  ? ` · Remaining balance ${formatMoney(balanceAmount)}`
+                  : isSettled
+                    ? " · No remaining balance"
+                    : ""}
+                {` · Invoice ${formatMoney(invoiceTotal)}`}
+              </p>
+            </div>
+          </div>
+          {hasOutstanding ? (
+            <Link
+              to={siteRoutes.commerceCashflow}
+              className="text-xs font-bold text-primary hover:underline whitespace-nowrap"
+            >
+              Record Cash In →
+            </Link>
+          ) : null}
         </div>
 
         <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
@@ -275,19 +355,32 @@ export default function SaleView() {
               <p className="text-sm font-semibold text-foreground mt-0.5">
                 {formatMoney(sale?.payment)}
               </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isSettled
+                  ? "Settled in full"
+                  : hasOutstanding
+                    ? `Remaining ${formatMoney(balanceAmount)}`
+                    : null}
+              </p>
             </div>
           </div>
 
           <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-lg bg-danger-bg text-danger-text">
-              <Wallet size={18} />
+            <div
+              className={`p-2.5 rounded-lg ${
+                isSettled
+                  ? "bg-success-bg text-success-text"
+                  : "bg-danger-bg text-danger-text"
+              }`}
+            >
+              {isSettled ? <CheckCircle2 size={18} /> : <Wallet size={18} />}
             </div>
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
                 Balance
               </label>
               <p className="text-sm font-semibold text-foreground mt-0.5">
-                {formatMoney(sale?.balance)}
+                {isSettled ? "Settled (PKR 0)" : formatMoney(sale?.balance)}
               </p>
             </div>
           </div>
@@ -412,6 +505,79 @@ export default function SaleView() {
           )}
         </div>
 
+        <div className="border-t border-border-main pt-6 space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <History size={18} />
+              <span className="text-xs font-bold uppercase tracking-wide">
+                Cash In History ({cashIns.length})
+              </span>
+            </div>
+            <Link
+              to={siteRoutes.commerceCashflow}
+              className="text-xs font-bold text-primary hover:underline"
+            >
+              Open Cash In / Cash Out
+            </Link>
+          </div>
+          {cashIns.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No cash-in entries recorded for this sale yet.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-border-main">
+              <table className="min-w-full divide-y divide-border-main text-sm">
+                <thead className="bg-muted-foreground/5">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Date
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Installment
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Source
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Amount
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Entered By
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-main">
+                  {cashIns.map((row) => (
+                    <tr key={row.id}>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {formatDate(row.entryDate)}
+                      </td>
+                      <td className="px-3 py-2">{row.installment || "—"}</td>
+                      <td className="px-3 py-2">{row.paymentSource || "—"}</td>
+                      <td className="px-3 py-2 text-right font-semibold">
+                        {formatMoney(row.amount)}
+                      </td>
+                      <td className="px-3 py-2">{row.enteredBy || "—"}</td>
+                      <td className="px-3 py-2 text-right">
+                        <Link
+                          to={`/commerce/cashflow/view/in/${row.id}`}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg btn-action-view"
+                          title="View Cash In Details"
+                        >
+                          <Eye size={16} />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {/* Remarks */}
         <div className="border-t border-border-main pt-6">
           <div className="flex items-center gap-2 mb-3 text-muted-foreground">
@@ -426,16 +592,11 @@ export default function SaleView() {
         </div>
       </div>
 
+      {/* Payment Details & Installment History — handled via Commerce Cash In
       {isResolveModalOpen ? (
-        <ResolvePaymentModal
-          isOpen={isResolveModalOpen}
-          onClose={() => setIsResolveModalOpen(false)}
-          sale={sale}
-          onSuccess={() => {
-            if (id) getSaleById(id, setSale);
-          }}
-        />
+        <ResolvePaymentModal ... />
       ) : null}
+      */}
 
       {isRemitModalOpen ? (
         <RemitPickupPointModal

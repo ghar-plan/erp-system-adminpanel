@@ -24,6 +24,7 @@ export interface ErpDocument {
   customerPhone: string;
   customerAddress: string;
   total: number;
+  deliveryCharges?: number;
   remarks?: string | null;
   items?: DocumentItem[];
   created_at?: string;

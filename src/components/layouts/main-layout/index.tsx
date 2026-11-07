@@ -98,6 +98,7 @@ const CHILD_ICONS: Record<string, React.ReactNode> = {
   "customer-types": <Tags size={16} />,
   "customer-ledger": <BookOpen size={16} />,
   sales: <ShoppingCart size={16} />,
+  "commerce-cashflow": <Wallet size={16} />,
   quotations: <FileText size={16} />,
   bills: <ReceiptText size={16} />,
   "fixed-costs": <Landmark size={16} />,

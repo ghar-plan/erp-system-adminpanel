@@ -36,6 +36,7 @@ interface CustomerTypeFormInputs {
   category: CustomerTypeCategory | "";
   pickupPointId: string;
   pickupPointName: string;
+  clonePricesFromCustomerTypeId: string;
 }
 
 interface PickupPoint {
@@ -77,6 +78,7 @@ export default function CustomerTypeCreate() {
       category: "",
       pickupPointId: "",
       pickupPointName: "",
+      clonePricesFromCustomerTypeId: "",
     },
   });
 
@@ -85,6 +87,7 @@ export default function CustomerTypeCreate() {
   const isPickupPoint = category === CustomerTypeCategory.PICKUP_POINT;
   const isGpConstruction = category === CustomerTypeCategory.GP_CONSTRUCTION;
   const isCustomer = category === CustomerTypeCategory.CUSTOMER;
+  const isWalkIn = category === CustomerTypeCategory.WALK_IN;
 
   const usedPickupPointIds = useMemo(() => {
     return new Set(
@@ -175,6 +178,10 @@ export default function CustomerTypeCreate() {
     if (data.category === CustomerTypeCategory.PICKUP_POINT) {
       payload.pickupPointId = data.pickupPointId;
       payload.pickupPointName = data.pickupPointName || undefined;
+    }
+    if (data.clonePricesFromCustomerTypeId) {
+      payload.clonePricesFromCustomerTypeId =
+        data.clonePricesFromCustomerTypeId;
     }
 
     const response = await createCustomerType(payload);
@@ -382,10 +389,15 @@ export default function CustomerTypeCreate() {
                   if (next === CustomerTypeCategory.GP_CONSTRUCTION) {
                     setValue("pickupPointId", "");
                     setValue("pickupPointName", "");
-                    setValue("name", "GP Construction", { shouldValidate: true });
+                    setValue("name", "GP Construction", {
+                      shouldValidate: true,
+                    });
                   } else if (next === CustomerTypeCategory.PICKUP_POINT) {
                     setValue("name", "");
-                  } else if (next === CustomerTypeCategory.CUSTOMER) {
+                  } else if (
+                    next === CustomerTypeCategory.CUSTOMER ||
+                    next === CustomerTypeCategory.WALK_IN
+                  ) {
                     setValue("pickupPointId", "");
                     setValue("pickupPointName", "");
                   }
@@ -489,30 +501,35 @@ export default function CustomerTypeCreate() {
             </div>
           ) : null}
 
-          {/* Name — Customer & GP Construction */}
+          {/* Name ? Customer, Walk-in & GP Construction */}
           {!isPickupPoint ? (
             <div className="md:col-span-2">
               <label className="mb-2 block ui-form-label">
                 {isGpConstruction
                   ? "Name"
-                  : isCustomer
-                    ? "Customer type name"
-                    : "Name"}
+                  : isWalkIn
+                    ? "Walk-in customer name"
+                    : isCustomer
+                      ? "Customer type name"
+                      : "Name"}
               </label>
               <input
                 type="text"
                 placeholder={
                   isGpConstruction
                     ? "GP Construction"
-                    : "e.g. Gujrat, Testing, Walk-in"
+                    : isWalkIn
+                      ? "e.g. Walk-in Lahore, Walk-in Counter 2"
+                      : "e.g. Gujrat, GP Shop, Testing"
                 }
                 className={`common-input ${errors.name ? "border-red-500 focus:border-red-500" : ""}`}
                 {...register("name", { required: "Name is required" })}
               />
-              {isCustomer ? (
+              {isCustomer || isWalkIn ? (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Add one row per customer segment (e.g. retail customers in a
-                  city). Set product prices on the next screen after save.
+                  {isWalkIn
+                    ? "You can create as many walk-in customers as you need. Optionally copy prices from an existing customer below."
+                    : "Add one row per customer segment (e.g. GP Shop). Optionally copy prices from an existing customer below."}
                 </p>
               ) : null}
               {errors.name && (
@@ -520,6 +537,46 @@ export default function CustomerTypeCreate() {
                   {errors.name.message}
                 </p>
               )}
+            </div>
+          ) : null}
+
+          {!isEditMode ? (
+            <div className="md:col-span-2">
+              <label className="mb-2 block ui-form-label">
+                Copy product prices from (optional)
+              </label>
+              <select
+                className="common-input bg-card cursor-pointer"
+                {...register("clonePricesFromCustomerTypeId")}
+              >
+                <option value="">Don&apos;t copy ? set prices after create</option>
+                {[...existingCustomerTypes]
+                  .sort((a, b) =>
+                    String(a.name || "").localeCompare(String(b.name || "")),
+                  )
+                  .map((ct) => (
+                    <option key={ct.id} value={ct.id}>
+                      {ct.name}
+                      {ct.category
+                        ? ` · ${
+                            ct.category === CustomerTypeCategory.WALK_IN
+                              ? "Walk-in"
+                              : ct.category === CustomerTypeCategory.PICKUP_POINT
+                                ? "Pickup"
+                                : ct.category ===
+                                    CustomerTypeCategory.GP_CONSTRUCTION
+                                  ? "GP Construction"
+                                  : "Customer"
+                          }`
+                        : ""}
+                    </option>
+                  ))}
+              </select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Syncs all product rates already configured on the selected
+                customer into this new one. You can still adjust prices after
+                create.
+              </p>
             </div>
           ) : null}
         </div>
