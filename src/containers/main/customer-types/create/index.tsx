@@ -501,7 +501,7 @@ export default function CustomerTypeCreate() {
             </div>
           ) : null}
 
-          {/* Name ? Customer, Walk-in & GP Construction */}
+          {/* Name - Customer, Walk-in & GP Construction */}
           {!isPickupPoint ? (
             <div className="md:col-span-2">
               <label className="mb-2 block ui-form-label">
@@ -549,7 +549,7 @@ export default function CustomerTypeCreate() {
                 className="common-input bg-card cursor-pointer"
                 {...register("clonePricesFromCustomerTypeId")}
               >
-                <option value="">Don&apos;t copy ? set prices after create</option>
+                <option value="">Don&apos;t copy - set prices after create</option>
                 {[...existingCustomerTypes]
                   .sort((a, b) =>
                     String(a.name || "").localeCompare(String(b.name || "")),
@@ -558,7 +558,7 @@ export default function CustomerTypeCreate() {
                     <option key={ct.id} value={ct.id}>
                       {ct.name}
                       {ct.category
-                        ? ` · ${
+                        ? ` - ${
                             ct.category === CustomerTypeCategory.WALK_IN
                               ? "Walk-in"
                               : ct.category === CustomerTypeCategory.PICKUP_POINT

@@ -4,7 +4,10 @@ export interface ProductPrice {
   productName: string;
   variantId?: string | null;
   variantName?: string | null;
+  /** ERP cost (per item). */
   rate: number;
+  /** Gharplans selling price snapshot at last save. */
+  sellingPrice?: number | null;
   effectiveFrom: string | Date;
   created_at?: string;
   updated_at?: string;
@@ -46,7 +49,10 @@ export interface ProductPriceHistory {
   productName: string;
   variantId?: string | null;
   variantName?: string | null;
+  /** ERP cost (per item) for this period. */
   rate: number;
+  /** Gharplans selling price snapshot for this period. */
+  sellingPrice?: number | null;
   effectiveFrom: string | Date;
   effectiveTo?: string | Date | null;
   created_at?: string;

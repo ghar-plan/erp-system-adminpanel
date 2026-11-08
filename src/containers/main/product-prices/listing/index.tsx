@@ -9,7 +9,6 @@ import {
   History,
   X,
   Tag,
-  Trash2,
 } from "lucide-react";
 import useProductPrices from "../useHooks";
 import {
@@ -23,6 +22,12 @@ import {
   computeMarginPercent,
   formatMarginPercent,
 } from "@/utils/helpers/models/product-prices/product-price.dto";
+import Pagination from "@/components/particles/table/pagination";
+import DataNotFound from "@/components/particles/table/data-not-found";
+import Button from "@/components/ui/Button";
+import { Can } from "@/components/auth/Can";
+import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { errorToaster } from "@/utils/helpers/common/alert-service";
 
 /** Keep decimals on this screen (e.g. 4.5) — do not round. */
 const formatPrice = (value?: number | string | null) => {
@@ -41,12 +46,6 @@ const marginToneClass = (margin: number | null): string => {
   if (margin < 0) return "text-danger-text font-semibold";
   return "text-muted-foreground font-semibold";
 };
-import Pagination from "@/components/particles/table/pagination";
-import DataNotFound from "@/components/particles/table/data-not-found";
-import Button from "@/components/ui/Button";
-import { Can } from "@/components/auth/Can";
-import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
-import { errorToaster } from "@/utils/helpers/common/alert-service";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -64,7 +63,7 @@ const formatDate = (value?: string | Date | null) => {
 };
 
 export default function ProductPricesListing() {
-  const { getProducts, getPriceMap, getHistory, upsertPrice, clearPrice } =
+  const { getProducts, getPriceMap, getHistory, upsertPrice } =
     useProductPrices();
 
   const [products, setProducts] = useState<ProductSku[]>([]);
@@ -179,6 +178,10 @@ export default function ProductPricesListing() {
       return;
     }
 
+    const sellingRaw = Number(sku.price);
+    const sellingPrice =
+      Number.isFinite(sellingRaw) && sellingRaw >= 0 ? sellingRaw : null;
+
     setSavingId(pid);
     const ok = await upsertPrice({
       productId: sku.productId,
@@ -186,6 +189,7 @@ export default function ProductPricesListing() {
       variantId: sku.variantId,
       variantName: sku.variantName,
       rate,
+      sellingPrice,
       effectiveFrom: today(),
     });
     setSavingId(null);
@@ -196,18 +200,6 @@ export default function ProductPricesListing() {
         ...prev,
         [pid]: String(rate),
       }));
-    }
-  };
-
-  const handleClear = async (sku: ProductSku) => {
-    const pid = sku.skuKey;
-    if (!priceMap[pid]) return;
-    setSavingId(pid);
-    const ok = await clearPrice(sku.productId, sku.variantId);
-    setSavingId(null);
-    if (ok) {
-      setDrafts((prev) => ({ ...prev, [pid]: "" }));
-      await loadPrices();
     }
   };
 
@@ -302,21 +294,6 @@ export default function ProductPricesListing() {
                 )}
                 Save
               </button>
-              {saved ? (
-                <button
-                  type="button"
-                  disabled={isSaving}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleClear(sku);
-                  }}
-                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border-main bg-card text-foreground text-xs font-semibold hover:bg-muted-foreground/5 disabled:opacity-50 cursor-pointer"
-                  title="Remove current price"
-                >
-                  <Trash2 size={14} />
-                  Clear
-                </button>
-              ) : null}
             </Can>
             <button
               type="button"
@@ -541,7 +518,7 @@ export default function ProductPricesListing() {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="price-history-title"
-                className="bg-card border border-border-main w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden relative animate-scale-up"
+                className="bg-card border border-border-main w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative animate-scale-up"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="px-6 py-4 border-b border-border-main flex items-center justify-between gap-3">
@@ -580,37 +557,43 @@ export default function ProductPricesListing() {
                       No price history yet. Save a price to start tracking.
                     </p>
                   ) : (
-                    <table className="min-w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border-main">
-                          <th className="pb-2 pr-3">Per Item</th>
-                          <th className="pb-2 pr-3">From</th>
-                          <th className="pb-2">To</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border-main">
-                        {historyRows.map((row) => (
-                          <tr key={row.id}>
-                            <td className="py-2.5 pr-3 font-semibold">
-                              {formatPrice(row.rate)}
-                              {!row.effectiveTo ? (
-                                <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-success-text bg-success-bg px-1.5 py-0.5 rounded">
-                                  Current
-                                </span>
-                              ) : null}
-                            </td>
-                            <td className="py-2.5 pr-3 text-muted-foreground whitespace-nowrap">
-                              {formatDate(row.effectiveFrom)}
-                            </td>
-                            <td className="py-2.5 text-muted-foreground whitespace-nowrap">
-                              {row.effectiveTo
-                                ? formatDate(row.effectiveTo)
-                                : "Present"}
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border-main">
+                            <th className="pb-2 pr-3">Selling (GP)</th>
+                            <th className="pb-2 pr-3">Cost (ERP)</th>
+                            <th className="pb-2 pr-3">From</th>
+                            <th className="pb-2">To</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-border-main">
+                          {historyRows.map((row) => (
+                            <tr key={row.id}>
+                              <td className="py-2.5 pr-3 font-semibold whitespace-nowrap">
+                                {formatPrice(row.sellingPrice)}
+                                {!row.effectiveTo ? (
+                                  <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-success-text bg-success-bg px-1.5 py-0.5 rounded">
+                                    Current
+                                  </span>
+                                ) : null}
+                              </td>
+                              <td className="py-2.5 pr-3 font-semibold whitespace-nowrap">
+                                {formatPrice(row.rate)}
+                              </td>
+                              <td className="py-2.5 pr-3 text-muted-foreground whitespace-nowrap">
+                                {formatDate(row.effectiveFrom)}
+                              </td>
+                              <td className="py-2.5 text-muted-foreground whitespace-nowrap">
+                                {row.effectiveTo
+                                  ? formatDate(row.effectiveTo)
+                                  : "Present"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
               </div>

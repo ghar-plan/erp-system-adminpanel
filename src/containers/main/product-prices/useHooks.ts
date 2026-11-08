@@ -54,6 +54,7 @@ const useProductPrices = () => {
     variantId: string;
     variantName: string | null;
     rate: number;
+    sellingPrice?: number | null;
     effectiveFrom?: string;
   }) => {
     const response = await ProductPrices_APIS.upsert(body);
