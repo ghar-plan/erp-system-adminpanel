@@ -69,6 +69,27 @@ const useProductPrices = () => {
     return false;
   };
 
+  const updateHistory = async (
+    id: string,
+    body: {
+      rate: number;
+      sellingPrice: number | null;
+      effectiveFrom: string;
+      effectiveTo: string | null;
+    },
+  ) => {
+    const response = await ProductPrices_APIS.updateHistory(id, body);
+    const { status = false, message = "" } = response || {};
+    if (status) {
+      successToaster(message || "Price history updated");
+      return true;
+    }
+    if (!response?.error) {
+      errorToaster(message || "Failed to update price history");
+    }
+    return false;
+  };
+
   const clearPrice = async (productId: string, variantId: string = "") => {
     const response = await ProductPrices_APIS.clear(productId, variantId);
     const { status = false, message = "" } = response || {};
@@ -84,6 +105,7 @@ const useProductPrices = () => {
     getPriceMap,
     getHistory,
     upsertPrice,
+    updateHistory,
     clearPrice,
   };
 };

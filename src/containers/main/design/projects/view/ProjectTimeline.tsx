@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   ArrowDownCircle,
@@ -15,12 +15,35 @@ type TimelineProps = {
   cashflowsOut?: any[];
 };
 
+type EntryFilter = "all" | "in" | "out" | "vendors";
+
 type TimelineEvent = {
   id: string;
   type: "CASH IN" | "CASH OUT" | "COMMENT";
   occurredAt: Date;
   dateKey: string;
   data: any;
+};
+
+const eventMatchesFilter = (event: TimelineEvent, filter: EntryFilter) => {
+  if (filter === "in") return event.type === "CASH IN";
+  if (filter === "out") return event.type === "CASH OUT";
+  if (filter === "vendors") {
+    return event.type === "CASH OUT" && Boolean(event.data?.vendor?.vendorName);
+  }
+  return true;
+};
+
+const filterEmptyMessage: Record<Exclude<EntryFilter, "all">, string> = {
+  in: "No cash in entries for this project.",
+  out: "No cash out entries for this project.",
+  vendors: "No vendor payments for this project.",
+};
+
+const filterHeading: Record<Exclude<EntryFilter, "all">, string> = {
+  in: "Cash in entries",
+  out: "Cash out entries",
+  vendors: "Vendor payments",
 };
 
 const formatMoney = (value?: number | string | null) => {
@@ -135,6 +158,8 @@ export default function ProjectTimeline({
 }: TimelineProps) {
   const { fetchCommentsPage } = useDesignComments();
   const [comments, setComments] = useState<any[]>([]);
+  const [entryFilter, setEntryFilter] = useState<EntryFilter>("all");
+  const entriesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!projectId) return;
@@ -187,12 +212,25 @@ export default function ProjectTimeline({
   const grouped = useMemo(() => {
     const map = new Map<string, TimelineEvent[]>();
     for (const event of events) {
+      if (!eventMatchesFilter(event, entryFilter)) continue;
       const list = map.get(event.dateKey) || [];
       list.push(event);
       map.set(event.dateKey, list);
     }
     return Array.from(map.entries());
-  }, [events]);
+  }, [events, entryFilter]);
+
+  const showEntries = (filter: Exclude<EntryFilter, "all">) => {
+    setEntryFilter((current) => (current === filter ? "all" : filter));
+    entriesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const tileClass = (filter: Exclude<EntryFilter, "all">) =>
+    `w-full text-left rounded-xl border bg-panel-bg p-4 cursor-pointer transition-colors ${
+      entryFilter === filter
+        ? "border-primary ring-2 ring-primary/30"
+        : "border-border-main hover:border-primary/40"
+    }`;
 
   const totalIn = cashflowsIn.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const totalOut = cashflowsOut.reduce(
@@ -217,7 +255,12 @@ export default function ProjectTimeline({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
-        <div className="rounded-xl border border-border-main bg-panel-bg p-4">
+        <button
+          type="button"
+          onClick={() => showEntries("in")}
+          className={tileClass("in")}
+          title="Show cash in entries"
+        >
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Total Cash In
           </p>
@@ -225,8 +268,13 @@ export default function ProjectTimeline({
           <p className="text-xs text-muted-foreground mt-0.5">
             {cashflowsIn.length} installment{cashflowsIn.length === 1 ? "" : "s"}
           </p>
-        </div>
-        <div className="rounded-xl border border-border-main bg-panel-bg p-4">
+        </button>
+        <button
+          type="button"
+          onClick={() => showEntries("out")}
+          className={tileClass("out")}
+          title="Show cash out entries"
+        >
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Total Cash Out
           </p>
@@ -234,8 +282,13 @@ export default function ProjectTimeline({
           <p className="text-xs text-muted-foreground mt-0.5">
             {cashflowsOut.length} payment{cashflowsOut.length === 1 ? "" : "s"}
           </p>
-        </div>
-        <div className="rounded-xl border border-border-main bg-panel-bg p-4">
+        </button>
+        <button
+          type="button"
+          onClick={() => showEntries("vendors")}
+          className={tileClass("vendors")}
+          title="Show vendor payments"
+        >
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Vendors Paid
           </p>
@@ -243,14 +296,32 @@ export default function ProjectTimeline({
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
             {vendors.length ? vendors.join(", ") : "No vendor payments yet"}
           </p>
-        </div>
+        </button>
       </div>
 
       <hr className="border-border-main my-5" />
 
+      <div ref={entriesRef} className="scroll-mt-4">
+      {entryFilter !== "all" ? (
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <p className="text-sm font-semibold text-foreground">
+            {filterHeading[entryFilter]}
+          </p>
+          <button
+            type="button"
+            onClick={() => setEntryFilter("all")}
+            className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+          >
+            Show all
+          </button>
+        </div>
+      ) : null}
+
       {grouped.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No timeline activity has been recorded for this project yet.
+          {entryFilter === "all"
+            ? "No timeline activity has been recorded for this project yet."
+            : filterEmptyMessage[entryFilter]}
         </p>
       ) : (
         <div className="space-y-8">
@@ -272,7 +343,7 @@ export default function ProjectTimeline({
                     {formatHeadingDate(key)}
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    In {formatMoney(dayIn)} · Out {formatMoney(dayOut)}
+                    In {formatMoney(dayIn)} - Out {formatMoney(dayOut)}
                   </p>
                 </div>
 
@@ -295,7 +366,7 @@ export default function ProjectTimeline({
                               </span>
                               {formatTime(event.occurredAt) && (
                                 <span className="text-xs text-muted-foreground font-normal">
-                                  • {formatTime(event.occurredAt)}
+                                  - {formatTime(event.occurredAt)}
                                 </span>
                               )}
                             </div>
@@ -348,7 +419,7 @@ export default function ProjectTimeline({
                               </span>
                               {formatTime(event.occurredAt) && (
                                 <span className="text-xs text-muted-foreground font-normal">
-                                  • {formatTime(event.occurredAt)}
+                                  - {formatTime(event.occurredAt)}
                                 </span>
                               )}
                             </div>
@@ -424,6 +495,7 @@ export default function ProjectTimeline({
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

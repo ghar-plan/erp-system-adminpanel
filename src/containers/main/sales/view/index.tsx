@@ -21,15 +21,12 @@ import { IoArrowBackOutline } from "react-icons/io5";
 import useSales from "../useHooks";
 // Resolve Payment / Installment History moved to Commerce Cash In
 // import ResolvePaymentModal from "../components/ResolvePaymentModal";
-import RemitPickupPointModal from "../components/RemitPickupPointModal";
 import useCommerceCashflow from "@/containers/main/commerce-cashflow/useHooks";
 import {
   Sale,
   PaymentCollectedBy,
-  PickupRemittanceStatus,
   computeSaleSubtotal,
   isDraftEntry,
-  remittanceStatusLabel,
 } from "@/utils/helpers/models/sales/sale.dto";
 import { formatMoney } from "@/utils/helpers/models/purchases/purchase.dto";
 import {
@@ -51,7 +48,6 @@ export default function SaleView() {
   const [sale, setSale] = useState<Sale | null>(null);
   const [cashIns, setCashIns] = useState<any[]>([]);
   // const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
-  const [isRemitModalOpen, setIsRemitModalOpen] = useState(false);
   const canViewSaleRates = isErpAdminEmail(getUser()?.email);
 
   useEffect(() => {
@@ -121,22 +117,6 @@ export default function SaleView() {
           <h1 className="text-2xl text-foreground font-bold">Sale Overview</h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Can permission={PERMISSIONS.SALES_UPDATE}>
-            {!isDraftEntry(sale.status) &&
-            sale.customerType?.category === CustomerTypeCategory.PICKUP_POINT &&
-            sale.paymentCollectedBy === PaymentCollectedBy.ADMIN &&
-            sale.remittanceStatus === PickupRemittanceStatus.PENDING &&
-            Number(sale.payment || 0) > 0 ? (
-              <button
-                type="button"
-                onClick={() => setIsRemitModalOpen(true)}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm border bg-sky-500/15 hover:bg-sky-500/25 text-sky-700 dark:text-sky-400 border-sky-500/30"
-              >
-                <Building2 size={16} />
-                Remit to Pickup Point
-              </button>
-            ) : null}
-          </Can>
           {/* Payment Details & Installment History — use Commerce Cash In
           <Can permission={PERMISSIONS.SALES_UPDATE}>
             {!isDraftEntry(sale.status) ? (
@@ -403,32 +383,6 @@ export default function SaleView() {
                   </p>
                 </div>
               </div>
-              {sale.paymentCollectedBy === PaymentCollectedBy.ADMIN ? (
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 rounded-lg bg-warning-bg text-warning-text">
-                    <Building2 size={18} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                      Pickup Remittance
-                    </label>
-                    <p className="text-sm font-semibold text-foreground mt-0.5">
-                      {remittanceStatusLabel(sale.remittanceStatus)}
-                      {sale.remittedAt
-                        ? ` · ${formatDate(sale.remittedAt)}`
-                        : ""}
-                      {sale.remittedAmount != null
-                        ? ` · ${formatMoney(sale.remittedAmount)}`
-                        : ""}
-                    </p>
-                    {sale.remittedBy ? (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        By {sale.remittedBy}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
             </>
           ) : null}
         </div>
@@ -598,16 +552,6 @@ export default function SaleView() {
       ) : null}
       */}
 
-      {isRemitModalOpen ? (
-        <RemitPickupPointModal
-          isOpen={isRemitModalOpen}
-          onClose={() => setIsRemitModalOpen(false)}
-          sale={sale}
-          onSuccess={() => {
-            if (id) getSaleById(id, setSale);
-          }}
-        />
-      ) : null}
     </div>
   );
 }

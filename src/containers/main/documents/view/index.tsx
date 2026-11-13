@@ -47,10 +47,7 @@ export default function DocumentView() {
     }
   };
 
-  const listRoute =
-    doc.type === "bill"
-      ? siteRoutes.documentsBillsList
-      : siteRoutes.documentsQuotationsList;
+  const listRoute = siteRoutes.documentsQuotationsList;
 
   return (
     <div className="space-y-6">
@@ -109,7 +106,7 @@ export default function DocumentView() {
                 Customer
               </label>
               <p className="text-sm font-semibold text-foreground mt-0.5">
-                {doc.customerName}
+                {doc.customerName || "--"}
               </p>
             </div>
           </div>
@@ -122,7 +119,7 @@ export default function DocumentView() {
                 Phone
               </label>
               <p className="text-sm font-semibold text-foreground mt-0.5">
-                {doc.customerPhone}
+                {doc.customerPhone || "--"}
               </p>
             </div>
           </div>
@@ -135,7 +132,7 @@ export default function DocumentView() {
                 Address
               </label>
               <p className="text-sm font-semibold text-foreground mt-0.5">
-                {doc.customerAddress}
+                {doc.customerAddress || "--"}
               </p>
             </div>
           </div>
@@ -170,6 +167,21 @@ export default function DocumentView() {
               </p>
             </div>
           </div>
+          {doc.type === "bill" && doc.validityDays ? (
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-lg bg-warning-bg text-warning-text">
+                <Calendar size={18} />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                  Validity
+                </label>
+                <p className="text-sm font-semibold text-foreground mt-0.5">
+                  This bill is valid for the {doc.validityDays} days.
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="border-t border-border-main pt-6 space-y-3">

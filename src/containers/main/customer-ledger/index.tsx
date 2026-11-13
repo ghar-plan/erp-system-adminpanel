@@ -5,9 +5,12 @@ import {
   Banknote,
   Scale,
   ShoppingCart,
+  ReceiptText,
   Eye,
   Search,
 } from "lucide-react";
+import PurchaseLedger from "./purchase-ledger";
+import { usePermissions } from "@/hooks/usePermissions";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
@@ -29,6 +32,7 @@ interface LedgerEntry {
   id: string;
   date: string;
   customerName: string | null;
+  customerTypeName?: string | null;
   telephone: string | null;
   productName: string;
   quantity: number;
@@ -56,6 +60,24 @@ interface LedgerCustomerType {
 
 export default function CustomerLedger() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { hasPermission } = usePermissions();
+  const canSales = hasPermission(PERMISSIONS.SALES_READ);
+  const canPurchases = hasPermission(PERMISSIONS.PURCHASES_READ);
+  const requestedTab = searchParams.get("tab") === "purchases" ? "purchases" : "sales";
+  const tab =
+    requestedTab === "purchases" && canPurchases
+      ? "purchases"
+      : canSales
+        ? "sales"
+        : "purchases";
+
+  const setTab = (next: "sales" | "purchases") => {
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", next);
+    if (next === "sales") params.delete("supplierName");
+    else params.delete("customerTypeId");
+    setSearchParams(params, { replace: true });
+  };
   const [customerTypes, setCustomerTypes] = useState<CustomerType[]>([]);
   const [selectedCustomerTypeId, setSelectedCustomerTypeId] = useState(
     searchParams.get("customerTypeId") || "",
@@ -81,6 +103,7 @@ export default function CustomerLedger() {
   const [hasQueried, setHasQueried] = useState(false);
 
   useEffect(() => {
+    if (!canSales) return;
     CustomerTypes_APIS.getAllWithoutPagination().then((response: any) => {
       if (response?.status && Array.isArray(response.data)) {
         const list: CustomerType[] = response.data;
@@ -89,27 +112,21 @@ export default function CustomerLedger() {
         const fromUrl = searchParams.get("customerTypeId");
         const urlMatch =
           fromUrl && list.some((ct) => ct.id === fromUrl) ? fromUrl : "";
-        const nextId = urlMatch || selectedCustomerTypeId || list[0]?.id || "";
-
-        if (nextId) {
-          setSelectedCustomerTypeId(nextId);
-          if (!fromUrl || fromUrl !== nextId) {
-            setSearchParams({ customerTypeId: nextId }, { replace: true });
-          }
-          fetchLedger(1, limit, nextId, startDate, endDate, sourcePayment);
-        }
+        setSelectedCustomerTypeId(urlMatch);
+        fetchLedger(1, limit, urlMatch, startDate, endDate, sourcePayment);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    const fromUrl = searchParams.get("customerTypeId");
+    if (searchParams.get("tab") === "purchases") return;
+    const fromUrl = searchParams.get("customerTypeId") || "";
     const sourceFromUrl = searchParams.get("sourcePayment") || "";
     if (sourceFromUrl !== sourcePayment) {
       setSourcePayment(sourceFromUrl);
     }
-    if (fromUrl && fromUrl !== selectedCustomerTypeId) {
+    if (fromUrl !== selectedCustomerTypeId) {
       setSelectedCustomerTypeId(fromUrl);
       fetchLedger(1, limit, fromUrl, startDate, endDate, sourceFromUrl);
     }
@@ -124,28 +141,14 @@ export default function CustomerLedger() {
     to = endDate,
     paymentSource = sourcePayment,
   ) => {
-    if (!customerTypeId) {
-      setEntries([]);
-      setSummary({
-        totalEntries: 0,
-        totalAmount: 0,
-        totalPayment: 0,
-        totalBalance: 0,
-      });
-      setLedgerCustomerType(null);
-      setTotalElements(0);
-      setHasQueried(false);
-      return;
-    }
-
     setLoading(true);
     setHasQueried(true);
     try {
       const params: Record<string, any> = {
-        customerTypeId,
         limit: nextLimit,
         offset: (nextPage - 1) * nextLimit,
       };
+      if (customerTypeId) params.customerTypeId = customerTypeId;
       if (from) params.startDate = from;
       if (to) params.endDate = to;
       if (paymentSource) params.sourcePayment = paymentSource;
@@ -175,12 +178,17 @@ export default function CustomerLedger() {
   };
 
   const handleApply = () => {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", "sales");
     if (selectedCustomerTypeId) {
       params.set("customerTypeId", selectedCustomerTypeId);
+    } else {
+      params.delete("customerTypeId");
     }
     if (sourcePayment) {
       params.set("sourcePayment", sourcePayment);
+    } else {
+      params.delete("sourcePayment");
     }
     setSearchParams(params);
     fetchLedger(
@@ -194,28 +202,17 @@ export default function CustomerLedger() {
   };
 
   const handleReset = () => {
-    const firstId = customerTypes[0]?.id || "";
-    setSelectedCustomerTypeId(firstId);
+    setSelectedCustomerTypeId("");
     setStartDate("");
     setEndDate("");
     setSourcePayment("");
     setPage(1);
-    if (firstId) {
-      setSearchParams({ customerTypeId: firstId }, { replace: true });
-      fetchLedger(1, limit, firstId, "", "", "");
-    } else {
-      setSearchParams({});
-      setEntries([]);
-      setSummary({
-        totalEntries: 0,
-        totalAmount: 0,
-        totalPayment: 0,
-        totalBalance: 0,
-      });
-      setLedgerCustomerType(null);
-      setTotalElements(0);
-      setHasQueried(false);
-    }
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", "sales");
+    params.delete("customerTypeId");
+    params.delete("sourcePayment");
+    setSearchParams(params, { replace: true });
+    fetchLedger(1, limit, "", "", "", "");
   };
 
   const onPageChange = (pageInfo: { selected: number; limit: number }) => {
@@ -236,25 +233,63 @@ export default function CustomerLedger() {
     }
   };
 
-  const titleName =
-    ledgerCustomerType?.name ||
-    customerTypes.find((ct) => ct.id === selectedCustomerTypeId)?.name ||
-    "Customer / Pickup Point";
+  const isAllCustomers = !selectedCustomerTypeId;
+  const titleName = isAllCustomers
+    ? "All"
+    : ledgerCustomerType?.name ||
+      customerTypes.find((ct) => ct.id === selectedCustomerTypeId)?.name ||
+      "Customer / Pickup Point";
 
   return (
     <div className="space-y-6 animate-fade-in pb-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-            Customer Ledger
+            Ledger
           </h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            Sales, payments, and running balance for pickup points and
-            customers.
+            {tab === "purchases"
+              ? "Purchases, payments, and running balance for every supplier."
+              : "Sales, payments, and running balance for every customer and pickup point."}
           </p>
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 border-b border-border-main">
+        {canSales ? (
+          <button
+            type="button"
+            onClick={() => setTab("sales")}
+            className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-t-lg border-b-2 transition-all cursor-pointer ${
+              tab === "sales"
+                ? "border-primary text-primary bg-primary/5"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
+            }`}
+          >
+            <ShoppingCart size={16} />
+            Sales Ledger
+          </button>
+        ) : null}
+        {canPurchases ? (
+          <button
+            type="button"
+            onClick={() => setTab("purchases")}
+            className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-t-lg border-b-2 transition-all cursor-pointer ${
+              tab === "purchases"
+                ? "border-primary text-primary bg-primary/5"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
+            }`}
+          >
+            <ReceiptText size={16} />
+            Purchase Ledger
+          </button>
+        ) : null}
+      </div>
+
+      {tab === "purchases" ? (
+        <PurchaseLedger />
+      ) : (
+      <>
       {/* Filters */}
       <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl shadow-xs flex flex-wrap items-end justify-start md:justify-end gap-3 w-full">
         <div className="flex flex-col items-start gap-1 w-full sm:w-auto flex-1 sm:flex-initial min-w-[260px]">
@@ -270,7 +305,7 @@ export default function CustomerLedger() {
             onChange={(e) => setSelectedCustomerTypeId(e.target.value)}
             className="common-input text-sm h-10 w-full sm:w-72 bg-card"
           >
-            <option value="">Select customer or pickup point</option>
+            <option value="">All</option>
             {customerTypes.map((ct) => (
               <option key={ct.id} value={ct.id}>
                 {ct.name}
@@ -341,7 +376,7 @@ export default function CustomerLedger() {
             variant="primary"
             onClick={handleApply}
             className="h-10 text-xs px-6 font-semibold flex-1 sm:flex-initial !py-0"
-            disabled={!selectedCustomerTypeId || loading}
+            disabled={loading}
           >
             <Search size={14} className="mr-1.5" />
             Apply
@@ -356,16 +391,26 @@ export default function CustomerLedger() {
         </div>
       </div>
 
-      {hasQueried && ledgerCustomerType ? (
+      {hasQueried ? (
         <>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <BookOpen size={16} className="text-primary" />
             <span>
-              Ledger for{" "}
-              <span className="font-semibold text-foreground">{titleName}</span>
-              {ledgerCustomerType.category
-                ? ` · ${customerTypeCategoryLabel(ledgerCustomerType.category)}`
-                : ""}
+              {isAllCustomers ? (
+                <>
+                  All customers and pickup points
+                </>
+              ) : (
+                <>
+                  Ledger for{" "}
+                  <span className="font-semibold text-foreground">
+                    {titleName}
+                  </span>
+                  {ledgerCustomerType?.category
+                    ? ` · ${customerTypeCategoryLabel(ledgerCustomerType.category)}`
+                    : ""}
+                </>
+              )}
             </span>
           </div>
 
@@ -426,6 +471,11 @@ export default function CustomerLedger() {
                         <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                           Date
                         </th>
+                        {isAllCustomers ? (
+                          <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                            Customer / Pickup Point
+                          </th>
+                        ) : null}
                         <th className="px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                           Customer
                         </th>
@@ -464,6 +514,11 @@ export default function CustomerLedger() {
                           <td className="px-4 py-3 text-sm whitespace-nowrap">
                             {formatDate(entry.date)}
                           </td>
+                          {isAllCustomers ? (
+                            <td className="px-4 py-3 text-sm font-semibold whitespace-nowrap">
+                              {entry.customerTypeName || "--"}
+                            </td>
+                          ) : null}
                           <td className="px-4 py-3 text-sm">
                             <p className="font-semibold">
                               {entry.customerName || "--"}
@@ -534,12 +589,8 @@ export default function CustomerLedger() {
             )}
           </div>
         </>
-      ) : (
-        <div className="bg-card border border-border-main rounded-xl p-10 text-center text-muted-foreground text-sm">
-          Select a customer or pickup point (for example{" "}
-          <span className="font-semibold text-foreground">Sialkot</span>) and
-          click Apply to view the ledger.
-        </div>
+      ) : null}
+      </>
       )}
     </div>
   );

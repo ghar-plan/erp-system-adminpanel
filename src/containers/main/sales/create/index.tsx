@@ -576,8 +576,8 @@ export default function SaleCreate() {
               </select>
               <p className="mt-1 text-xs text-muted-foreground">
                 Use <strong>Collected by Admin</strong> when the customer pays
-                Ghar Plans and the pickup point only hands over the order. You
-                can remit that payment to the pickup point later.
+                Ghar Plans and the pickup point only hands over the order.
+                Settle that amount from Cash In / Cash Out.
               </p>
             </div>
           ) : null}

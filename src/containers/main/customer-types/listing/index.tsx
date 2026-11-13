@@ -330,7 +330,7 @@ export default function CustomerTypesListing() {
                           <div className="flex gap-2">
                             {canViewLedger ? (
                               <Link
-                                to={`${siteRoutes.customerLedger}?customerTypeId=${customerType.id}`}
+                                to={`${siteRoutes.customerLedger}?tab=sales&customerTypeId=${customerType.id}`}
                                 className="btn-action-edit"
                                 title="View Ledger"
                               >

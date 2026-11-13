@@ -49,7 +49,7 @@ export default function CommerceCashflow() {
     await recordCashIn(
       {
         saleId: data.saleId,
-        installment: data.installment.trim(),
+        installment: "Full Payment",
         amount: Number(data.amount),
         entryDate: data.entryDate,
         enteredBy: data.enteredBy,

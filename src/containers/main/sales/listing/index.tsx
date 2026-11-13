@@ -7,32 +7,27 @@ import {
   Pencil,
   Trash2,
   ShoppingCart,
-  Building2,
+  CalendarRange,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import useSales from "../useHooks";
 // Resolve Payment / Installment History moved to Commerce Cash In
 // import ResolvePaymentModal from "../components/ResolvePaymentModal";
-import RemitPickupPointModal from "../components/RemitPickupPointModal";
 import {
   Sale,
   COMMERCE_ENTRY_STATUS_OPTIONS,
-  PaymentCollectedBy,
-  PickupRemittanceStatus,
   computeSaleSubtotal,
   formatSaleBrandsLabel,
   formatSaleProductsLabel,
   isDraftEntry,
-  remittanceStatusLabel,
 } from "@/utils/helpers/models/sales/sale.dto";
 import {
   formatMoney,
   SOURCE_PAYMENT_OPTIONS,
   CashOutPaymentSource,
 } from "@/utils/helpers/models/purchases/purchase.dto";
-import {
-  CustomerTypeCategory,
-  customerTypeCategoryLabel,
-} from "@/utils/helpers/models/customer-types/customer-type.dto";
+import { customerTypeCategoryLabel } from "@/utils/helpers/models/customer-types/customer-type.dto";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
@@ -90,7 +85,7 @@ export default function SalesListing() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { hasPermission } = usePermissions();
   const { getUser } = useStore();
-  const { getSales, deleteSale, getCustomerTypes, getBrands, getVendors } =
+  const { getSales, getSalesSummary, deleteSale, getCustomerTypes, getBrands, getVendors } =
     useSales();
   const canView = hasPermission(PERMISSIONS.SALES_READ);
   const canUpdate = hasPermission(PERMISSIONS.SALES_UPDATE);
@@ -101,13 +96,21 @@ export default function SalesListing() {
 
   const [sales, setSales] = useState<Sale[]>([]);
   const [totalElements, setTotalElements] = useState(0);
+  const [figures, setFigures] = useState<{
+    startDate: string | null;
+    endDate: string | null;
+    minDate: string | null;
+    maxDate: string | null;
+    count: number;
+    totalSales: number;
+    totalCost: number;
+    profit: number;
+  } | null>(null);
   const [customerTypes, setCustomerTypes] = useState<{ id: string; name: string }[]>([]);
   const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
   const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
   // const [resolveSale, setResolveSale] = useState<Sale | null>(null);
   // const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
-  const [remitSale, setRemitSale] = useState<Sale | null>(null);
-  const [isRemitModalOpen, setIsRemitModalOpen] = useState(false);
 
   const [searchVal, setSearchVal] = useState("");
   const [filters, setFilters] = useState<SaleFilters>(() =>
@@ -128,16 +131,6 @@ export default function SalesListing() {
   //     source === CashOutPaymentSource.ADVANCE
   //   );
   // };
-
-  const canRemitSale = (sale: Sale) => {
-    if (isDraftEntry(sale?.status)) return false;
-    return (
-      sale?.customerType?.category === CustomerTypeCategory.PICKUP_POINT &&
-      sale?.paymentCollectedBy === PaymentCollectedBy.ADMIN &&
-      sale?.remittanceStatus === PickupRemittanceStatus.PENDING &&
-      Number(sale?.payment || 0) > 0
-    );
-  };
 
   const syncUrl = (next: SaleFilters) => {
     const params = new URLSearchParams();
@@ -171,6 +164,7 @@ export default function SalesListing() {
     if (currentFilters.endDate) queryParams.endDate = currentFilters.endDate;
 
     getSales(setSales, queryParams, setTotalElements);
+    getSalesSummary(queryParams).then((summary) => setFigures(summary));
   };
 
   useEffect(() => {
@@ -259,7 +253,6 @@ export default function SalesListing() {
     "Payment",
     "Balance",
     "Source",
-    "Collection / Remit",
     ...(showActions ? ["Actions"] : []),
   ];
 
@@ -267,6 +260,17 @@ export default function SalesListing() {
     filters.sourcePayment === CashOutPaymentSource.CREDIT &&
     !filters.outstandingOnly;
   const isOutstandingQuick = filters.outstandingOnly;
+
+  const periodLabel = figures?.startDate || figures?.endDate
+    ? `${figures?.startDate ? formatDate(figures.startDate) : "Start"} – ${
+        figures?.endDate ? formatDate(figures.endDate) : "Present"
+      }`
+    : figures?.minDate
+      ? `${formatDate(figures.minDate)} – ${formatDate(figures.maxDate || figures.minDate)}`
+      : "All dates";
+  const profitValue = Number(figures?.profit || 0);
+  const profitPositive = profitValue > 0;
+  const profitNegative = profitValue < 0;
 
   return (
     <div className="space-y-6">
@@ -291,18 +295,67 @@ export default function SalesListing() {
         </Can>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 md:grid-cols-6 animate-fade-in">
+      {/* Dates, sales, and profit for the current filters */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 animate-fade-in">
         <div className="bg-card border border-border-main p-4 rounded-xl shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <CalendarRange size={20} />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-muted-foreground block uppercase tracking-wider">
+              Dates
+            </span>
+            <span className="text-sm font-bold text-foreground mt-0.5 block leading-snug">
+              {periodLabel}
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              {figures?.count ?? totalElements} sale{(figures?.count ?? totalElements) === 1 ? "" : "s"}
+            </span>
+          </div>
+        </div>
+        <div className="bg-card border border-border-main p-4 rounded-xl shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
             <ShoppingCart size={20} />
           </div>
-          <div>
+          <div className="min-w-0">
             <span className="text-[10px] font-bold text-muted-foreground block uppercase tracking-wider">
-              Matching Sales
+              Sales
             </span>
             <span className="text-xl font-bold text-foreground mt-0.5 block">
-              {totalElements}
+              {formatMoney(figures?.totalSales || 0)}
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              Amount billed in this view
+            </span>
+          </div>
+        </div>
+        <div className="bg-card border border-border-main p-4 rounded-xl shadow-xs flex items-center gap-3">
+          <div
+            className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+              profitNegative
+                ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+            }`}
+          >
+            {profitNegative ? <TrendingDown size={20} /> : <TrendingUp size={20} />}
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-muted-foreground block uppercase tracking-wider">
+              {profitNegative ? "Loss" : "Profit"}
+            </span>
+            <span
+              className={`text-xl font-bold mt-0.5 block ${
+                profitPositive
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : profitNegative
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-foreground"
+              }`}
+            >
+              {formatMoney(Math.abs(profitValue))}
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              Sales minus product cost
             </span>
           </div>
         </div>
@@ -621,31 +674,6 @@ export default function SalesListing() {
                           {sale?.sourcePayment || "--"}
                         </span>
                       </td>
-                      <td className="table-td">
-                        {sale?.paymentCollectedBy === PaymentCollectedBy.ADMIN ? (
-                          <div className="flex flex-col gap-1">
-                            <span className="px-2 py-0.5 text-[10px] font-bold tracking-wide rounded-md bg-info-bg text-info-text border border-panel-border w-fit">
-                              Admin collected
-                            </span>
-                            {sale?.remittanceStatus &&
-                            sale.remittanceStatus !==
-                              PickupRemittanceStatus.NOT_APPLICABLE ? (
-                              <span
-                                className={`px-2 py-0.5 text-[10px] font-bold tracking-wide rounded-md w-fit border ${
-                                  sale.remittanceStatus ===
-                                  PickupRemittanceStatus.PENDING
-                                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
-                                    : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
-                                }`}
-                              >
-                                {remittanceStatusLabel(sale.remittanceStatus)}
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </td>
                       {showActions ? (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex gap-2">
@@ -654,19 +682,6 @@ export default function SalesListing() {
                               <button ... />
                             ) : null}
                             */}
-                            {canUpdate && canRemitSale(sale) ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setRemitSale(sale);
-                                  setIsRemitModalOpen(true);
-                                }}
-                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer shadow-xs bg-sky-500/15 hover:bg-sky-500/25 text-sky-700 dark:text-sky-400 border border-sky-500/30"
-                                title="Remit payment to pickup point"
-                              >
-                                <Building2 size={16} />
-                              </button>
-                            ) : null}
                             {canView ? (
                               <Link
                                 to={`/sales/view/${sale.id}`}
@@ -723,19 +738,6 @@ export default function SalesListing() {
       ) : null}
       */}
 
-      {isRemitModalOpen && remitSale ? (
-        <RemitPickupPointModal
-          isOpen={isRemitModalOpen}
-          onClose={() => {
-            setIsRemitModalOpen(false);
-            setRemitSale(null);
-          }}
-          sale={remitSale}
-          onSuccess={() => {
-            fetchSales(filters);
-          }}
-        />
-      ) : null}
     </div>
   );
 }

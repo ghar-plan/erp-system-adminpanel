@@ -46,6 +46,7 @@ interface DocumentFormInputs {
   customerName: string;
   customerPhone: string;
   customerAddress: string;
+  validityDays: number | string;
   deliveryCharges: number | string;
   remarks: string;
   items: LineInput[];
@@ -72,12 +73,11 @@ export default function DocumentCreate({ type }: Props) {
   const { isLoading } = useStore();
   const { createDocument, downloadPdf } = useDocuments();
   const [submitting, setSubmitting] = useState(false);
+  const [documentType, setDocumentType] = useState<DocumentType>(type);
 
-  const isBill = type === DocumentType.BILL;
+  const isBill = documentType === DocumentType.BILL;
   const title = isBill ? "Generate Bill" : "Generate Quotation";
-  const listRoute = isBill
-    ? siteRoutes.documentsBillsList
-    : siteRoutes.documentsQuotationsList;
+  const listRoute = siteRoutes.documentsQuotationsList;
 
   const {
     register,
@@ -93,6 +93,7 @@ export default function DocumentCreate({ type }: Props) {
       customerName: "",
       customerPhone: "",
       customerAddress: "",
+      validityDays: "",
       deliveryCharges: "",
       remarks: "",
       items: [emptyLine()],
@@ -113,6 +114,14 @@ export default function DocumentCreate({ type }: Props) {
   );
   const grandTotal =
     Math.round((subtotal + deliveryChargesNum) * 100) / 100;
+
+  const selectDocumentType = (next: DocumentType) => {
+    setDocumentType(next);
+    setValue("documentNo", generateDocumentNo(next));
+    if (next !== DocumentType.BILL) {
+      setValue("validityDays", "");
+    }
+  };
 
   const handleProductVariantChange = (
     index: number,
@@ -161,16 +170,28 @@ export default function DocumentCreate({ type }: Props) {
       }
     }
 
+    if (isBill) {
+      const validityDays = Number(data.validityDays);
+      if (!Number.isInteger(validityDays) || validityDays < 1) {
+        errorToaster("Enter bill validity in days");
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const deliveryCharges = Math.max(0, Number(data.deliveryCharges) || 0);
+      const customerName = data.customerName.trim();
+      const customerPhone = data.customerPhone.trim();
+      const customerAddress = data.customerAddress.trim();
       const created = await createDocument({
-        type,
+        type: documentType,
         documentNo: data.documentNo.trim(),
         date: data.date,
-        customerName: data.customerName.trim(),
-        customerPhone: data.customerPhone.trim(),
-        customerAddress: data.customerAddress.trim(),
+        ...(customerName ? { customerName } : {}),
+        ...(customerPhone ? { customerPhone } : {}),
+        ...(customerAddress ? { customerAddress } : {}),
+        ...(isBill ? { validityDays: Number(data.validityDays) } : {}),
         items: cleanedItems,
         deliveryCharges,
         ...(data.remarks?.trim() ? { remarks: data.remarks.trim() } : {}),
@@ -179,7 +200,7 @@ export default function DocumentCreate({ type }: Props) {
       if (created?.id) {
         await downloadPdf(
           created.id,
-          `${type}-${created.documentNo || created.id}.pdf`,
+          `${documentType}-${created.documentNo || created.id}.pdf`,
         );
         navigate(listRoute);
       }
@@ -209,7 +230,7 @@ export default function DocumentCreate({ type }: Props) {
             className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
           >
             <List size={18} />
-            {isBill ? "Bills List" : "Quotations List"}
+            Quotations & Bills
           </Link>
         </Can>
       </div>
@@ -219,6 +240,74 @@ export default function DocumentCreate({ type }: Props) {
         className="mt-8 w-full animate-slide-up space-y-6"
       >
         <hr className="border-border-main" />
+
+        <div className="space-y-3">
+          <label className="block ui-form-label">Document</label>
+          <div className="flex flex-wrap gap-3">
+            <label
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-semibold cursor-pointer transition-all ${
+                !isBill
+                  ? "bg-primary/10 border-primary text-primary"
+                  : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
+              }`}
+            >
+              <input
+                type="radio"
+                name="documentType"
+                className="accent-primary"
+                checked={!isBill}
+                onChange={() => selectDocumentType(DocumentType.QUOTATION)}
+              />
+              Generate Quotation
+            </label>
+            <label
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-semibold cursor-pointer transition-all ${
+                isBill
+                  ? "bg-primary/10 border-primary text-primary"
+                  : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
+              }`}
+            >
+              <input
+                type="radio"
+                name="documentType"
+                className="accent-primary"
+                checked={isBill}
+                onChange={() => selectDocumentType(DocumentType.BILL)}
+              />
+              Generate Bill
+            </label>
+          </div>
+        </div>
+
+        {isBill ? (
+          <div className="max-w-sm">
+            <label className="mb-2 block ui-form-label">
+              Validity (days)
+            </label>
+            <input
+              type="number"
+              step="1"
+              min="1"
+              placeholder="e.g. 3"
+              className={`common-input ${errors.validityDays ? "border-red-500" : ""}`}
+              {...register("validityDays", {
+                required: "Validity is required",
+                valueAsNumber: true,
+                validate: (value) =>
+                  (Number.isInteger(Number(value)) && Number(value) >= 1) ||
+                  "Enter a whole number of days",
+              })}
+            />
+            {errors.validityDays && (
+              <p className="mt-1 text-xs text-danger-text font-semibold">
+                {errors.validityDays.message}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-muted-foreground">
+              Printed at the bottom of the bill
+            </p>
+          </div>
+        ) : null}
 
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
           <div>
@@ -244,31 +333,37 @@ export default function DocumentCreate({ type }: Props) {
         </div>
 
         <div className="rounded-xl border border-border-main bg-card p-4 space-y-4">
-          <h2 className="text-base font-bold text-foreground">Bill To</h2>
+          <h2 className="text-base font-bold text-foreground">
+            {isBill ? "Bill To" : "Quotation To"}
+          </h2>
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
             <div>
-              <label className="mb-2 block ui-form-label">Name</label>
+              <label className="mb-2 block ui-form-label">
+                Name{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </label>
               <input
                 type="text"
                 placeholder="Customer name"
-                className={`common-input ${errors.customerName ? "border-red-500" : ""}`}
-                {...register("customerName", {
-                  required: "Customer name is required",
-                })}
+                className="common-input"
+                {...register("customerName")}
               />
-              {errors.customerName && (
-                <p className="mt-1 text-xs text-danger-text font-semibold">
-                  {errors.customerName.message}
-                </p>
-              )}
             </div>
             <div>
-              <label className="mb-2 block ui-form-label">Phone</label>
+              <label className="mb-2 block ui-form-label">
+                Phone{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </label>
               <Controller
                 name="customerPhone"
                 control={control}
                 rules={{
-                  validate: (value) => validatePakistanMobile(value),
+                  validate: (value) =>
+                    validatePakistanMobile(value, { optional: true }),
                 }}
                 render={({ field }) => (
                   <PakistanPhoneInput
@@ -287,20 +382,18 @@ export default function DocumentCreate({ type }: Props) {
               )}
             </div>
             <div className="md:col-span-2">
-              <label className="mb-2 block ui-form-label">Address</label>
+              <label className="mb-2 block ui-form-label">
+                Address{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </label>
               <input
                 type="text"
                 placeholder="Customer address"
-                className={`common-input ${errors.customerAddress ? "border-red-500" : ""}`}
-                {...register("customerAddress", {
-                  required: "Address is required",
-                })}
+                className="common-input"
+                {...register("customerAddress")}
               />
-              {errors.customerAddress && (
-                <p className="mt-1 text-xs text-danger-text font-semibold">
-                  {errors.customerAddress.message}
-                </p>
-              )}
             </div>
           </div>
         </div>

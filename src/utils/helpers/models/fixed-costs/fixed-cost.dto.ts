@@ -1,6 +1,8 @@
 export enum FixedCostCategory {
   WAREHOUSE_RENT = "warehouse_rent",
   ELECTRICITY_BILLS = "electricity_bills",
+  SALARY = "salary",
+  OTHER = "other",
 }
 
 export enum FixedCostPaymentType {
@@ -11,6 +13,8 @@ export enum FixedCostPaymentType {
 export const FIXED_COST_CATEGORY_OPTIONS = [
   { value: FixedCostCategory.WAREHOUSE_RENT, label: "Warehouse Rent" },
   { value: FixedCostCategory.ELECTRICITY_BILLS, label: "Electricity Bills" },
+  { value: FixedCostCategory.SALARY, label: "Salary" },
+  { value: FixedCostCategory.OTHER, label: "Other" },
 ] as const;
 
 export const FIXED_COST_PAYMENT_TYPE_OPTIONS = [

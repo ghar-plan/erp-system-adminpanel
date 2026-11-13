@@ -64,19 +64,6 @@ export const PAYMENT_COLLECTED_BY_OPTIONS = [
   },
 ];
 
-export const remittanceStatusLabel = (
-  status?: PickupRemittanceStatus | string | null,
-): string => {
-  switch (status) {
-    case PickupRemittanceStatus.PENDING:
-      return "Awaiting remittance";
-    case PickupRemittanceStatus.SETTLED:
-      return "Remitted to pickup";
-    default:
-      return "—";
-  }
-};
-
 export interface Sale {
   id: string;
   customerTypeId: string;

@@ -241,10 +241,10 @@ export const menuConfig: MenuGroup[] = [
         permission: PERMISSIONS.CUSTOMER_TYPES_READ,
       },
       {
-        title: "Customer Ledger",
+        title: "Ledger",
         path: siteRoutes.customerLedger,
         icon: "customer-ledger",
-        permission: PERMISSIONS.SALES_READ,
+        anyOf: [PERMISSIONS.SALES_READ, PERMISSIONS.PURCHASES_READ],
       },
       {
         title: "Generate Quotation",

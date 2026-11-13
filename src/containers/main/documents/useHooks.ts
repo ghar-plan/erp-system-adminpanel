@@ -23,6 +23,16 @@ const useDocuments = () => {
     }
   };
 
+  const getDocumentCount = async (params: any = {}) => {
+    const response = await Documents_APIS.getAll({
+      ...params,
+      limit: 1,
+      offset: 0,
+    });
+    const { status = false, total = 0 } = response || {};
+    return status ? Number(total) || 0 : 0;
+  };
+
   const getDocumentById = async (id: string, setData: Function) => {
     const response = await Documents_APIS.getById(id);
     const { status = false, data = null } = response || {};
@@ -86,6 +96,7 @@ const useDocuments = () => {
 
   return {
     getDocuments,
+    getDocumentCount,
     getDocumentById,
     createDocument,
     deleteDocument,

@@ -8,23 +8,8 @@ import { getFilePathWithBackendUrl } from "@/utils/helpers/common/http-methods";
 import { errorToaster } from "@/utils/helpers/common/alert-service";
 import useCommerceCashflow from "../useHooks";
 
-const INSTALLMENT_OPTIONS = [
-  "1st Installment",
-  "2nd Installment",
-  "3rd Installment",
-  "4th Installment",
-  "5th Installment",
-  "6th Installment",
-  "7th Installment",
-  "8th Installment",
-  "9th Installment",
-  "10th Installment",
-  "Full / Final Payment (All Remaining)",
-];
-
 export interface CommerceCashInFormInputs {
   saleId: string;
-  installment: string;
   amount: string;
   entryDate: string;
   enteredBy: string;
@@ -76,7 +61,6 @@ export default function CashInForm({
   } = useForm<CommerceCashInFormInputs>({
     defaultValues: {
       saleId: "",
-      installment: "1st Installment",
       amount: "",
       entryDate: todayInput(),
       enteredBy: loggedInName,
@@ -87,13 +71,9 @@ export default function CashInForm({
   });
 
   const saleId = watch("saleId");
-  const installment = watch("installment");
   const receiptUrl = watch("receiptUrl");
   const selected = sales.find((s) => s.id === saleId);
-  const isFullOrAll =
-    installment === "Full / Final Payment (All Remaining)" ||
-    installment?.toLowerCase().startsWith("full") ||
-    installment?.toLowerCase().startsWith("all");
+  const fullAmount = Number(selected?.balance || 0);
 
   useEffect(() => {
     if (loggedInName) {
@@ -102,19 +82,8 @@ export default function CashInForm({
   }, [loggedInName, setValue]);
 
   useEffect(() => {
-    if (!selected) return;
-    if (selected.balance > 0) {
-      setValue("amount", String(selected.balance));
-    }
-  }, [selected?.id, setValue]);
-
-  useEffect(() => {
-    if (!selected || !isFullOrAll) return;
-    const due = Number(selected.balance || 0);
-    if (due > 0) {
-      setValue("amount", String(due));
-    }
-  }, [isFullOrAll, selected?.id, selected?.balance, setValue]);
+    setValue("amount", fullAmount > 0 ? String(fullAmount) : "");
+  }, [selected?.id, fullAmount, setValue]);
 
   const handleReceiptChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -139,10 +108,17 @@ export default function CashInForm({
   };
 
   const handleFormSubmit = async (data: CommerceCashInFormInputs) => {
-    await onSubmit({ ...data, enteredBy: loggedInName || data.enteredBy });
+    if (fullAmount <= 0) {
+      errorToaster("This customer type has no remaining balance");
+      return;
+    }
+    await onSubmit({
+      ...data,
+      amount: String(fullAmount),
+      enteredBy: loggedInName || data.enteredBy,
+    });
     reset({
       saleId: "",
-      installment: "1st Installment",
       amount: "",
       entryDate: todayInput(),
       enteredBy: loggedInName,
@@ -161,19 +137,23 @@ export default function CashInForm({
         <div>
           <h2 className="text-xl font-bold text-foreground">Cash In</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Collect customer / pickup / shop payments against a sale
+            Receive the full remaining balance for a customer type
           </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
         <div>
-          <label className="mb-2 block ui-form-label">SELECT SALE</label>
+          <label className="mb-2 block ui-form-label">
+            SELECT CUSTOMER TYPE
+          </label>
           <select
             className="common-input cursor-pointer"
-            {...register("saleId", { required: "Sale is required" })}
+            {...register("saleId", {
+              required: "Customer type is required",
+            })}
           >
-            <option value="">Select a Sale</option>
+            <option value="">Select Customer Type</option>
             {sales.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.label}
@@ -190,70 +170,27 @@ export default function CashInForm({
               Paid {Number(selected.payment || 0).toLocaleString()} · Due{" "}
               {Number(selected.balance || 0).toLocaleString()} · Total{" "}
               {Number(selected.total || 0).toLocaleString()}
-              {Number(selected.balance || 0) === 0
-                ? " — overpay will record as advance"
-                : ""}
+              {fullAmount === 0 ? " — nothing left to receive" : ""}
             </p>
           ) : null}
-        </div>
-
-        <div>
-          <label className="mb-2 block ui-form-label">
-            SELECT INSTALLMENT <span className="text-red-500">*</span>
-          </label>
-          <select
-            className="common-input cursor-pointer"
-            {...register("installment", {
-              required: "Installment is required",
-            })}
-          >
-            {INSTALLMENT_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Choose which installment or select Full/All to clear remaining.
-          </p>
-          {errors.installment && (
-            <p className="mt-1 text-xs text-danger-text font-semibold">
-              {errors.installment.message}
-            </p>
-          )}
         </div>
 
         <div>
           <label className="mb-2 block ui-form-label">AMOUNT (PKR)</label>
-          {isFullOrAll && Number(selected?.balance || 0) > 0 ? (
-            <div className="h-10 px-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between text-emerald-700 dark:text-emerald-400 font-bold text-sm">
-              <span>
-                PKR {Number(selected?.balance || 0).toLocaleString()}
-              </span>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 uppercase tracking-wide">
-                Full Auto-Settlement
-              </span>
-            </div>
-          ) : (
-            <input
-              type="number"
-              step="1"
-              placeholder="Enter Amount"
-              className="common-input"
-              {...register("amount", {
-                required: "Amount is required",
-                min: { value: 0.01, message: "Amount must be greater than 0" },
-              })}
-            />
-          )}
-          {isFullOrAll ? (
-            <input type="hidden" {...register("amount")} />
-          ) : null}
-          {errors.amount && (
-            <p className="mt-1 text-xs text-danger-text font-semibold">
-              {errors.amount.message}
-            </p>
-          )}
+          <div className="h-10 px-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between text-emerald-700 dark:text-emerald-400 font-bold text-sm">
+            <span>
+              {fullAmount > 0
+                ? `PKR ${fullAmount.toLocaleString()}`
+                : "Full balance"}
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 uppercase tracking-wide">
+              Full Payment
+            </span>
+          </div>
+          <input type="hidden" {...register("amount")} />
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            The full remaining balance is received.
+          </p>
         </div>
 
         <div className="grid gap-5 grid-cols-1">

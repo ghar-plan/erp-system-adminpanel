@@ -28,6 +28,13 @@ const useSales = () => {
     }
   };
 
+  const getSalesSummary = async (params: any = {}) => {
+    const response = await Sales_APIS.getSummary(params);
+    const { status = false, data = null } = response || {};
+    if (status && data) return data;
+    return null;
+  };
+
   const getSaleById = async (id: string, setData: Function) => {
     const response = await Sales_APIS.getById(id);
     const { status = false, data = null } = response || {};
@@ -169,22 +176,9 @@ const useSales = () => {
     }
   };
 
-  const remitPickupPoint = async (
-    id: string,
-    body: any,
-    callback?: Function,
-  ) => {
-    const response = await Sales_APIS.remitPickupPoint(id, body);
-    const { status = false, message = "" } = response || {};
-    if (status) {
-      successToaster(message || "Payment remitted to pickup point");
-      callback?.(response?.data);
-      return response;
-    }
-  };
-
   return {
     getSales,
+    getSalesSummary,
     getSaleById,
     createSale,
     updateSale,
@@ -197,7 +191,6 @@ const useSales = () => {
     getVendors,
     recordInstallment,
     getInstallments,
-    remitPickupPoint,
   };
 };
 

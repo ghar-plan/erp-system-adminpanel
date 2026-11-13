@@ -20,9 +20,10 @@ export interface ErpDocument {
   type: DocumentType;
   documentNo: string;
   date: string;
-  customerName: string;
-  customerPhone: string;
-  customerAddress: string;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  customerAddress?: string | null;
+  validityDays?: number | null;
   total: number;
   deliveryCharges?: number;
   remarks?: string | null;

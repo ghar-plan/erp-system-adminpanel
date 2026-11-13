@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, Eye, Trash2, Download, FileText } from "lucide-react";
+import { Plus, Search, Eye, Trash2, Download, FileText, Receipt } from "lucide-react";
 import useDocuments from "../useHooks";
 import {
   DocumentType,
@@ -17,40 +17,56 @@ import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 
 type Props = {
-  type: DocumentType;
+  /** When set, the list is locked to that document type. */
+  type?: DocumentType;
 };
 
 export default function DocumentsListing({ type }: Props) {
   const { hasPermission } = usePermissions();
-  const { getDocuments, deleteDocument, downloadPdf } = useDocuments();
+  const { getDocuments, getDocumentCount, deleteDocument, downloadPdf } =
+    useDocuments();
   const canCreate = hasPermission(PERMISSIONS.DOCUMENTS_CREATE);
   const canView = hasPermission(PERMISSIONS.DOCUMENTS_READ);
   const canDelete = hasPermission(PERMISSIONS.DOCUMENTS_DELETE);
   const showActions = canView || canDelete;
 
   const isBill = type === DocumentType.BILL;
-  const title = isBill ? "Bills" : "Quotations";
+  const showsBoth = !type;
+  const title = showsBoth ? "Quotations & Bills" : isBill ? "Bills" : "Quotations";
   const createRoute = isBill
     ? siteRoutes.documentsBills
     : siteRoutes.documentsQuotations;
 
   const [rows, setRows] = useState<ErpDocument[]>([]);
   const [totalElements, setTotalElements] = useState(0);
+  const [quotationCount, setQuotationCount] = useState(0);
+  const [billCount, setBillCount] = useState(0);
   const [searchVal, setSearchVal] = useState("");
+  const [typeFilter, setTypeFilter] = useState(type || "");
   const [filters, setFilters] = useState({
     search: "",
     page: 1,
     limit: 10,
   });
 
-  const fetchRows = (current = filters) => {
+  const fetchRows = (current = filters, nextType = typeFilter) => {
     const queryParams: any = {
-      type,
       limit: current.limit,
       offset: (current.page - 1) * current.limit,
     };
+    if (nextType) queryParams.type = nextType;
     if (current.search) queryParams.search = current.search;
     getDocuments(setRows, queryParams, setTotalElements);
+    if (!type) {
+      const countParams = current.search ? { search: current.search } : {};
+      Promise.all([
+        getDocumentCount({ ...countParams, type: DocumentType.QUOTATION }),
+        getDocumentCount({ ...countParams, type: DocumentType.BILL }),
+      ]).then(([quotations, bills]) => {
+        setQuotationCount(quotations);
+        setBillCount(bills);
+      });
+    }
   };
 
   useEffect(() => {
@@ -61,14 +77,16 @@ export default function DocumentsListing({ type }: Props) {
   const handleApplyFilters = () => {
     const next = { ...filters, search: searchVal, page: 1 };
     setFilters(next);
-    fetchRows(next);
+    fetchRows(next, typeFilter);
   };
 
   const handleResetFilters = () => {
     setSearchVal("");
+    const nextType = type || "";
+    setTypeFilter(nextType);
     const next = { search: "", page: 1, limit: 10 };
     setFilters(next);
-    fetchRows(next);
+    fetchRows(next, nextType);
   };
 
   const onPageChange = (pageInfo: { selected: number; limit: number }) => {
@@ -96,7 +114,8 @@ export default function DocumentsListing({ type }: Props) {
 
   const columns = [
     "Sr No.",
-    isBill ? "Bill No" : "Quotation No",
+    ...(showsBoth ? ["Type"] : []),
+    showsBoth ? "Number" : isBill ? "Bill No" : "Quotation No",
     "Customer",
     "Phone",
     "Date",
@@ -118,25 +137,56 @@ export default function DocumentsListing({ type }: Props) {
             className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
           >
             <Plus size={18} />
-            {isBill ? "Generate Bill" : "Generate Quotation"}
+            {showsBoth || !isBill ? "Generate Quotation" : "Generate Bill"}
           </Link>
         ) : null}
       </div>
 
       <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 md:grid-cols-6 animate-fade-in">
-        <div className="bg-card border border-border-main p-4 rounded-xl shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-            <FileText size={20} />
+        {showsBoth ? (
+          <>
+            <div className="bg-card border border-border-main p-4 rounded-xl shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-info-bg text-info-text flex items-center justify-center">
+                <FileText size={20} />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-muted-foreground block uppercase tracking-wider">
+                  Total Quotations
+                </span>
+                <span className="text-xl font-bold text-foreground mt-0.5 block">
+                  {quotationCount}
+                </span>
+              </div>
+            </div>
+            <div className="bg-card border border-border-main p-4 rounded-xl shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-warning-bg text-warning-text flex items-center justify-center">
+                <Receipt size={20} />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-muted-foreground block uppercase tracking-wider">
+                  Total Bills
+                </span>
+                <span className="text-xl font-bold text-foreground mt-0.5 block">
+                  {billCount}
+                </span>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="bg-card border border-border-main p-4 rounded-xl shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <FileText size={20} />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-muted-foreground block uppercase tracking-wider">
+                Total {title}
+              </span>
+              <span className="text-xl font-bold text-foreground mt-0.5 block">
+                {totalElements}
+              </span>
+            </div>
           </div>
-          <div>
-            <span className="text-[10px] font-bold text-muted-foreground block uppercase tracking-wider">
-              Total {title}
-            </span>
-            <span className="text-xl font-bold text-foreground mt-0.5 block">
-              {totalElements}
-            </span>
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="bg-muted-foreground/5 border border-border-main p-4 rounded-xl animate-fade-in shadow-xs flex flex-wrap items-end justify-start md:justify-end gap-3 w-full">
@@ -156,6 +206,23 @@ export default function DocumentsListing({ type }: Props) {
             />
           </div>
         </div>
+        {showsBoth ? (
+          <div className="flex flex-col items-start gap-1 w-full sm:w-auto min-w-[160px]">
+            <label htmlFor="documentType" className="text-xs text-foreground font-medium">
+              Type
+            </label>
+            <select
+              id="documentType"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="common-input text-sm h-10 w-full sm:w-44 bg-card"
+            >
+              <option value="">All</option>
+              <option value={DocumentType.QUOTATION}>Quotation</option>
+              <option value={DocumentType.BILL}>Bill</option>
+            </select>
+          </div>
+        ) : null}
         <div className="flex gap-2 w-full sm:w-auto justify-end min-w-[170px]">
           <Button
             variant="primary"
@@ -200,6 +267,19 @@ export default function DocumentsListing({ type }: Props) {
                       <td className="table-td">
                         {(filters.page - 1) * filters.limit + index + 1}
                       </td>
+                      {showsBoth ? (
+                        <td className="table-td">
+                          <span
+                            className={`px-2.5 py-1 text-[10px] font-bold tracking-wide rounded-md uppercase ${
+                              row.type === DocumentType.BILL
+                                ? "bg-warning-bg text-warning-text border border-panel-border"
+                                : "bg-info-bg text-info-text border border-panel-border"
+                            }`}
+                          >
+                            {documentTypeLabel(row.type)}
+                          </span>
+                        </td>
+                      ) : null}
                       <td className="table-td font-semibold">
                         {row.documentNo}
                       </td>

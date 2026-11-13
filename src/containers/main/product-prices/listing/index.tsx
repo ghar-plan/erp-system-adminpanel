@@ -7,6 +7,7 @@ import {
   Save,
   Loader2,
   History,
+  Pencil,
   X,
   Tag,
 } from "lucide-react";
@@ -14,6 +15,7 @@ import useProductPrices from "../useHooks";
 import {
   ProductSku,
   groupSkusByProduct,
+  skuMapKey,
 } from "@/utils/helpers/models/product-sku";
 import { formatSkuDetails } from "@/utils/helpers/models/product-sku-options";
 import {
@@ -49,6 +51,15 @@ const marginToneClass = (margin: number | null): string => {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+const toDateInput = (value?: string | Date | null) => {
+  if (!value) return "";
+  if (typeof value === "string") return value.slice(0, 10);
+  const year = value.getUTCFullYear();
+  const month = String(value.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(value.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const formatDate = (value?: string | Date | null) => {
   if (!value) return "—";
   try {
@@ -63,7 +74,7 @@ const formatDate = (value?: string | Date | null) => {
 };
 
 export default function ProductPricesListing() {
-  const { getProducts, getPriceMap, getHistory, upsertPrice } =
+  const { getProducts, getPriceMap, getHistory, upsertPrice, updateHistory } =
     useProductPrices();
 
   const [products, setProducts] = useState<ProductSku[]>([]);
@@ -88,6 +99,14 @@ export default function ProductPricesListing() {
   } | null>(null);
   const [historyRows, setHistoryRows] = useState<ProductPriceHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
+  const [historySaving, setHistorySaving] = useState(false);
+  const [historyDraft, setHistoryDraft] = useState({
+    sellingPrice: "",
+    rate: "",
+    effectiveFrom: "",
+    effectiveTo: "",
+  });
 
   const loadPrices = async () => {
     const map = await getPriceMap();
@@ -215,6 +234,7 @@ export default function ProductPricesListing() {
       productName: sku.productName,
       variantName: sku.variantName,
     });
+    setEditingHistoryId(null);
     setHistoryLoading(true);
     const rows = await getHistory(sku.productId, sku.variantId);
     setHistoryRows(rows);
@@ -224,6 +244,71 @@ export default function ProductPricesListing() {
   const closeHistory = () => {
     setHistoryProduct(null);
     setHistoryRows([]);
+    setEditingHistoryId(null);
+  };
+
+  const startEditHistory = (row: ProductPriceHistory) => {
+    setEditingHistoryId(row.id);
+    setHistoryDraft({
+      sellingPrice:
+        row.sellingPrice != null && String(row.sellingPrice) !== ""
+          ? String(Number(row.sellingPrice))
+          : "",
+      rate: row.rate != null ? String(Number(row.rate)) : "",
+      effectiveFrom: toDateInput(row.effectiveFrom),
+      effectiveTo: toDateInput(row.effectiveTo),
+    });
+  };
+
+  const handleSaveHistory = async () => {
+    if (!editingHistoryId || !historyProduct) return;
+    const rate = Number(historyDraft.rate);
+    if (!historyDraft.rate.trim() || !Number.isFinite(rate) || rate <= 0) {
+      errorToaster("Enter a cost greater than 0");
+      return;
+    }
+    const sellingRaw = historyDraft.sellingPrice.trim();
+    let sellingPrice: number | null = null;
+    if (sellingRaw) {
+      sellingPrice = Number(sellingRaw);
+      if (!Number.isFinite(sellingPrice) || sellingPrice < 0) {
+        errorToaster("Selling price cannot be negative");
+        return;
+      }
+    }
+    if (!historyDraft.effectiveFrom) {
+      errorToaster("From date is required");
+      return;
+    }
+    if (
+      historyDraft.effectiveTo &&
+      historyDraft.effectiveTo < historyDraft.effectiveFrom
+    ) {
+      errorToaster("To date cannot be before From date");
+      return;
+    }
+
+    const edited = historyRows.find((row) => row.id === editingHistoryId);
+    const staysCurrent = Boolean(edited && !edited.effectiveTo && !historyDraft.effectiveTo);
+
+    setHistorySaving(true);
+    const ok = await updateHistory(editingHistoryId, {
+      rate,
+      sellingPrice,
+      effectiveFrom: historyDraft.effectiveFrom,
+      effectiveTo: historyDraft.effectiveTo || null,
+    });
+    setHistorySaving(false);
+    if (!ok) return;
+
+    setEditingHistoryId(null);
+    const rows = await getHistory(historyProduct.id, historyProduct.variantId);
+    setHistoryRows(rows);
+    if (staysCurrent) {
+      await loadPrices();
+      const key = skuMapKey(historyProduct.id, historyProduct.variantId);
+      setDrafts((prev) => ({ ...prev, [key]: String(rate) }));
+    }
   };
 
   const toggleExpanded = (productId: string) =>
@@ -518,7 +603,7 @@ export default function ProductPricesListing() {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="price-history-title"
-                className="bg-card border border-border-main w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative animate-scale-up"
+                className="bg-card border border-border-main w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden relative animate-scale-up"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="px-6 py-4 border-b border-border-main flex items-center justify-between gap-3">
@@ -557,6 +642,10 @@ export default function ProductPricesListing() {
                       No price history yet. Save a price to start tracking.
                     </p>
                   ) : (
+                    <>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Leave To empty to keep that period as Present.
+                    </p>
                     <div className="overflow-x-auto">
                       <table className="min-w-full text-sm">
                         <thead>
@@ -564,11 +653,101 @@ export default function ProductPricesListing() {
                             <th className="pb-2 pr-3">Selling (GP)</th>
                             <th className="pb-2 pr-3">Cost (ERP)</th>
                             <th className="pb-2 pr-3">From</th>
-                            <th className="pb-2">To</th>
+                            <th className="pb-2 pr-3">To</th>
+                            <th className="pb-2 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border-main">
-                          {historyRows.map((row) => (
+                          {historyRows.map((row) => {
+                            const isEditing = editingHistoryId === row.id;
+                            if (isEditing) {
+                              return (
+                                <tr key={row.id}>
+                                  <td className="py-2.5 pr-3">
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      placeholder="—"
+                                      value={historyDraft.sellingPrice}
+                                      onChange={(e) =>
+                                        setHistoryDraft((prev) => ({
+                                          ...prev,
+                                          sellingPrice: e.target.value,
+                                        }))
+                                      }
+                                      className="common-input text-sm h-9 w-[120px]"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 pr-3">
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0.01"
+                                      value={historyDraft.rate}
+                                      onChange={(e) =>
+                                        setHistoryDraft((prev) => ({
+                                          ...prev,
+                                          rate: e.target.value,
+                                        }))
+                                      }
+                                      className="common-input text-sm h-9 w-[120px]"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 pr-3">
+                                    <input
+                                      type="date"
+                                      value={historyDraft.effectiveFrom}
+                                      onChange={(e) =>
+                                        setHistoryDraft((prev) => ({
+                                          ...prev,
+                                          effectiveFrom: e.target.value,
+                                        }))
+                                      }
+                                      className="common-input text-sm h-9 w-[140px]"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 pr-3">
+                                    <input
+                                      type="date"
+                                      value={historyDraft.effectiveTo}
+                                      onChange={(e) =>
+                                        setHistoryDraft((prev) => ({
+                                          ...prev,
+                                          effectiveTo: e.target.value,
+                                        }))
+                                      }
+                                      title="Leave empty for Present"
+                                      className="common-input text-sm h-9 w-[140px]"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 text-right whitespace-nowrap">
+                                    <button
+                                      type="button"
+                                      disabled={historySaving}
+                                      onClick={handleSaveHistory}
+                                      className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-50 cursor-pointer"
+                                    >
+                                      {historySaving ? (
+                                        <Loader2 size={13} className="animate-spin" />
+                                      ) : (
+                                        <Save size={13} />
+                                      )}
+                                      Save
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={historySaving}
+                                      onClick={() => setEditingHistoryId(null)}
+                                      className="ml-1.5 inline-flex items-center h-8 px-2.5 rounded-md border border-border-main text-xs font-semibold hover:bg-muted-foreground/5 disabled:opacity-50 cursor-pointer"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            }
+                            return (
                             <tr key={row.id}>
                               <td className="py-2.5 pr-3 font-semibold whitespace-nowrap">
                                 {formatPrice(row.sellingPrice)}
@@ -584,16 +763,31 @@ export default function ProductPricesListing() {
                               <td className="py-2.5 pr-3 text-muted-foreground whitespace-nowrap">
                                 {formatDate(row.effectiveFrom)}
                               </td>
-                              <td className="py-2.5 text-muted-foreground whitespace-nowrap">
+                              <td className="py-2.5 pr-3 text-muted-foreground whitespace-nowrap">
                                 {row.effectiveTo
                                   ? formatDate(row.effectiveTo)
                                   : "Present"}
                               </td>
+                              <td className="py-2.5 text-right">
+                                <Can permission={PERMISSIONS.PRODUCT_PRICES_UPDATE}>
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditHistory(row)}
+                                    className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-border-main text-xs font-semibold hover:bg-muted-foreground/5 cursor-pointer"
+                                    title="Edit this price period"
+                                  >
+                                    <Pencil size={13} />
+                                    Edit
+                                  </button>
+                                </Can>
+                              </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
+                    </>
                   )}
                 </div>
               </div>

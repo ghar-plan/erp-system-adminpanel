@@ -93,6 +93,15 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 0,
   });
 
+const formatShortDate = (value?: string) => {
+  if (!value) return "";
+  return new Date(`${value}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
 type MetricCardProps = {
   label: string;
   value: number;
@@ -770,6 +779,92 @@ export default function Dashboard() {
             ) : null}
           </div>
         </div>
+      </div>
+
+      {/* Dates, shop sales, and shop profit for the selected range */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fade-in">
+        <div className="bg-card rounded-2xl border border-border-main p-4 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <CalendarRange size={20} />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+              Dates
+            </span>
+            <span className="text-sm font-bold text-foreground mt-0.5 block leading-snug">
+              {hasDateFilter
+                ? `${appliedStartDate ? formatShortDate(appliedStartDate) : "Start"} – ${appliedEndDate ? formatShortDate(appliedEndDate) : "Present"}`
+                : "All dates"}
+            </span>
+          </div>
+        </div>
+        <Link
+          to={withDateQuery("/sales/list")}
+          className="bg-card rounded-2xl border border-border-main p-4 shadow-2xs flex items-center gap-3 hover:border-violet-500/40 transition-colors"
+        >
+          <div className="w-10 h-10 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
+            <ShoppingBag size={20} />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+              Sales
+            </span>
+            {analyticsLoading ? (
+              <div className="h-7 w-28 bg-muted-foreground/10 rounded-md animate-pulse mt-1" />
+            ) : (
+              <span className="text-xl font-bold text-foreground mt-0.5 block">
+                PKR {formatCurrency(shop.totalSale || 0)}
+              </span>
+            )}
+            <span className="text-[11px] text-muted-foreground">
+              Shop sales for this period
+            </span>
+          </div>
+        </Link>
+        <Link
+          to={withDateQuery("/sales/list")}
+          className="bg-card rounded-2xl border border-border-main p-4 shadow-2xs flex items-center gap-3 hover:border-emerald-500/40 transition-colors"
+        >
+          <div
+            className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+              (shop.netLoss || 0) > 0
+                ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+            }`}
+          >
+            {(shop.netLoss || 0) > 0 ? (
+              <TrendingDown size={20} />
+            ) : (
+              <TrendingUp size={20} />
+            )}
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+              {(shop.netLoss || 0) > 0 ? "Loss" : "Profit"}
+            </span>
+            {analyticsLoading ? (
+              <div className="h-7 w-28 bg-muted-foreground/10 rounded-md animate-pulse mt-1" />
+            ) : (
+              <span
+                className={`text-xl font-bold mt-0.5 block ${
+                  (shop.netProfit || 0) > 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : (shop.netLoss || 0) > 0
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-foreground"
+                }`}
+              >
+                PKR{" "}
+                {formatCurrency(
+                  (shop.netLoss || 0) > 0 ? shop.netLoss : shop.netProfit || 0,
+                )}
+              </span>
+            )}
+            <span className="text-[11px] text-muted-foreground">
+              Shop sales minus costs
+            </span>
+          </div>
+        </Link>
       </div>
 
       {/* 3. Executive Consolidated Snapshot (HERO SECTION) */}

@@ -498,7 +498,12 @@ const DashboardRoutes = () => {
         />
         <Route
           path={siteRoutes.customerLedger}
-          element={guard(<CustomerLedger />, PERMISSIONS.SALES_READ)}
+          element={guard(
+            <CustomerLedger />,
+            undefined,
+            [PERMISSIONS.SALES_READ, PERMISSIONS.PURCHASES_READ],
+            "any",
+          )}
         />
         <Route
           path={siteRoutes.salesList}

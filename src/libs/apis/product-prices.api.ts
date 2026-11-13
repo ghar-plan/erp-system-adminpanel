@@ -1,6 +1,7 @@
 import {
   getRequest,
   putRequest,
+  patchRequest,
   deleteRequest,
 } from "../../utils/helpers/common/http-methods";
 import { normalizeVariantId } from "../../utils/helpers/models/product-sku";
@@ -23,6 +24,15 @@ export const ProductPrices_APIS = {
       variantParams(variantId),
     ),
   upsert: (body: any) => putRequest("/v1/product-prices", body),
+  updateHistory: (
+    id: string,
+    body: {
+      rate: number;
+      sellingPrice: number | null;
+      effectiveFrom: string;
+      effectiveTo: string | null;
+    },
+  ) => patchRequest(`/v1/product-prices/history/${id}`, body),
   clear: (productId: string, variantId?: string | null) =>
     deleteRequest(
       `/v1/product-prices/product/${productId}`,
