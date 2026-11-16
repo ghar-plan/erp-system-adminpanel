@@ -9,7 +9,7 @@ import { errorToaster } from "@/utils/helpers/common/alert-service";
 import useCommerceCashflow from "../useHooks";
 
 export interface CommerceCashInFormInputs {
-  saleId: string;
+  customerTypeId: string;
   amount: string;
   entryDate: string;
   enteredBy: string;
@@ -18,16 +18,18 @@ export interface CommerceCashInFormInputs {
   receiptUrl: string;
 }
 
-interface OutstandingSale {
+interface CashInCustomerType {
   id: string;
   label: string;
+  name?: string;
+  categoryLabel?: string;
   balance: number;
   payment: number;
   total: number;
 }
 
 interface CashInFormProps {
-  sales: OutstandingSale[];
+  sales: CashInCustomerType[];
   onSubmit: (data: CommerceCashInFormInputs) => Promise<void>;
   submitting: boolean;
 }
@@ -60,7 +62,7 @@ export default function CashInForm({
     formState: { errors },
   } = useForm<CommerceCashInFormInputs>({
     defaultValues: {
-      saleId: "",
+      customerTypeId: "",
       amount: "",
       entryDate: todayInput(),
       enteredBy: loggedInName,
@@ -70,9 +72,9 @@ export default function CashInForm({
     },
   });
 
-  const saleId = watch("saleId");
+  const customerTypeId = watch("customerTypeId");
   const receiptUrl = watch("receiptUrl");
-  const selected = sales.find((s) => s.id === saleId);
+  const selected = sales.find((s) => s.id === customerTypeId);
   const fullAmount = Number(selected?.balance || 0);
 
   useEffect(() => {
@@ -82,6 +84,7 @@ export default function CashInForm({
   }, [loggedInName, setValue]);
 
   useEffect(() => {
+    // Prefill with remaining due; admin can change the amount.
     setValue("amount", fullAmount > 0 ? String(fullAmount) : "");
   }, [selected?.id, fullAmount, setValue]);
 
@@ -112,13 +115,24 @@ export default function CashInForm({
       errorToaster("This customer type has no remaining balance");
       return;
     }
+    const enteredAmount = Number(data.amount);
+    if (!Number.isFinite(enteredAmount) || enteredAmount <= 0) {
+      errorToaster("Enter a valid amount greater than 0");
+      return;
+    }
+    if (enteredAmount > fullAmount + 0.001) {
+      errorToaster(
+        `Amount cannot exceed remaining due (PKR ${fullAmount.toLocaleString()})`,
+      );
+      return;
+    }
     await onSubmit({
       ...data,
-      amount: String(fullAmount),
+      amount: String(enteredAmount),
       enteredBy: loggedInName || data.enteredBy,
     });
     reset({
-      saleId: "",
+      customerTypeId: "",
       amount: "",
       entryDate: todayInput(),
       enteredBy: loggedInName,
@@ -137,7 +151,7 @@ export default function CashInForm({
         <div>
           <h2 className="text-xl font-bold text-foreground">Cash In</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Receive the full remaining balance for a customer type
+            Enter the amount received for a customer type
           </p>
         </div>
       </div>
@@ -149,20 +163,26 @@ export default function CashInForm({
           </label>
           <select
             className="common-input cursor-pointer"
-            {...register("saleId", {
+            {...register("customerTypeId", {
               required: "Customer type is required",
             })}
           >
             <option value="">Select Customer Type</option>
-            {sales.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
+            {sales.map((s) => {
+              const optionLabel =
+                s.name && s.categoryLabel
+                  ? `${s.name} (${s.categoryLabel})`
+                  : s.label;
+              return (
+                <option key={s.id} value={s.id}>
+                  {optionLabel}
+                </option>
+              );
+            })}
           </select>
-          {errors.saleId && (
+          {errors.customerTypeId && (
             <p className="mt-1 text-xs text-danger-text font-semibold">
-              {errors.saleId.message}
+              {errors.customerTypeId.message}
             </p>
           )}
           {selected ? (
@@ -170,27 +190,46 @@ export default function CashInForm({
               Paid {Number(selected.payment || 0).toLocaleString()} · Due{" "}
               {Number(selected.balance || 0).toLocaleString()} · Total{" "}
               {Number(selected.total || 0).toLocaleString()}
-              {fullAmount === 0 ? " — nothing left to receive" : ""}
+              {fullAmount === 0 ? " - nothing left to receive" : ""}
             </p>
           ) : null}
         </div>
 
         <div>
-          <label className="mb-2 block ui-form-label">AMOUNT (PKR)</label>
-          <div className="h-10 px-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between text-emerald-700 dark:text-emerald-400 font-bold text-sm">
-            <span>
-              {fullAmount > 0
-                ? `PKR ${fullAmount.toLocaleString()}`
-                : "Full balance"}
-            </span>
-            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 uppercase tracking-wide">
-              Full Payment
-            </span>
-          </div>
-          <input type="hidden" {...register("amount")} />
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            The full remaining balance is received.
-          </p>
+          <label className="mb-2 block ui-form-label">
+            AMOUNT (PKR) <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            max={fullAmount > 0 ? fullAmount : undefined}
+            placeholder="Enter Amount"
+            className="common-input"
+            {...register("amount", {
+              required: "Amount is required",
+              validate: (value) => {
+                const amount = Number(value);
+                if (!Number.isFinite(amount) || amount <= 0) {
+                  return "Enter an amount greater than 0";
+                }
+                if (fullAmount > 0 && amount > fullAmount + 0.001) {
+                  return `Cannot exceed remaining due (PKR ${fullAmount.toLocaleString()})`;
+                }
+                return true;
+              },
+            })}
+          />
+          {errors.amount && (
+            <p className="mt-1 text-xs text-danger-text font-semibold">
+              {errors.amount.message}
+            </p>
+          )}
+          {fullAmount > 0 ? (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Remaining due: PKR {fullAmount.toLocaleString()}
+            </p>
+          ) : null}
         </div>
 
         <div className="grid gap-5 grid-cols-1">

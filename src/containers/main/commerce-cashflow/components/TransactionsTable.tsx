@@ -47,7 +47,7 @@ export default function TransactionsTable({
     }
     if (filterSearch.trim()) {
       const q = filterSearch.trim().toLowerCase();
-      const hay = `${tx.party} ${tx.description} ${tx.paymentSource || ""} ${tx.enteredBy || ""}`.toLowerCase();
+      const hay = `${tx.party} ${tx.paymentSource || ""} ${tx.enteredBy || ""}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -78,7 +78,7 @@ export default function TransactionsTable({
           </select>
           <input
             type="search"
-            placeholder="Search party, installment..."
+            placeholder="Search customer, source..."
             className="common-input !w-auto min-w-[200px] text-sm"
             value={filterSearch}
             onChange={(e) => setFilterSearch(e.target.value)}
@@ -111,8 +111,7 @@ export default function TransactionsTable({
             <tr className="border-b border-border-main bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <th className="px-4 py-3 font-semibold">Type</th>
               <th className="px-4 py-3 font-semibold">Date</th>
-              <th className="px-4 py-3 font-semibold">Party</th>
-              <th className="px-4 py-3 font-semibold">Installment</th>
+              <th className="px-4 py-3 font-semibold">Customer</th>
               <th className="px-4 py-3 font-semibold">Source</th>
               <th className="px-4 py-3 font-semibold text-right">Amount</th>
               <th className="px-4 py-3 font-semibold">Entered By</th>
@@ -123,7 +122,7 @@ export default function TransactionsTable({
             {filtered.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={7}
                   className="px-4 py-10 text-center text-muted-foreground"
                 >
                   No commerce cashflow entries yet
@@ -156,9 +155,6 @@ export default function TransactionsTable({
                   </td>
                   <td className="px-4 py-3 font-medium text-foreground">
                     {tx.party || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {tx.description || "—"}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {tx.paymentSource || "—"}

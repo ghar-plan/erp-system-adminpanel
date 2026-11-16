@@ -8,7 +8,6 @@ import {
   AlertCircle,
   Coins,
   FileText,
-  Hash,
   User,
   Wallet,
 } from "lucide-react";
@@ -126,7 +125,7 @@ export default function CommerceCashflowView() {
               {isCashOut ? "Cash Out Details" : "Cash In Details"}
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {entry.installment || "Installment"} · {formatDate(entry.entryDate)}
+              {formatDate(entry.entryDate)}
             </p>
           </div>
         </div>
@@ -149,18 +148,12 @@ export default function CommerceCashflowView() {
           <DetailItem
             icon={<Wallet size={18} />}
             iconClass="bg-accent-bg text-accent-text"
-            label="Party / Vendor"
+            label={isCashOut ? "Vendor" : "Customer"}
             value={
               isCashOut
                 ? entry.vendorName || linkedPurchase?.supplierName
                 : entry.partyName || linkedSale?.customerName
             }
-          />
-          <DetailItem
-            icon={<Hash size={18} />}
-            iconClass="bg-info-bg text-info-text"
-            label="Installment"
-            value={entry.installment}
           />
           <DetailItem
             icon={<Coins size={18} />}

@@ -48,7 +48,7 @@ export default function CommerceCashflow() {
     setSubmittingIn(true);
     await recordCashIn(
       {
-        saleId: data.saleId,
+        customerTypeId: data.customerTypeId,
         installment: "Full Payment",
         amount: Number(data.amount),
         entryDate: data.entryDate,
