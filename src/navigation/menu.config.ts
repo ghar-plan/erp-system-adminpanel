@@ -232,6 +232,9 @@ export const menuConfig: MenuGroup[] = [
           PERMISSIONS.SALES_READ,
           PERMISSIONS.PURCHASES_CREATE,
           PERMISSIONS.PURCHASES_READ,
+          PERMISSIONS.COMMERCE_CASH_FLOW_READ,
+          PERMISSIONS.COMMERCE_CASH_FLOW_IN,
+          PERMISSIONS.COMMERCE_CASH_FLOW_OUT,
         ],
       },
       {
@@ -244,21 +247,25 @@ export const menuConfig: MenuGroup[] = [
         title: "Ledger",
         path: siteRoutes.customerLedger,
         icon: "customer-ledger",
-        anyOf: [PERMISSIONS.SALES_READ, PERMISSIONS.PURCHASES_READ],
+        anyOf: [
+          PERMISSIONS.LEDGER_SALES,
+          PERMISSIONS.LEDGER_PURCHASES,
+          PERMISSIONS.SALES_READ,
+          PERMISSIONS.PURCHASES_READ,
+        ],
       },
       {
-        title: "Generate Quotation",
-        path: siteRoutes.documentsQuotations,
+        title: "Quotations & Bills",
+        path: siteRoutes.documentsQuotationsList,
         icon: "quotations",
-        anyOf: [PERMISSIONS.DOCUMENTS_CREATE, PERMISSIONS.DOCUMENTS_READ],
+        anyOf: [
+          PERMISSIONS.DOCUMENTS_READ,
+          PERMISSIONS.DOCUMENTS_QUOTATION,
+          PERMISSIONS.DOCUMENTS_BILL,
+          PERMISSIONS.DOCUMENTS_UPDATE,
+          PERMISSIONS.DOCUMENTS_DELETE,
+        ],
       },
-      // Hidden for now — keep Bill feature code; re-enable when needed
-      // {
-      //   title: "Generate Bill",
-      //   path: siteRoutes.documentsBills,
-      //   icon: "bills",
-      //   anyOf: [PERMISSIONS.DOCUMENTS_CREATE, PERMISSIONS.DOCUMENTS_READ],
-      // },
       {
         title: "Stock",
         path: siteRoutes.stocks,
@@ -267,7 +274,7 @@ export const menuConfig: MenuGroup[] = [
       },
       {
         title: "Fixed Costs",
-        path: siteRoutes.fixedCosts,
+        path: siteRoutes.fixedCostsList,
         icon: "fixed-costs",
         anyOf: [PERMISSIONS.FIXED_COSTS_CREATE, PERMISSIONS.FIXED_COSTS_READ],
       },

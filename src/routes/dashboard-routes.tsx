@@ -449,6 +449,9 @@ const DashboardRoutes = () => {
               PERMISSIONS.SALES_READ,
               PERMISSIONS.PURCHASES_CREATE,
               PERMISSIONS.PURCHASES_READ,
+              PERMISSIONS.COMMERCE_CASH_FLOW_READ,
+              PERMISSIONS.COMMERCE_CASH_FLOW_IN,
+              PERMISSIONS.COMMERCE_CASH_FLOW_OUT,
             ],
             "any",
           )}
@@ -478,7 +481,12 @@ const DashboardRoutes = () => {
         />
         <Route
           path={siteRoutes.purchasesView}
-          element={guard(<PurchaseView />, PERMISSIONS.PURCHASES_READ)}
+          element={guard(
+            <PurchaseView />,
+            undefined,
+            [PERMISSIONS.PURCHASES_READ, PERMISSIONS.LEDGER_PURCHASES],
+            "any",
+          )}
         />
         <Route
           path={siteRoutes.purchasesEdit}
@@ -501,7 +509,12 @@ const DashboardRoutes = () => {
           element={guard(
             <CustomerLedger />,
             undefined,
-            [PERMISSIONS.SALES_READ, PERMISSIONS.PURCHASES_READ],
+            [
+              PERMISSIONS.LEDGER_SALES,
+              PERMISSIONS.LEDGER_PURCHASES,
+              PERMISSIONS.SALES_READ,
+              PERMISSIONS.PURCHASES_READ,
+            ],
             "any",
           )}
         />
@@ -515,7 +528,12 @@ const DashboardRoutes = () => {
         />
         <Route
           path={siteRoutes.salesView}
-          element={guard(<SaleView />, PERMISSIONS.SALES_READ)}
+          element={guard(
+            <SaleView />,
+            undefined,
+            [PERMISSIONS.SALES_READ, PERMISSIONS.LEDGER_SALES],
+            "any",
+          )}
         />
         <Route
           path={siteRoutes.salesEdit}
@@ -526,37 +544,77 @@ const DashboardRoutes = () => {
           element={guard(
             <CommerceCashflowView />,
             undefined,
-            [PERMISSIONS.SALES_READ, PERMISSIONS.PURCHASES_READ],
+            [
+              PERMISSIONS.COMMERCE_CASH_FLOW_READ,
+              PERMISSIONS.COMMERCE_CASH_FLOW_IN,
+              PERMISSIONS.COMMERCE_CASH_FLOW_OUT,
+              PERMISSIONS.SALES_READ,
+              PERMISSIONS.PURCHASES_READ,
+            ],
             "any",
           )}
         />
         <Route
           path={siteRoutes.documentsQuotations}
-          element={guard(<QuotationCreate />, PERMISSIONS.DOCUMENTS_CREATE)}
+          element={guard(<QuotationCreate />, PERMISSIONS.DOCUMENTS_QUOTATION)}
         />
         <Route
           path={siteRoutes.documentsQuotationsList}
-          element={guard(<QuotationsList />, PERMISSIONS.DOCUMENTS_READ)}
+          element={guard(
+            <QuotationsList />,
+            undefined,
+            [
+              PERMISSIONS.DOCUMENTS_READ,
+              PERMISSIONS.DOCUMENTS_QUOTATION,
+              PERMISSIONS.DOCUMENTS_BILL,
+            ],
+            "any",
+          )}
         />
         <Route
           path={siteRoutes.documentsBills}
-          element={guard(<BillCreate />, PERMISSIONS.DOCUMENTS_CREATE)}
+          element={guard(<BillCreate />, PERMISSIONS.DOCUMENTS_BILL)}
         />
         <Route
           path={siteRoutes.documentsBillsList}
-          element={guard(<BillsList />, PERMISSIONS.DOCUMENTS_READ)}
+          element={guard(
+            <BillsList />,
+            undefined,
+            [
+              PERMISSIONS.DOCUMENTS_READ,
+              PERMISSIONS.DOCUMENTS_QUOTATION,
+              PERMISSIONS.DOCUMENTS_BILL,
+            ],
+            "any",
+          )}
         />
         <Route
           path={siteRoutes.documentsView}
-          element={guard(<DocumentView />, PERMISSIONS.DOCUMENTS_READ)}
+          element={guard(
+            <DocumentView />,
+            undefined,
+            [
+              PERMISSIONS.DOCUMENTS_READ,
+              PERMISSIONS.DOCUMENTS_QUOTATION,
+              PERMISSIONS.DOCUMENTS_BILL,
+            ],
+            "any",
+          )}
         />
         <Route
           path={siteRoutes.fixedCosts}
-          element={guard(<FixedCostCreate />, PERMISSIONS.FIXED_COSTS_CREATE)}
+          element={
+            <Navigate to={siteRoutes.fixedCostsList} replace />
+          }
         />
         <Route
           path={siteRoutes.fixedCostsList}
-          element={guard(<FixedCostsListing />, PERMISSIONS.FIXED_COSTS_READ)}
+          element={guard(
+            <FixedCostsListing />,
+            undefined,
+            [PERMISSIONS.FIXED_COSTS_READ, PERMISSIONS.FIXED_COSTS_CREATE],
+            "any",
+          )}
         />
         <Route
           path={siteRoutes.fixedCostsCreate}

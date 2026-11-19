@@ -9,7 +9,7 @@ import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import {
   formatModuleLabel,
   formatPermissionLabel,
-  groupPermissionsByModule,
+  groupPermissionsBySection,
 } from "../group-permissions";
 import {
   actionImpliesView,
@@ -51,7 +51,7 @@ export default function RoleEdit() {
     defaultValues: { name: "" },
   });
 
-  const modules = useMemo(() => groupPermissionsByModule(catalog), [catalog]);
+  const sections = useMemo(() => groupPermissionsBySection(catalog), [catalog]);
 
   useEffect(() => {
     getPermissionsCatalog(setCatalog);
@@ -204,78 +204,91 @@ export default function RoleEdit() {
             </div>
           </div>
 
-          <div className="space-y-6">
-            {modules.map(([module, perms]) => {
-              const allOn = perms.every((permission) =>
-                selected.has(permission.codename),
-              );
-              const someOn =
-                !allOn &&
-                perms.some((permission) => selected.has(permission.codename));
-              return (
-                <div key={module} className="space-y-2">
-                  <div className="flex items-center justify-between gap-2 border-b border-border-main pb-2">
-                    <h3 className="text-sm font-bold capitalize text-foreground">
-                      {formatModuleLabel(module)}
-                    </h3>
-                    <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-muted-foreground">
-                      <input
-                        type="checkbox"
-                        className="rounded border-border-main"
-                        checked={allOn}
-                        ref={(el) => {
-                          if (el) el.indeterminate = someOn;
-                        }}
-                        onChange={(e) => toggleModule(perms, e.target.checked)}
-                      />
-                      Module
-                    </label>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {perms.map((permission) => {
-                      const viewLocked =
-                        isViewAction(permission.action) &&
-                        perms.some(
-                          (item) =>
-                            actionImpliesView(item.action) &&
-                            selected.has(item.codename),
-                        );
-                      return (
-                        <label
-                          key={permission.codename}
-                          className={`flex items-start gap-2 rounded-lg border px-3 py-2 ${
-                            viewLocked
-                              ? "border-primary/30 bg-primary/5 cursor-not-allowed"
-                              : "border-border-main cursor-pointer hover:bg-muted-foreground/5"
-                          }`}
-                        >
+          <div className="space-y-8">
+            {sections.map((section) => (
+              <div key={section.key} className="space-y-4">
+                <div className="rounded-lg bg-muted/40 px-3 py-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    {section.label}
+                  </h3>
+                </div>
+                {section.modules.map(([module, perms]) => {
+                  const allOn = perms.every((permission) =>
+                    selected.has(permission.codename),
+                  );
+                  const someOn =
+                    !allOn &&
+                    perms.some((permission) =>
+                      selected.has(permission.codename),
+                    );
+                  return (
+                    <div key={module} className="space-y-2">
+                      <div className="flex items-center justify-between gap-2 border-b border-border-main pb-2">
+                        <h4 className="text-sm font-bold capitalize text-foreground">
+                          {formatModuleLabel(module)}
+                        </h4>
+                        <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-muted-foreground">
                           <input
                             type="checkbox"
-                            className="mt-0.5 shrink-0 rounded border-border-main"
-                            checked={selected.has(permission.codename)}
-                            disabled={viewLocked}
-                            title={
-                              viewLocked
-                                ? "View is included with other permissions in this module"
-                                : undefined
+                            className="rounded border-border-main"
+                            checked={allOn}
+                            ref={(el) => {
+                              if (el) el.indeterminate = someOn;
+                            }}
+                            onChange={(e) =>
+                              toggleModule(perms, e.target.checked)
                             }
-                            onChange={() => toggle(permission.codename)}
                           />
-                          <span className="block text-sm font-medium text-foreground">
-                            {formatPermissionLabel(permission)}
-                            {viewLocked ? (
-                              <span className="block text-xs font-normal text-muted-foreground">
-                                Included with other actions
-                              </span>
-                            ) : null}
-                          </span>
+                          Module
                         </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {perms.map((permission) => {
+                          const viewLocked =
+                            isViewAction(permission.action) &&
+                            perms.some(
+                              (item) =>
+                                actionImpliesView(item.action) &&
+                                selected.has(item.codename),
+                            );
+                          return (
+                            <label
+                              key={permission.codename}
+                              className={`flex items-start gap-2 rounded-lg border px-3 py-2 ${
+                                viewLocked
+                                  ? "border-primary/30 bg-primary/5 cursor-not-allowed"
+                                  : "border-border-main cursor-pointer hover:bg-muted-foreground/5"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                className="mt-0.5 shrink-0 rounded border-border-main"
+                                checked={selected.has(permission.codename)}
+                                disabled={viewLocked}
+                                title={
+                                  viewLocked
+                                    ? "View is included with other permissions in this module"
+                                    : undefined
+                                }
+                                onChange={() => toggle(permission.codename)}
+                              />
+                              <span className="block text-sm font-medium text-foreground">
+                                {formatPermissionLabel(permission)}
+                                {viewLocked ? (
+                                  <span className="block text-xs font-normal text-muted-foreground">
+                                    Included with other actions
+                                  </span>
+                                ) : null}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
             {!catalog.length ? (
               <p className="text-sm text-muted-foreground">
                 No permissions loaded. Run the backend seeder so the catalog exists.

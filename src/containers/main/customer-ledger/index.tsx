@@ -25,7 +25,7 @@ import {
   SOURCE_PAYMENT_OPTIONS,
 } from "@/utils/helpers/models/purchases/purchase.dto";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
-import { Can } from "@/components/auth/Can";
+import { CanIf } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
 interface LedgerEntry {
@@ -61,8 +61,12 @@ interface LedgerCustomerType {
 export default function CustomerLedger() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { hasPermission } = usePermissions();
-  const canSales = hasPermission(PERMISSIONS.SALES_READ);
-  const canPurchases = hasPermission(PERMISSIONS.PURCHASES_READ);
+  const canSales =
+    hasPermission(PERMISSIONS.LEDGER_SALES) ||
+    hasPermission(PERMISSIONS.SALES_READ);
+  const canPurchases =
+    hasPermission(PERMISSIONS.LEDGER_PURCHASES) ||
+    hasPermission(PERMISSIONS.PURCHASES_READ);
   const requestedTab = searchParams.get("tab") === "purchases" ? "purchases" : "sales";
   const tab =
     requestedTab === "purchases" && canPurchases
@@ -556,7 +560,13 @@ export default function CustomerLedger() {
                             {entry.sourcePayment || "--"}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            <Can permission={PERMISSIONS.SALES_READ}>
+                            <CanIf
+                              permissions={[
+                                PERMISSIONS.LEDGER_SALES,
+                                PERMISSIONS.SALES_READ,
+                              ]}
+                              mode="any"
+                            >
                               <Link
                                 to={siteRoutes.salesView.replace(
                                   ":id",
@@ -567,7 +577,7 @@ export default function CustomerLedger() {
                               >
                                 <Eye size={16} />
                               </Link>
-                            </Can>
+                            </CanIf>
                           </td>
                         </tr>
                       ))}

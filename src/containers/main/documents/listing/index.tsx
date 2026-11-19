@@ -25,10 +25,11 @@ export default function DocumentsListing({ type }: Props) {
   const { hasPermission } = usePermissions();
   const { getDocuments, getDocumentCount, deleteDocument, downloadPdf } =
     useDocuments();
-  const canCreate = hasPermission(PERMISSIONS.DOCUMENTS_CREATE);
+  const canQuotation = hasPermission(PERMISSIONS.DOCUMENTS_QUOTATION);
+  const canBill = hasPermission(PERMISSIONS.DOCUMENTS_BILL);
   const canView = hasPermission(PERMISSIONS.DOCUMENTS_READ);
   const canDelete = hasPermission(PERMISSIONS.DOCUMENTS_DELETE);
-  const showActions = canView || canDelete;
+  const showActions = canView || canDelete || canQuotation || canBill;
 
   const isBill = type === DocumentType.BILL;
   const showsBoth = !type;
@@ -36,6 +37,7 @@ export default function DocumentsListing({ type }: Props) {
   const createRoute = isBill
     ? siteRoutes.documentsBills
     : siteRoutes.documentsQuotations;
+  const canCreateForType = isBill ? canBill : canQuotation;
 
   const [rows, setRows] = useState<ErpDocument[]>([]);
   const [totalElements, setTotalElements] = useState(0);
@@ -131,15 +133,38 @@ export default function DocumentsListing({ type }: Props) {
             {title}
           </h1>
         </div>
-        {canCreate ? (
-          <Link
-            to={createRoute}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
-          >
-            <Plus size={18} />
-            {showsBoth || !isBill ? "Generate Quotation" : "Generate Bill"}
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {showsBoth ? (
+            <>
+              {canQuotation ? (
+                <Link
+                  to={siteRoutes.documentsQuotations}
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
+                >
+                  <Plus size={18} />
+                  Generate Quotation
+                </Link>
+              ) : null}
+              {canBill ? (
+                <Link
+                  to={siteRoutes.documentsBills}
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
+                >
+                  <Plus size={18} />
+                  Generate Bill
+                </Link>
+              ) : null}
+            </>
+          ) : canCreateForType ? (
+            <Link
+              to={createRoute}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
+            >
+              <Plus size={18} />
+              {isBill ? "Generate Bill" : "Generate Quotation"}
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 md:grid-cols-6 animate-fade-in">

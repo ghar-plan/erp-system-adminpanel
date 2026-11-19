@@ -1,11 +1,14 @@
 import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ShoppingCart, ReceiptText, Wallet } from "lucide-react";
 import SaleCreate from "@/containers/main/sales/create";
 import PurchaseCreate from "@/containers/main/purchases/create";
+import SalesListing from "@/containers/main/sales/listing";
+import PurchasesListing from "@/containers/main/purchases/listing";
 import CommerceCashflow from "@/containers/main/commerce-cashflow";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
+import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 
 type CommerceTab = "sales" | "purchases" | "cashflow";
 
@@ -13,17 +16,21 @@ export default function CommerceHub() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { hasPermission, hasAnyPermission } = usePermissions();
 
-  const canSales = hasAnyPermission([
-    PERMISSIONS.SALES_CREATE,
+  const canSalesCreate = hasPermission(PERMISSIONS.SALES_CREATE);
+  const canSalesRead = hasPermission(PERMISSIONS.SALES_READ);
+  const canSales = canSalesCreate || canSalesRead;
+
+  const canPurchasesCreate = hasPermission(PERMISSIONS.PURCHASES_CREATE);
+  const canPurchasesRead = hasPermission(PERMISSIONS.PURCHASES_READ);
+  const canPurchases = canPurchasesCreate || canPurchasesRead;
+
+  const canCashflow = hasAnyPermission([
+    PERMISSIONS.COMMERCE_CASH_FLOW_READ,
+    PERMISSIONS.COMMERCE_CASH_FLOW_IN,
+    PERMISSIONS.COMMERCE_CASH_FLOW_OUT,
     PERMISSIONS.SALES_READ,
-  ]);
-  const canPurchases = hasAnyPermission([
-    PERMISSIONS.PURCHASES_CREATE,
     PERMISSIONS.PURCHASES_READ,
   ]);
-  const canCashflow =
-    hasPermission(PERMISSIONS.SALES_READ) ||
-    hasPermission(PERMISSIONS.PURCHASES_READ);
 
   const tabs = useMemo(() => {
     const list: Array<{
@@ -84,8 +91,48 @@ export default function CommerceHub() {
       </div>
 
       <div key={activeTab}>
-        {activeTab === "sales" ? <SaleCreate /> : null}
-        {activeTab === "purchases" ? <PurchaseCreate /> : null}
+        {activeTab === "sales" ? (
+          canSalesCreate ? (
+            <SaleCreate />
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  You can view sales. Create permission is required to record a
+                  new sale.
+                </p>
+                <Link
+                  to={siteRoutes.salesList}
+                  className="text-sm font-semibold text-primary hover:underline"
+                >
+                  Open full sales list
+                </Link>
+              </div>
+              <SalesListing />
+            </div>
+          )
+        ) : null}
+        {activeTab === "purchases" ? (
+          canPurchasesCreate ? (
+            <PurchaseCreate />
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  You can view purchases. Create permission is required to
+                  record a new purchase.
+                </p>
+                <Link
+                  to={siteRoutes.purchasesList}
+                  className="text-sm font-semibold text-primary hover:underline"
+                >
+                  Open full purchases list
+                </Link>
+              </div>
+              <PurchasesListing />
+            </div>
+          )
+        ) : null}
         {activeTab === "cashflow" ? <CommerceCashflow /> : null}
       </div>
     </div>

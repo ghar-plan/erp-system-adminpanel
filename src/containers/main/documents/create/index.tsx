@@ -14,6 +14,7 @@ import ProductVariantSelect, {
 } from "@/components/ui/ProductVariantSelect";
 import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
 import { Can } from "@/components/auth/Can";
+import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import {
@@ -71,9 +72,20 @@ type Props = {
 export default function DocumentCreate({ type }: Props) {
   const navigate = useNavigate();
   const { isLoading } = useStore();
+  const { hasPermission } = usePermissions();
   const { createDocument, downloadPdf } = useDocuments();
   const [submitting, setSubmitting] = useState(false);
-  const [documentType, setDocumentType] = useState<DocumentType>(type);
+  const canQuotation = hasPermission(PERMISSIONS.DOCUMENTS_QUOTATION);
+  const canBill = hasPermission(PERMISSIONS.DOCUMENTS_BILL);
+  const initialType =
+    type === DocumentType.BILL
+      ? canBill
+        ? DocumentType.BILL
+        : DocumentType.QUOTATION
+      : canQuotation
+        ? DocumentType.QUOTATION
+        : DocumentType.BILL;
+  const [documentType, setDocumentType] = useState<DocumentType>(initialType);
 
   const isBill = documentType === DocumentType.BILL;
   const title = isBill ? "Generate Bill" : "Generate Quotation";
@@ -88,7 +100,7 @@ export default function DocumentCreate({ type }: Props) {
     formState: { errors },
   } = useForm<DocumentFormInputs>({
     defaultValues: {
-      documentNo: generateDocumentNo(type),
+      documentNo: generateDocumentNo(initialType),
       date: today(),
       customerName: "",
       customerPhone: "",
@@ -244,38 +256,42 @@ export default function DocumentCreate({ type }: Props) {
         <div className="space-y-3">
           <label className="block ui-form-label">Document</label>
           <div className="flex flex-wrap gap-3">
-            <label
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-semibold cursor-pointer transition-all ${
-                !isBill
-                  ? "bg-primary/10 border-primary text-primary"
-                  : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
-              }`}
-            >
-              <input
-                type="radio"
-                name="documentType"
-                className="accent-primary"
-                checked={!isBill}
-                onChange={() => selectDocumentType(DocumentType.QUOTATION)}
-              />
-              Generate Quotation
-            </label>
-            <label
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-semibold cursor-pointer transition-all ${
-                isBill
-                  ? "bg-primary/10 border-primary text-primary"
-                  : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
-              }`}
-            >
-              <input
-                type="radio"
-                name="documentType"
-                className="accent-primary"
-                checked={isBill}
-                onChange={() => selectDocumentType(DocumentType.BILL)}
-              />
-              Generate Bill
-            </label>
+            {canQuotation ? (
+              <label
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-semibold cursor-pointer transition-all ${
+                  !isBill
+                    ? "bg-primary/10 border-primary text-primary"
+                    : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="documentType"
+                  className="accent-primary"
+                  checked={!isBill}
+                  onChange={() => selectDocumentType(DocumentType.QUOTATION)}
+                />
+                Generate Quotation
+              </label>
+            ) : null}
+            {canBill ? (
+              <label
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-semibold cursor-pointer transition-all ${
+                  isBill
+                    ? "bg-primary/10 border-primary text-primary"
+                    : "border-border-main text-muted-foreground hover:bg-muted-foreground/5"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="documentType"
+                  className="accent-primary"
+                  checked={isBill}
+                  onChange={() => selectDocumentType(DocumentType.BILL)}
+                />
+                Generate Bill
+              </label>
+            ) : null}
           </div>
         </div>
 

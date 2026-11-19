@@ -11,10 +11,24 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
 export default function CommerceCashflow() {
-  const { hasPermission } = usePermissions();
-  const canRead =
-    hasPermission(PERMISSIONS.SALES_READ) ||
-    hasPermission(PERMISSIONS.PURCHASES_READ);
+  const { hasAnyPermission } = usePermissions();
+  const canRead = hasAnyPermission([
+    PERMISSIONS.COMMERCE_CASH_FLOW_READ,
+    PERMISSIONS.COMMERCE_CASH_FLOW_IN,
+    PERMISSIONS.COMMERCE_CASH_FLOW_OUT,
+    PERMISSIONS.SALES_READ,
+    PERMISSIONS.PURCHASES_READ,
+  ]);
+  const canCashIn = hasAnyPermission([
+    PERMISSIONS.COMMERCE_CASH_FLOW_IN,
+    PERMISSIONS.SALES_CREATE,
+    PERMISSIONS.SALES_UPDATE,
+  ]);
+  const canCashOut = hasAnyPermission([
+    PERMISSIONS.COMMERCE_CASH_FLOW_OUT,
+    PERMISSIONS.PURCHASES_CREATE,
+    PERMISSIONS.PURCHASES_UPDATE,
+  ]);
   const {
     getCombinedList,
     getOutstandingSales,
@@ -106,38 +120,47 @@ export default function CommerceCashflow() {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <CanIf
-          permissions={[PERMISSIONS.SALES_CREATE, PERMISSIONS.SALES_UPDATE]}
+          permissions={[
+            PERMISSIONS.COMMERCE_CASH_FLOW_IN,
+            PERMISSIONS.SALES_CREATE,
+            PERMISSIONS.SALES_UPDATE,
+          ]}
           mode="any"
           fallback={
             <div className="rounded-xl border border-dashed border-border-main p-8 text-sm text-muted-foreground">
-              Sales create/update permission required to record Cash In.
+              Commerce Cash In permission required to record Cash In.
             </div>
           }
         >
-          <CashInForm
-            sales={sales}
-            onSubmit={handleCashIn}
-            submitting={submittingIn}
-          />
+          {canCashIn ? (
+            <CashInForm
+              sales={sales}
+              onSubmit={handleCashIn}
+              submitting={submittingIn}
+            />
+          ) : null}
         </CanIf>
 
         <CanIf
           permissions={[
+            PERMISSIONS.COMMERCE_CASH_FLOW_OUT,
             PERMISSIONS.PURCHASES_CREATE,
             PERMISSIONS.PURCHASES_UPDATE,
           ]}
           mode="any"
           fallback={
             <div className="rounded-xl border border-dashed border-border-main p-8 text-sm text-muted-foreground">
-              Purchases create/update permission required to record Cash Out.
+              Commerce Cash Out permission required to record Cash Out.
             </div>
           }
         >
-          <CashOutForm
-            purchases={purchases}
-            onSubmit={handleCashOut}
-            submitting={submittingOut}
-          />
+          {canCashOut ? (
+            <CashOutForm
+              purchases={purchases}
+              onSubmit={handleCashOut}
+              submitting={submittingOut}
+            />
+          ) : null}
         </CanIf>
       </div>
 

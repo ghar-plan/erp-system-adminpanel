@@ -11,7 +11,7 @@ import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import {
   formatModuleLabel,
   formatPermissionLabel,
-  groupPermissionsByModule,
+  groupPermissionsBySection,
 } from "../group-permissions";
 import useRoles from "../useHooks";
 import type { RbacRole } from "../types";
@@ -32,8 +32,8 @@ export default function RolesListing() {
   const [status, setStatus] = useState("");
   const [viewing, setViewing] = useState<RbacRole | null>(null);
 
-  const viewingModules = useMemo(
-    () => groupPermissionsByModule(viewing?.permissions || []),
+  const viewingSections = useMemo(
+    () => groupPermissionsBySection(viewing?.permissions || []),
     [viewing],
   );
 
@@ -370,30 +370,37 @@ export default function RolesListing() {
                 <X size={18} />
               </button>
             </div>
-            <div className="px-5 py-4 overflow-y-auto space-y-5">
-              {viewingModules.length ? (
-                viewingModules.map(([module, perms]) => (
-                  <div key={module} className="space-y-2">
-                    <h3 className="text-sm font-bold text-foreground border-b border-border-main pb-2">
-                      {formatModuleLabel(module)}
+            <div className="px-5 py-4 overflow-y-auto space-y-6">
+              {viewingSections.length ? (
+                viewingSections.map((section) => (
+                  <div key={section.key} className="space-y-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      {section.label}
                     </h3>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {perms.map((permission) => (
-                        <div
-                          key={permission.id || permission.codename}
-                          className="flex items-start justify-between gap-2 rounded-lg border border-border-main px-3 py-2"
-                        >
-                          <span className="text-sm font-medium text-foreground">
-                            {formatPermissionLabel(permission)}
-                          </span>
-                          {permission.status === false ? (
-                            <span className="shrink-0 text-xs text-muted-foreground">
-                              Disabled
-                            </span>
-                          ) : null}
+                    {section.modules.map(([module, perms]) => (
+                      <div key={module} className="space-y-2">
+                        <h4 className="text-sm font-bold text-foreground border-b border-border-main pb-2">
+                          {formatModuleLabel(module)}
+                        </h4>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {perms.map((permission) => (
+                            <div
+                              key={permission.id || permission.codename}
+                              className="flex items-start justify-between gap-2 rounded-lg border border-border-main px-3 py-2"
+                            >
+                              <span className="text-sm font-medium text-foreground">
+                                {formatPermissionLabel(permission)}
+                              </span>
+                              {permission.status === false ? (
+                                <span className="shrink-0 text-xs text-muted-foreground">
+                                  Disabled
+                                </span>
+                              ) : null}
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
                 ))
               ) : (

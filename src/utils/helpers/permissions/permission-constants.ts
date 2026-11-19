@@ -140,6 +140,13 @@ export const PERMISSIONS = {
   SALES_UPDATE: "sales.update",
   SALES_DELETE: "sales.delete",
 
+  LEDGER_SALES: "ledger.sales",
+  LEDGER_PURCHASES: "ledger.purchases",
+
+  COMMERCE_CASH_FLOW_READ: "commerce_cash_flow.read",
+  COMMERCE_CASH_FLOW_IN: "commerce_cash_flow.in",
+  COMMERCE_CASH_FLOW_OUT: "commerce_cash_flow.out",
+
   FIXED_COSTS_CREATE: "fixed_costs.create",
   FIXED_COSTS_READ: "fixed_costs.read",
   FIXED_COSTS_UPDATE: "fixed_costs.update",
@@ -153,8 +160,10 @@ export const PERMISSIONS = {
   PRODUCT_PRICES_READ: "product_prices.read",
   PRODUCT_PRICES_UPDATE: "product_prices.update",
 
-  DOCUMENTS_CREATE: "documents.create",
+  /** Quotations & Bills */
   DOCUMENTS_READ: "documents.read",
+  DOCUMENTS_QUOTATION: "documents.quotation",
+  DOCUMENTS_BILL: "documents.bill",
   DOCUMENTS_UPDATE: "documents.update",
   DOCUMENTS_DELETE: "documents.delete",
 

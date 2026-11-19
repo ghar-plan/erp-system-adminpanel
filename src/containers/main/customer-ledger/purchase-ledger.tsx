@@ -8,7 +8,7 @@ import { Purchases_APIS } from "@/libs/apis/purchases.api";
 import { PurchaseSuppliers_APIS } from "@/libs/apis/purchase-suppliers.api";
 import { formatMoney, SOURCE_PAYMENT_OPTIONS } from "@/utils/helpers/models/purchases/purchase.dto";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
-import { Can } from "@/components/auth/Can";
+import { CanIf } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 
 interface LedgerEntry {
@@ -364,7 +364,13 @@ export default function PurchaseLedger() {
                           {entry.sourcePayment || "--"}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <Can permission={PERMISSIONS.PURCHASES_READ}>
+                          <CanIf
+                            permissions={[
+                              PERMISSIONS.LEDGER_PURCHASES,
+                              PERMISSIONS.PURCHASES_READ,
+                            ]}
+                            mode="any"
+                          >
                             <Link
                               to={siteRoutes.purchasesView.replace(":id", entry.id)}
                               className="btn-action-edit"
@@ -372,7 +378,7 @@ export default function PurchaseLedger() {
                             >
                               <Eye size={16} />
                             </Link>
-                          </Can>
+                          </CanIf>
                         </td>
                       </tr>
                     ))}

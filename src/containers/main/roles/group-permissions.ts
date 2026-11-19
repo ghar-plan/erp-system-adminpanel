@@ -31,12 +31,73 @@ const MODULE_LABELS: Record<string, string> = {
   purchases: "Purchases",
   customer_types: "Customer Types",
   sales: "Sales",
+  ledger: "Ledger",
+  commerce_cash_flow: "Commerce Cash In / Cash Out",
   fixed_costs: "Fixed Costs",
   stocks: "Stock",
   product_lifespans: "Time Span",
   product_prices: "Product Prices",
+  documents: "Quotations & Bills",
   gharplans: "Gharplans",
 };
+
+/** Roles UI sections so grouped menu modules stay together. */
+export const MODULE_SECTIONS: Array<{
+  key: string;
+  label: string;
+  modules: string[];
+}> = [
+  {
+    key: "core",
+    label: "Core",
+    modules: ["dashboard", "users", "clients", "roles", "permissions", "employee", "attendance", "leave"],
+  },
+  {
+    key: "construction",
+    label: "Construction",
+    modules: [
+      "construction_site",
+      "activity",
+      "cash_flow",
+      "prospect",
+      "contracts",
+      "comments",
+      "vendors",
+      "reports",
+    ],
+  },
+  {
+    key: "design",
+    label: "Design",
+    modules: [
+      "design_projects",
+      "design_activity",
+      "design_cash_flow",
+      "design_prospect",
+      "design_contracts",
+      "design_comments",
+      "design_vendors",
+      "design_reports",
+    ],
+  },
+  {
+    key: "commerce",
+    label: "Commerce",
+    modules: [
+      "product_prices",
+      "product_lifespans",
+      "sales",
+      "purchases",
+      "commerce_cash_flow",
+      "customer_types",
+      "ledger",
+      "documents",
+      "stocks",
+      "fixed_costs",
+      "gharplans",
+    ],
+  },
+];
 
 const ACTION_LABELS: Record<string, string> = {
   create: "Create",
@@ -195,6 +256,13 @@ const PERMISSION_LABELS: Record<string, string> = {
   "sales.update": "Edit sale",
   "sales.delete": "Delete sale",
 
+  "ledger.sales": "Sales Ledger",
+  "ledger.purchases": "Purchase Ledger",
+
+  "commerce_cash_flow.read": "View commerce cashflow",
+  "commerce_cash_flow.in": "Record commerce Cash In",
+  "commerce_cash_flow.out": "Record commerce Cash Out",
+
   "fixed_costs.create": "Create fixed cost",
   "fixed_costs.read": "View fixed costs",
   "fixed_costs.update": "Edit fixed cost",
@@ -207,6 +275,12 @@ const PERMISSION_LABELS: Record<string, string> = {
 
   "product_prices.read": "View product prices",
   "product_prices.update": "Edit product prices",
+
+  "documents.read": "View quotations & bills",
+  "documents.quotation": "Generate Quotation",
+  "documents.bill": "Generate Bill",
+  "documents.update": "Edit quotation / bill",
+  "documents.delete": "Delete quotation / bill",
 
   "gharplans.read": "View Ghar Plans products",
 };
@@ -252,7 +326,43 @@ export function groupPermissionsByModule(
     if (!map.has(mod)) map.set(mod, []);
     map.get(mod)!.push(p);
   }
-  return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+
+  const sectionOrder = MODULE_SECTIONS.flatMap((section) => section.modules);
+  const rank = new Map(sectionOrder.map((module, index) => [module, index]));
+
+  return Array.from(map.entries()).sort(([a], [b]) => {
+    const ra = rank.has(a) ? rank.get(a)! : 10_000;
+    const rb = rank.has(b) ? rank.get(b)! : 10_000;
+    if (ra !== rb) return ra - rb;
+    return a.localeCompare(b);
+  });
+}
+
+export function groupPermissionsBySection(
+  perms: RbacPermission[],
+): Array<{
+  key: string;
+  label: string;
+  modules: Array<[string, RbacPermission[]]>;
+}> {
+  const byModule = groupPermissionsByModule(perms);
+  const moduleMap = new Map(byModule);
+  const used = new Set<string>();
+  const sections = MODULE_SECTIONS.map((section) => {
+    const modules = section.modules
+      .filter((module) => moduleMap.has(module))
+      .map((module) => {
+        used.add(module);
+        return [module, moduleMap.get(module)!] as [string, RbacPermission[]];
+      });
+    return { key: section.key, label: section.label, modules };
+  }).filter((section) => section.modules.length > 0);
+
+  const other = byModule.filter(([module]) => !used.has(module));
+  if (other.length) {
+    sections.push({ key: "other", label: "Other", modules: other });
+  }
+  return sections;
 }
 
 export function formatModuleLabel(module: string): string {
