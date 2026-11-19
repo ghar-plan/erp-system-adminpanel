@@ -17,7 +17,7 @@ import {
   documentTypeLabel,
 } from "@/utils/helpers/models/documents/document.dto";
 import { formatMoney } from "@/utils/helpers/money";
-import { Can } from "@/components/auth/Can";
+import { CanIf } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 
@@ -65,7 +65,15 @@ export default function DocumentView() {
             {documentTypeLabel(doc.type)} Overview
           </h1>
         </div>
-        <Can permission={PERMISSIONS.DOCUMENTS_READ}>
+        <CanIf
+          permissions={[
+            PERMISSIONS.QUOTATIONS_READ,
+            PERMISSIONS.BILLS_READ,
+            PERMISSIONS.QUOTATIONS_CREATE,
+            PERMISSIONS.BILLS_CREATE,
+          ]}
+          mode="any"
+        >
           <button
             type="button"
             onClick={() =>
@@ -76,7 +84,7 @@ export default function DocumentView() {
             <Download size={16} />
             Download PDF
           </button>
-        </Can>
+        </CanIf>
       </div>
 
       <hr className="border-border-main" />

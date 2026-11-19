@@ -13,8 +13,6 @@ const ACTIONS_THAT_IMPLY_VIEW = new Set([
   "read_all",
   "approve",
   "reject",
-  "quotation",
-  "bill",
   "sales",
   "purchases",
 ]);

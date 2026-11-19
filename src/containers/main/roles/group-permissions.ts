@@ -37,7 +37,8 @@ const MODULE_LABELS: Record<string, string> = {
   stocks: "Stock",
   product_lifespans: "Time Span",
   product_prices: "Product Prices",
-  documents: "Quotations & Bills",
+  quotations: "Quotations",
+  bills: "Bills",
   gharplans: "Gharplans",
 };
 
@@ -91,7 +92,8 @@ export const MODULE_SECTIONS: Array<{
       "commerce_cash_flow",
       "customer_types",
       "ledger",
-      "documents",
+      "quotations",
+      "bills",
       "stocks",
       "fixed_costs",
       "gharplans",
@@ -116,8 +118,6 @@ const ACTION_LABELS: Record<string, string> = {
   project_list: "Project List",
   vendor_list: "Vendor List",
   vendor_filter: "Vendor filter",
-  quotation: "Generate Quotation",
-  bill: "Generate Bill",
   sales: "Sales Ledger",
   purchases: "Purchase Ledger",
 };
@@ -280,11 +280,15 @@ const PERMISSION_LABELS: Record<string, string> = {
   "product_prices.read": "View product prices",
   "product_prices.update": "Edit product prices",
 
-  "documents.read": "View quotations & bills",
-  "documents.quotation": "Generate Quotation",
-  "documents.bill": "Generate Bill",
-  "documents.update": "Edit quotation / bill",
-  "documents.delete": "Delete quotation / bill",
+  "quotations.create": "Generate Quotation",
+  "quotations.read": "View quotations",
+  "quotations.update": "Edit quotation",
+  "quotations.delete": "Delete quotation",
+
+  "bills.create": "Generate Bill",
+  "bills.read": "View bills",
+  "bills.update": "Edit bill",
+  "bills.delete": "Delete bill",
 
   "gharplans.read": "View Ghar Plans products",
 };

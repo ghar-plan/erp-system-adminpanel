@@ -160,12 +160,17 @@ export const PERMISSIONS = {
   PRODUCT_PRICES_READ: "product_prices.read",
   PRODUCT_PRICES_UPDATE: "product_prices.update",
 
-  /** Quotations & Bills */
-  DOCUMENTS_READ: "documents.read",
-  DOCUMENTS_QUOTATION: "documents.quotation",
-  DOCUMENTS_BILL: "documents.bill",
-  DOCUMENTS_UPDATE: "documents.update",
-  DOCUMENTS_DELETE: "documents.delete",
+  /** Quotations */
+  QUOTATIONS_CREATE: "quotations.create",
+  QUOTATIONS_READ: "quotations.read",
+  QUOTATIONS_UPDATE: "quotations.update",
+  QUOTATIONS_DELETE: "quotations.delete",
+
+  /** Bills */
+  BILLS_CREATE: "bills.create",
+  BILLS_READ: "bills.read",
+  BILLS_UPDATE: "bills.update",
+  BILLS_DELETE: "bills.delete",
 
   GHARPLANS_READ: "gharplans.read",
 } as const;

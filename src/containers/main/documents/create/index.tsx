@@ -13,7 +13,7 @@ import ProductVariantSelect, {
   ProductVariantValue,
 } from "@/components/ui/ProductVariantSelect";
 import PakistanPhoneInput from "@/components/ui/PakistanPhoneInput";
-import { Can } from "@/components/auth/Can";
+import { CanIf } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
@@ -75,8 +75,8 @@ export default function DocumentCreate({ type }: Props) {
   const { hasPermission } = usePermissions();
   const { createDocument, downloadPdf } = useDocuments();
   const [submitting, setSubmitting] = useState(false);
-  const canQuotation = hasPermission(PERMISSIONS.DOCUMENTS_QUOTATION);
-  const canBill = hasPermission(PERMISSIONS.DOCUMENTS_BILL);
+  const canQuotation = hasPermission(PERMISSIONS.QUOTATIONS_CREATE);
+  const canBill = hasPermission(PERMISSIONS.BILLS_CREATE);
   const initialType =
     type === DocumentType.BILL
       ? canBill
@@ -236,7 +236,15 @@ export default function DocumentCreate({ type }: Props) {
             </p>
           </div>
         </div>
-        <Can permission={PERMISSIONS.DOCUMENTS_READ}>
+        <CanIf
+          permissions={[
+            PERMISSIONS.QUOTATIONS_READ,
+            PERMISSIONS.BILLS_READ,
+            PERMISSIONS.QUOTATIONS_CREATE,
+            PERMISSIONS.BILLS_CREATE,
+          ]}
+          mode="any"
+        >
           <Link
             to={listRoute}
             className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"
@@ -244,7 +252,7 @@ export default function DocumentCreate({ type }: Props) {
             <List size={18} />
             Quotations & Bills
           </Link>
-        </Can>
+        </CanIf>
       </div>
 
       <form

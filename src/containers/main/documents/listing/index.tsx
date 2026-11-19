@@ -11,7 +11,6 @@ import { formatMoney } from "@/utils/helpers/money";
 import Pagination from "@/components/particles/table/pagination";
 import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
-import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
@@ -25,10 +24,16 @@ export default function DocumentsListing({ type }: Props) {
   const { hasPermission } = usePermissions();
   const { getDocuments, getDocumentCount, deleteDocument, downloadPdf } =
     useDocuments();
-  const canQuotation = hasPermission(PERMISSIONS.DOCUMENTS_QUOTATION);
-  const canBill = hasPermission(PERMISSIONS.DOCUMENTS_BILL);
-  const canView = hasPermission(PERMISSIONS.DOCUMENTS_READ);
-  const canDelete = hasPermission(PERMISSIONS.DOCUMENTS_DELETE);
+  const canQuotation = hasPermission(PERMISSIONS.QUOTATIONS_CREATE);
+  const canBill = hasPermission(PERMISSIONS.BILLS_CREATE);
+  const canView =
+    hasPermission(PERMISSIONS.QUOTATIONS_READ) ||
+    hasPermission(PERMISSIONS.BILLS_READ) ||
+    canQuotation ||
+    canBill;
+  const canDelete =
+    hasPermission(PERMISSIONS.QUOTATIONS_DELETE) ||
+    hasPermission(PERMISSIONS.BILLS_DELETE);
   const showActions = canView || canDelete || canQuotation || canBill;
 
   const isBill = type === DocumentType.BILL;

@@ -556,7 +556,7 @@ const DashboardRoutes = () => {
         />
         <Route
           path={siteRoutes.documentsQuotations}
-          element={guard(<QuotationCreate />, PERMISSIONS.DOCUMENTS_QUOTATION)}
+          element={guard(<QuotationCreate />, PERMISSIONS.QUOTATIONS_CREATE)}
         />
         <Route
           path={siteRoutes.documentsQuotationsList}
@@ -564,16 +564,21 @@ const DashboardRoutes = () => {
             <QuotationsList />,
             undefined,
             [
-              PERMISSIONS.DOCUMENTS_READ,
-              PERMISSIONS.DOCUMENTS_QUOTATION,
-              PERMISSIONS.DOCUMENTS_BILL,
+              PERMISSIONS.QUOTATIONS_READ,
+              PERMISSIONS.QUOTATIONS_CREATE,
+              PERMISSIONS.QUOTATIONS_UPDATE,
+              PERMISSIONS.QUOTATIONS_DELETE,
+              PERMISSIONS.BILLS_READ,
+              PERMISSIONS.BILLS_CREATE,
+              PERMISSIONS.BILLS_UPDATE,
+              PERMISSIONS.BILLS_DELETE,
             ],
             "any",
           )}
         />
         <Route
           path={siteRoutes.documentsBills}
-          element={guard(<BillCreate />, PERMISSIONS.DOCUMENTS_BILL)}
+          element={guard(<BillCreate />, PERMISSIONS.BILLS_CREATE)}
         />
         <Route
           path={siteRoutes.documentsBillsList}
@@ -581,9 +586,10 @@ const DashboardRoutes = () => {
             <BillsList />,
             undefined,
             [
-              PERMISSIONS.DOCUMENTS_READ,
-              PERMISSIONS.DOCUMENTS_QUOTATION,
-              PERMISSIONS.DOCUMENTS_BILL,
+              PERMISSIONS.QUOTATIONS_READ,
+              PERMISSIONS.QUOTATIONS_CREATE,
+              PERMISSIONS.BILLS_READ,
+              PERMISSIONS.BILLS_CREATE,
             ],
             "any",
           )}
@@ -594,9 +600,10 @@ const DashboardRoutes = () => {
             <DocumentView />,
             undefined,
             [
-              PERMISSIONS.DOCUMENTS_READ,
-              PERMISSIONS.DOCUMENTS_QUOTATION,
-              PERMISSIONS.DOCUMENTS_BILL,
+              PERMISSIONS.QUOTATIONS_READ,
+              PERMISSIONS.QUOTATIONS_CREATE,
+              PERMISSIONS.BILLS_READ,
+              PERMISSIONS.BILLS_CREATE,
             ],
             "any",
           )}
