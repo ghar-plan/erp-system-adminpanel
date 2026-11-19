@@ -26,6 +26,7 @@ interface CashInCustomerType {
   balance: number;
   payment: number;
   total: number;
+  advanceBalance?: number;
 }
 
 interface CashInFormProps {
@@ -73,9 +74,20 @@ export default function CashInForm({
   });
 
   const customerTypeId = watch("customerTypeId");
+  const amountWatch = watch("amount");
   const receiptUrl = watch("receiptUrl");
   const selected = sales.find((s) => s.id === customerTypeId);
   const fullAmount = Number(selected?.balance || 0);
+  const existingAdvance = Number(selected?.advanceBalance || 0);
+  const enteredAmountNum = Number(amountWatch);
+  const settlePreview =
+    Number.isFinite(enteredAmountNum) && enteredAmountNum > 0
+      ? Math.min(enteredAmountNum, fullAmount)
+      : 0;
+  const advancePreview =
+    Number.isFinite(enteredAmountNum) && enteredAmountNum > fullAmount
+      ? Math.round((enteredAmountNum - fullAmount) * 100) / 100
+      : 0;
 
   useEffect(() => {
     if (loggedInName) {
@@ -111,19 +123,13 @@ export default function CashInForm({
   };
 
   const handleFormSubmit = async (data: CommerceCashInFormInputs) => {
-    if (fullAmount <= 0) {
-      errorToaster("This customer type has no remaining balance");
+    if (!data.customerTypeId) {
+      errorToaster("Select a customer type");
       return;
     }
     const enteredAmount = Number(data.amount);
     if (!Number.isFinite(enteredAmount) || enteredAmount <= 0) {
       errorToaster("Enter a valid amount greater than 0");
-      return;
-    }
-    if (enteredAmount > fullAmount + 0.001) {
-      errorToaster(
-        `Amount cannot exceed remaining due (PKR ${fullAmount.toLocaleString()})`,
-      );
       return;
     }
     await onSubmit({
@@ -190,7 +196,12 @@ export default function CashInForm({
               Paid {Number(selected.payment || 0).toLocaleString()} · Due{" "}
               {Number(selected.balance || 0).toLocaleString()} · Total{" "}
               {Number(selected.total || 0).toLocaleString()}
-              {fullAmount === 0 ? " - nothing left to receive" : ""}
+              {existingAdvance > 0
+                ? ` · Advance ${existingAdvance.toLocaleString()}`
+                : ""}
+              {fullAmount === 0
+                ? " — no open due; amount will be stored as advance"
+                : ""}
             </p>
           ) : null}
         </div>
@@ -203,7 +214,6 @@ export default function CashInForm({
             type="number"
             step="0.01"
             min="0.01"
-            max={fullAmount > 0 ? fullAmount : undefined}
             placeholder="Enter Amount"
             className="common-input"
             {...register("amount", {
@@ -212,9 +222,6 @@ export default function CashInForm({
                 const amount = Number(value);
                 if (!Number.isFinite(amount) || amount <= 0) {
                   return "Enter an amount greater than 0";
-                }
-                if (fullAmount > 0 && amount > fullAmount + 0.001) {
-                  return `Cannot exceed remaining due (PKR ${fullAmount.toLocaleString()})`;
                 }
                 return true;
               },
@@ -225,9 +232,19 @@ export default function CashInForm({
               {errors.amount.message}
             </p>
           )}
-          {fullAmount > 0 ? (
+          {selected && Number.isFinite(enteredAmountNum) && enteredAmountNum > 0 ? (
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Remaining due: PKR {fullAmount.toLocaleString()}
+              {settlePreview > 0
+                ? `Settles due PKR ${settlePreview.toLocaleString()}`
+                : "No open due"}
+              {advancePreview > 0
+                ? ` · Stores advance PKR ${advancePreview.toLocaleString()} for future sales`
+                : ""}
+            </p>
+          ) : fullAmount > 0 ? (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Remaining due: PKR {fullAmount.toLocaleString()}. Extra amount is
+              kept as customer advance.
             </p>
           ) : null}
         </div>

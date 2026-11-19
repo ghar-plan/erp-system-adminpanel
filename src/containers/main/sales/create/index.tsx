@@ -38,8 +38,6 @@ import {
 } from "@/utils/helpers/models/customer-types/customer-type.dto";
 import {
   CommerceEntryStatus,
-  PaymentCollectedBy,
-  PAYMENT_COLLECTED_BY_OPTIONS,
   computeLineTotal,
   computeSaleBalanceFromItems,
   computeSaleSubtotal,
@@ -70,7 +68,6 @@ interface SaleFormInputs {
   items: SaleLineInput[];
   payment: number | string;
   sourcePayment: CashOutPaymentSource | "";
-  paymentCollectedBy: PaymentCollectedBy | "";
   remarks: string;
 }
 
@@ -133,7 +130,6 @@ export default function SaleCreate() {
       items: [emptyLine()],
       payment: "",
       sourcePayment: "",
-      paymentCollectedBy: PaymentCollectedBy.ADMIN,
       remarks: "",
     },
   });
@@ -147,7 +143,6 @@ export default function SaleCreate() {
   const items = watch("items");
   const payment = watch("payment");
   const sourcePayment = watch("sourcePayment");
-  const paymentCollectedBy = watch("paymentCollectedBy");
 
   const customerTypeOptions = [...customerTypes].sort((a, b) => {
     const aWalk = a.category === CustomerTypeCategory.WALK_IN ? 0 : 1;
@@ -165,8 +160,7 @@ export default function SaleCreate() {
     selectedCustomerType?.category === CustomerTypeCategory.PICKUP_POINT;
   const isCustomerCategory =
     selectedCustomerType?.category === CustomerTypeCategory.CUSTOMER ||
-    isWalkIn ||
-    (isPickupPoint && paymentCollectedBy === PaymentCollectedBy.ADMIN);
+    isWalkIn;
   const subtotal = computeSaleSubtotal(items || []);
   const resolvedPayment = resolveSalePayment(
     sourcePayment,
@@ -230,11 +224,6 @@ export default function SaleCreate() {
           items: lines,
           payment: data?.payment ?? "",
           sourcePayment: data?.sourcePayment || "",
-          paymentCollectedBy:
-            data?.paymentCollectedBy ||
-            (data?.customerType?.category === CustomerTypeCategory.PICKUP_POINT
-              ? PaymentCollectedBy.ADMIN
-              : PaymentCollectedBy.PICKUP_POINT),
           remarks: data?.remarks || "",
         });
 
@@ -249,14 +238,6 @@ export default function SaleCreate() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isEditMode]);
-
-  // Pickup-point trust flow defaults to admin collection.
-  useEffect(() => {
-    if (!isPickupPoint) return;
-    if (!paymentCollectedBy) {
-      setValue("paymentCollectedBy", PaymentCollectedBy.ADMIN);
-    }
-  }, [isPickupPoint, paymentCollectedBy, setValue]);
 
   // Prefill empty rates when customer type changes (keep existing rates on edit load)
   useEffect(() => {
@@ -441,11 +422,6 @@ export default function SaleCreate() {
       ...(data.remarks ? { remarks: data.remarks.trim() } : {}),
     };
 
-    if (isPickupPoint) {
-      payload.paymentCollectedBy =
-        data.paymentCollectedBy || PaymentCollectedBy.ADMIN;
-    }
-
     if (isCustomerCategory || isPickupPoint) {
       const name = data.customerName?.trim();
       const phone = data.telephone?.trim();
@@ -559,34 +535,11 @@ export default function SaleCreate() {
             )}
           </div>
 
-          {isPickupPoint ? (
-            <div className="md:col-span-2">
-              <label className="mb-2 block ui-form-label">
-                Payment Collected By
-              </label>
-              <select
-                className="common-input bg-card"
-                {...register("paymentCollectedBy")}
-              >
-                {PAYMENT_COLLECTED_BY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Use <strong>Collected by Admin</strong> when the customer pays
-                Ghar Plans and the pickup point only hands over the order.
-                Settle that amount from Cash In / Cash Out.
-              </p>
-            </div>
-          ) : null}
-
           {isCustomerCategory ? (
             <>
               <div>
                 <label className="mb-2 block ui-form-label">
-                  {isPickupPoint ? "End Customer Name" : "Customer Name"}
+                  Customer Name
                   <span className="text-muted-foreground font-normal">
                     {" "}
                     (optional)

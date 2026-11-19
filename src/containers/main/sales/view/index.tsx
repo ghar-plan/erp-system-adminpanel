@@ -11,7 +11,6 @@ import {
   StickyNote,
   Tag,
   Layers,
-  Building2,
   CheckCircle2,
   AlertCircle,
   Eye,
@@ -24,15 +23,11 @@ import useSales from "../useHooks";
 import useCommerceCashflow from "@/containers/main/commerce-cashflow/useHooks";
 import {
   Sale,
-  PaymentCollectedBy,
   computeSaleSubtotal,
   isDraftEntry,
 } from "@/utils/helpers/models/sales/sale.dto";
 import { formatMoney } from "@/utils/helpers/models/purchases/purchase.dto";
-import {
-  CustomerTypeCategory,
-  customerTypeCategoryLabel,
-} from "@/utils/helpers/models/customer-types/customer-type.dto";
+import { customerTypeCategoryLabel } from "@/utils/helpers/models/customer-types/customer-type.dto";
 import { Can } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { isErpAdminEmail } from "@/utils/helpers/permissions/erp-admin-access";
@@ -365,26 +360,6 @@ export default function SaleView() {
             </div>
           </div>
 
-          {sale?.customerType?.category ===
-          CustomerTypeCategory.PICKUP_POINT ? (
-            <>
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-lg bg-info-bg text-info-text">
-                  <Building2 size={18} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                    Payment Collected By
-                  </label>
-                  <p className="text-sm font-semibold text-foreground mt-0.5">
-                    {sale.paymentCollectedBy === PaymentCollectedBy.ADMIN
-                      ? "Admin (Ghar Plans)"
-                      : "Pickup Point"}
-                  </p>
-                </div>
-              </div>
-            </>
-          ) : null}
         </div>
 
         <div className="pt-2">

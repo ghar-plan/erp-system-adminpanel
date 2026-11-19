@@ -64,6 +64,16 @@ export default function CommerceCashflowView() {
   const isCashOut = type === "out";
   const [entry, setEntry] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const installmentLabel = String(entry?.installment || "").toLowerCase();
+  const isAdvanceEntry =
+    !isCashOut &&
+    (!!entry &&
+      (!entry.saleId ||
+        installmentLabel === "advance" ||
+        installmentLabel.startsWith("advance")));
+  const advanceTagLabel = installmentLabel.includes("applied")
+    ? "Advance Applied"
+    : "Advance";
 
   useEffect(() => {
     if (!id) {
@@ -129,16 +139,27 @@ export default function CommerceCashflowView() {
             </p>
           </div>
         </div>
-        <span
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border ${
-            isCashOut
-              ? "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20"
-              : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
-          }`}
-        >
-          {isCashOut ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}
-          {isCashOut ? "Cash Out" : "Cash In"}
-        </span>
+        <div className="inline-flex flex-wrap items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border ${
+              isCashOut
+                ? "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20"
+                : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+            }`}
+          >
+            {isCashOut ? (
+              <ArrowUpCircle size={14} />
+            ) : (
+              <ArrowDownCircle size={14} />
+            )}
+            {isCashOut ? "Cash Out" : "Cash In"}
+          </span>
+          {isAdvanceEntry ? (
+            <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold border bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30">
+              {advanceTagLabel}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <hr className="border-border-main" />
@@ -165,6 +186,22 @@ export default function CommerceCashflowView() {
             label="Amount"
             value={formatMoney(entry.amount)}
           />
+          {!isCashOut && Number(entry.receiptTotal || 0) > 0 ? (
+            <DetailItem
+              icon={<Coins size={18} />}
+              iconClass="bg-amber-500/10 text-amber-700"
+              label="Original Receipt"
+              value={
+                <span>
+                  {formatMoney(entry.receiptTotal)}
+                  <span className="block text-xs font-medium text-muted-foreground mt-0.5">
+                    Due {formatMoney(entry.receiptDueAmount || 0)} · Advance{" "}
+                    {formatMoney(entry.receiptAdvanceAmount || 0)}
+                  </span>
+                </span>
+              }
+            />
+          ) : null}
           <DetailItem
             icon={<Calendar size={18} />}
             iconClass="bg-info-bg text-info-text"
