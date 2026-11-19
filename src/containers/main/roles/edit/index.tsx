@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Search } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { Can } from "@/components/auth/Can";
 import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import { siteRoutes } from "@/utils/helpers/enums/routes.enum";
 import {
+  filterPermissionSections,
   formatModuleLabel,
   formatPermissionLabel,
   groupPermissionsBySection,
@@ -40,6 +41,7 @@ export default function RoleEdit() {
   const [role, setRole] = useState<RbacRole | null>(null);
   const [catalog, setCatalog] = useState<RbacPermission[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [permissionSearch, setPermissionSearch] = useState("");
   const [loaded, setLoaded] = useState(isNew);
 
   const {
@@ -52,6 +54,17 @@ export default function RoleEdit() {
   });
 
   const sections = useMemo(() => groupPermissionsBySection(catalog), [catalog]);
+  const visibleSections = useMemo(
+    () => filterPermissionSections(sections, permissionSearch),
+    [sections, permissionSearch],
+  );
+  const visiblePermissions = useMemo(
+    () =>
+      visibleSections.flatMap((section) =>
+        section.modules.flatMap(([, perms]) => perms),
+      ),
+    [visibleSections],
+  );
 
   useEffect(() => {
     getPermissionsCatalog(setCatalog);
@@ -117,7 +130,18 @@ export default function RoleEdit() {
   };
 
   const selectAll = (on: boolean) => {
-    setSelected(on ? new Set(catalog.map((permission) => permission.codename)) : new Set());
+    const target = permissionSearch.trim() ? visiblePermissions : catalog;
+    setSelected((prev) => {
+      if (!on) {
+        if (!permissionSearch.trim()) return new Set();
+        const next = new Set(prev);
+        for (const permission of target) next.delete(permission.codename);
+        return next;
+      }
+      const next = new Set(prev);
+      for (const permission of target) next.add(permission.codename);
+      return expandImpliedReads(next);
+    });
   };
 
   const onSave = async (form: RoleForm) => {
@@ -192,20 +216,38 @@ export default function RoleEdit() {
               <h2 className="text-base font-bold text-foreground">Permissions</h2>
               <p className="text-xs text-muted-foreground">
                 {selected.size} selected
+                {permissionSearch.trim()
+                  ? ` · ${visiblePermissions.length} matching`
+                  : ""}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button type="button" size="sm" variant="secondary" onClick={() => selectAll(true)}>
-                Select all
+                {permissionSearch.trim() ? "Select matches" : "Select all"}
               </Button>
               <Button type="button" size="sm" variant="outline" onClick={() => selectAll(false)}>
-                Clear all
+                {permissionSearch.trim() ? "Clear matches" : "Clear all"}
               </Button>
             </div>
           </div>
 
+          <div className="relative w-full max-w-md">
+            <Search
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/80"
+              size={16}
+            />
+            <input
+              type="search"
+              value={permissionSearch}
+              onChange={(e) => setPermissionSearch(e.target.value)}
+              placeholder="Search modules or permissions..."
+              className="common-input pl-10 pr-4 text-sm h-10 w-full"
+              aria-label="Search permissions"
+            />
+          </div>
+
           <div className="space-y-8">
-            {sections.map((section) => (
+            {visibleSections.map((section) => (
               <div key={section.key} className="space-y-4">
                 <div className="rounded-lg bg-muted/40 px-3 py-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -292,6 +334,10 @@ export default function RoleEdit() {
             {!catalog.length ? (
               <p className="text-sm text-muted-foreground">
                 No permissions loaded. Run the backend seeder so the catalog exists.
+              </p>
+            ) : visibleSections.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No permissions match “{permissionSearch.trim()}”.
               </p>
             ) : null}
           </div>

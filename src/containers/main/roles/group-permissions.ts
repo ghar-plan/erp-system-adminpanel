@@ -116,6 +116,10 @@ const ACTION_LABELS: Record<string, string> = {
   project_list: "Project List",
   vendor_list: "Vendor List",
   vendor_filter: "Vendor filter",
+  quotation: "Generate Quotation",
+  bill: "Generate Bill",
+  sales: "Sales Ledger",
+  purchases: "Purchase Ledger",
 };
 
 const PERMISSION_LABELS: Record<string, string> = {
@@ -309,6 +313,29 @@ export function mapCatalogPermission(raw: any): RbacPermission {
   };
 }
 
+function sortPermissionsByLabel(perms: RbacPermission[]): RbacPermission[] {
+  return [...perms].sort((a, b) =>
+    formatPermissionLabel(a).localeCompare(formatPermissionLabel(b), undefined, {
+      sensitivity: "base",
+    }),
+  );
+}
+
+function sortModulesByLabel(
+  modules: Array<[string, RbacPermission[]]>,
+): Array<[string, RbacPermission[]]> {
+  return [...modules]
+    .map(
+      ([module, perms]) =>
+        [module, sortPermissionsByLabel(perms)] as [string, RbacPermission[]],
+    )
+    .sort(([a], [b]) =>
+      formatModuleLabel(a).localeCompare(formatModuleLabel(b), undefined, {
+        sensitivity: "base",
+      }),
+    );
+}
+
 export function groupPermissionsByModule(
   perms: RbacPermission[],
 ): Array<[string, RbacPermission[]]> {
@@ -327,42 +354,81 @@ export function groupPermissionsByModule(
     map.get(mod)!.push(p);
   }
 
-  const sectionOrder = MODULE_SECTIONS.flatMap((section) => section.modules);
-  const rank = new Map(sectionOrder.map((module, index) => [module, index]));
-
-  return Array.from(map.entries()).sort(([a], [b]) => {
-    const ra = rank.has(a) ? rank.get(a)! : 10_000;
-    const rb = rank.has(b) ? rank.get(b)! : 10_000;
-    if (ra !== rb) return ra - rb;
-    return a.localeCompare(b);
-  });
+  return sortModulesByLabel(Array.from(map.entries()));
 }
 
-export function groupPermissionsBySection(
-  perms: RbacPermission[],
-): Array<{
+export type PermissionSection = {
   key: string;
   label: string;
   modules: Array<[string, RbacPermission[]]>;
-}> {
+};
+
+export function groupPermissionsBySection(
+  perms: RbacPermission[],
+): PermissionSection[] {
   const byModule = groupPermissionsByModule(perms);
   const moduleMap = new Map(byModule);
   const used = new Set<string>();
   const sections = MODULE_SECTIONS.map((section) => {
-    const modules = section.modules
-      .filter((module) => moduleMap.has(module))
-      .map((module) => {
-        used.add(module);
-        return [module, moduleMap.get(module)!] as [string, RbacPermission[]];
-      });
+    const modules = sortModulesByLabel(
+      section.modules
+        .filter((module) => moduleMap.has(module))
+        .map((module) => {
+          used.add(module);
+          return [module, moduleMap.get(module)!] as [
+            string,
+            RbacPermission[],
+          ];
+        }),
+    );
     return { key: section.key, label: section.label, modules };
   }).filter((section) => section.modules.length > 0);
 
   const other = byModule.filter(([module]) => !used.has(module));
   if (other.length) {
-    sections.push({ key: "other", label: "Other", modules: other });
+    sections.push({
+      key: "other",
+      label: "Other",
+      modules: sortModulesByLabel(other),
+    });
   }
-  return sections;
+
+  return [...sections].sort((a, b) =>
+    a.label.localeCompare(b.label, undefined, { sensitivity: "base" }),
+  );
+}
+
+export function filterPermissionSections(
+  sections: PermissionSection[],
+  query: string,
+): PermissionSection[] {
+  const keyword = query.trim().toLowerCase();
+  if (!keyword) return sections;
+
+  return sections
+    .map((section) => {
+      const sectionMatches = section.label.toLowerCase().includes(keyword);
+      const modules = section.modules
+        .map(([module, perms]) => {
+          const moduleLabel = formatModuleLabel(module).toLowerCase();
+          const moduleMatches = moduleLabel.includes(keyword);
+          if (sectionMatches || moduleMatches) {
+            return [module, perms] as [string, RbacPermission[]];
+          }
+          const matchedPerms = perms.filter((permission) => {
+            const label = formatPermissionLabel(permission).toLowerCase();
+            const code = permission.codename.toLowerCase();
+            return label.includes(keyword) || code.includes(keyword);
+          });
+          if (!matchedPerms.length) return null;
+          return [module, matchedPerms] as [string, RbacPermission[]];
+        })
+        .filter(Boolean) as Array<[string, RbacPermission[]]>;
+
+      if (!modules.length) return null;
+      return { ...section, modules };
+    })
+    .filter(Boolean) as PermissionSection[];
 }
 
 export function formatModuleLabel(module: string): string {
