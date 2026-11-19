@@ -15,7 +15,6 @@ import DataNotFound from "@/components/particles/table/data-not-found";
 import Button from "@/components/ui/Button";
 import { Can } from "@/components/auth/Can";
 import { usePermissions } from "@/hooks/usePermissions";
-import { PERMISSIONS } from "@/utils/helpers/permissions/permission-constants";
 import {
   defaultProspectTypeForModule,
   prospectCreatePath,
@@ -24,6 +23,7 @@ import {
   resolveProspectModule,
   type ProspectTypeValue,
 } from "@/utils/helpers/models/prospects/prospect-module";
+import { prospectPermissionsForModule } from "@/utils/helpers/models/prospects/prospect-permissions";
 
 type ProspectTypeFilter = ProspectTypeValue | "";
 
@@ -44,14 +44,18 @@ export default function ProspectsListing() {
   const { hasPermission } = usePermissions();
   const { pathname } = useLocation();
   const module = resolveProspectModule(pathname);
+  const modulePerms = useMemo(
+    () => prospectPermissionsForModule(module),
+    [module],
+  );
   const moduleDefaultType = useMemo(
     () => defaultProspectTypeForModule(module),
     [module],
   );
   const { getProspects, deleteProspect } = useProspects();
-  const canView = hasPermission(PERMISSIONS.PROSPECT_READ);
-  const canUpdate = hasPermission(PERMISSIONS.PROSPECT_UPDATE);
-  const canDelete = hasPermission(PERMISSIONS.PROSPECT_DELETE);
+  const canView = hasPermission(modulePerms.read);
+  const canUpdate = hasPermission(modulePerms.update);
+  const canDelete = hasPermission(modulePerms.delete);
   const showActions = canView || canUpdate || canDelete;
   const [prospects, setProspects] = useState<Prospect[]>([]);
 
@@ -195,7 +199,7 @@ export default function ProspectsListing() {
           </div>
         </div>
 
-        <Can permission={PERMISSIONS.PROSPECT_CREATE}>
+        <Can permission={modulePerms.create}>
           <Link
             to={prospectCreatePath(module)}
             className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-primary hover:opacity-90 font-bold text-white transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-sm"

@@ -285,7 +285,12 @@ export const menuConfig: MenuGroup[] = [
         title: "Prospects",
         path: siteRoutes.shopProspects,
         icon: "commerce-prospects",
-        permission: PERMISSIONS.PROSPECT_READ,
+        anyOf: [
+          PERMISSIONS.COMMERCE_PROSPECT_READ,
+          PERMISSIONS.COMMERCE_PROSPECT_CREATE,
+          PERMISSIONS.COMMERCE_PROSPECT_UPDATE,
+          PERMISSIONS.COMMERCE_PROSPECT_DELETE,
+        ],
       },
     ],
   },

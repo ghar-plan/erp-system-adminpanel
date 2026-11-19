@@ -30,6 +30,11 @@ export const PERMISSIONS = {
   PROSPECT_UPDATE: "prospect.update",
   PROSPECT_DELETE: "prospect.delete",
 
+  COMMERCE_PROSPECT_CREATE: "commerce_prospect.create",
+  COMMERCE_PROSPECT_READ: "commerce_prospect.read",
+  COMMERCE_PROSPECT_UPDATE: "commerce_prospect.update",
+  COMMERCE_PROSPECT_DELETE: "commerce_prospect.delete",
+
   CONTRACTS_CREATE: "contracts.create",
   CONTRACTS_READ: "contracts.read",
   CONTRACTS_UPDATE: "contracts.update",

@@ -215,19 +215,44 @@ const DashboardRoutes = () => {
         {/* Shop prospects — same screens, module inferred from /shop/prospects */}
         <Route
           path={siteRoutes.shopProspects}
-          element={guard(<ProspectsListing />, PERMISSIONS.PROSPECT_READ)}
+          element={guard(
+            <ProspectsListing />,
+            undefined,
+            [
+              PERMISSIONS.COMMERCE_PROSPECT_READ,
+              PERMISSIONS.COMMERCE_PROSPECT_CREATE,
+              PERMISSIONS.COMMERCE_PROSPECT_UPDATE,
+              PERMISSIONS.COMMERCE_PROSPECT_DELETE,
+            ],
+            "any",
+          )}
         />
         <Route
           path={siteRoutes.shopProspectsCreate}
-          element={guard(<ProspectCreate />, PERMISSIONS.PROSPECT_CREATE)}
+          element={guard(
+            <ProspectCreate />,
+            PERMISSIONS.COMMERCE_PROSPECT_CREATE,
+          )}
         />
         <Route
           path={siteRoutes.shopProspectsView}
-          element={guard(<ProspectView />, PERMISSIONS.PROSPECT_READ)}
+          element={guard(
+            <ProspectView />,
+            undefined,
+            [
+              PERMISSIONS.COMMERCE_PROSPECT_READ,
+              PERMISSIONS.COMMERCE_PROSPECT_CREATE,
+              PERMISSIONS.COMMERCE_PROSPECT_UPDATE,
+            ],
+            "any",
+          )}
         />
         <Route
           path={siteRoutes.shopProspectsEdit}
-          element={guard(<ProspectCreate />, PERMISSIONS.PROSPECT_UPDATE)}
+          element={guard(
+            <ProspectCreate />,
+            PERMISSIONS.COMMERCE_PROSPECT_UPDATE,
+          )}
         />
         <Route
           path={siteRoutes.reportsVendorList}
